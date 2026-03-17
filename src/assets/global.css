@@ -1,0 +1,122 @@
+@import "./tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--surface-app);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent-subtle);
+  color: var(--text-primary);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
+}
+
+/* Drag region for macOS title bar */
+.titlebar-drag-region {
+  -webkit-app-region: drag;
+}
+
+.titlebar-drag-region * {
+  -webkit-app-region: no-drag;
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--duration-normal) var(--ease-default);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform var(--duration-normal) var(--ease-out),
+    opacity var(--duration-normal) var(--ease-default);
+}
+
+.slide-enter-from {
+  transform: translateY(4px);
+  opacity: 0;
+}
+
+.slide-leave-to {
+  transform: translateY(-4px);
+  opacity: 0;
+}
+
+/* Sheet overlay transition */
+.sheet-enter-active,
+.sheet-leave-active {
+  transition: opacity var(--duration-slow) var(--ease-default);
+}
+
+.sheet-enter-active .sheet-content,
+.sheet-leave-active .sheet-content {
+  transition: transform var(--duration-slow) var(--ease-out),
+    opacity var(--duration-slow) var(--ease-default);
+}
+
+.sheet-enter-from,
+.sheet-leave-to {
+  opacity: 0;
+}
+
+.sheet-enter-from .sheet-content {
+  transform: translateY(8px) scale(0.98);
+  opacity: 0;
+}
+
+.sheet-leave-to .sheet-content {
+  transform: translateY(4px) scale(0.99);
+  opacity: 0;
+}

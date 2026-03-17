@@ -1,0 +1,25 @@
+[package]
+name = "kit"
+version = "1.0.0"
+description = "Skill loadout manager for Claude Code"
+authors = ["Danny Harding"]
+edition = "2021"
+
+[lib]
+name = "kit_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "6"
+walkdir = "2"
+tauri-plugin-window-state = "2.4.1"
