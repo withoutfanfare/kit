@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import type { LibraryListItem, SkillDetail, SkillId } from "@/types";
+import { useSkillPeekStore } from "./skillPeekStore";
 
 export const useLibraryStore = defineStore("library", () => {
   const items = ref<LibraryListItem[]>([]);
@@ -13,6 +14,7 @@ export const useLibraryStore = defineStore("library", () => {
   const filterKind = ref<"all" | "skill" | "set">("all");
   const totalSkills = ref(0);
   const totalSets = ref(0);
+  const detailError = ref<string | null>(null);
 
   const filteredItems = computed(() => {
     let result = items.value;
@@ -43,16 +45,22 @@ export const useLibraryStore = defineStore("library", () => {
     isLoading.value = true;
     try {
       items.value = await invoke<LibraryListItem[]>("list_library_items");
+      useSkillPeekStore().clearCache();
     } finally {
       isLoading.value = false;
     }
   }
 
   async function fetchSkillDetail(id: SkillId) {
-    const detail = await invoke<SkillDetail>("get_skill_detail", {
-      skillId: id,
-    });
-    skillDetailCache.value[id] = detail;
+    detailError.value = null;
+    try {
+      const detail = await invoke<SkillDetail>("get_skill_detail", {
+        skillId: id,
+      });
+      skillDetailCache.value[id] = detail;
+    } catch (err) {
+      detailError.value = err instanceof Error ? err.message : "Failed to load skill detail";
+    }
   }
 
   async function archiveSkill(id: SkillId) {
@@ -90,6 +98,7 @@ export const useLibraryStore = defineStore("library", () => {
     filterKind,
     totalSkills,
     totalSets,
+    detailError,
     filteredItems,
     selectedDetail,
     fetchItems,
