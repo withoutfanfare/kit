@@ -2,6 +2,7 @@
 import { watch, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { useLocationsStore } from "@/stores/locationsStore";
+import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import LocationHeader from "@/components/domain/LocationHeader.vue";
 import LocationOverviewCard from "@/components/domain/LocationOverviewCard.vue";
 import SetList from "@/components/domain/SetList.vue";
@@ -10,6 +11,7 @@ import IssueList from "@/components/domain/IssueList.vue";
 
 const route = useRoute();
 const locationsStore = useLocationsStore();
+const skillPeekStore = useSkillPeekStore();
 
 const locationId = computed(() => route.params.locationId as string);
 
@@ -22,6 +24,10 @@ const linkedSkills = computed(
 const localOnlySkills = computed(
   () => detail.value?.skills.filter((s) => s.linkState === "local_only") ?? []
 );
+
+function peekSkill(skillId: string) {
+  skillPeekStore.peek(skillId);
+}
 
 function loadDetail() {
   const id = locationId.value;
@@ -54,6 +60,7 @@ watch(locationId, loadDetail);
         :skills="linkedSkills"
         title="Linked Skills"
         show-link-state
+        @select-skill="peekSkill"
       />
 
       <SkillList
@@ -61,6 +68,7 @@ watch(locationId, loadDetail);
         :skills="localOnlySkills"
         title="Local-Only Skills"
         show-link-state
+        @select-skill="peekSkill"
       />
 
       <IssueList
