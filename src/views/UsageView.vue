@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
-import { useRouter } from "vue-router";
 import { useUsageStore } from "@/stores/usageStore";
+import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import SectionHeader from "@/components/base/SectionHeader.vue";
 import Badge from "@/components/base/Badge.vue";
 
 const usageStore = useUsageStore();
-const router = useRouter();
+const skillPeekStore = useSkillPeekStore();
 
 function navigateToSkill(skillId: string) {
-  router.push({ name: "skill-detail", params: { skillId } });
+  skillPeekStore.peek(skillId);
 }
 
 function formatDate(iso: string): string {
