@@ -1,25 +1,68 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch, onMounted, onUnmounted } from "vue";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { useRouter } from "vue-router";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import WindowToolbar from "./WindowToolbar.vue";
 import SidebarNav from "./SidebarNav.vue";
 import NoticeBanner from "@/components/base/NoticeBanner.vue";
+import OnboardingView from "@/views/OnboardingView.vue";
+import SkillPeekPanel from "@/components/domain/SkillPeekPanel.vue";
 import { useAppStore } from "@/stores/appStore";
+import type { SkillsRepoStatus } from "@/types";
+
+const router = useRouter();
+let unlistenNavigate: UnlistenFn | null = null;
+
+onMounted(async () => {
+  unlistenNavigate = await listen<string>("navigate", (event) => {
+    router.push(event.payload);
+  });
+});
+
+onUnmounted(() => {
+  unlistenNavigate?.();
+});
 
 const appStore = useAppStore();
-const welcomeDismissed = ref(false);
+const repoBannerDismissed = ref(false);
+const repoStatus = ref<SkillsRepoStatus | null>(null);
+
+watch(
+  () => appStore.isBootstrapped,
+  (bootstrapped) => {
+    if (bootstrapped && !appStore.needsSetup) {
+      invoke<SkillsRepoStatus>("get_skills_repo_status")
+        .then((status) => {
+          repoStatus.value = status;
+        })
+        .catch(() => {
+          // Silently ignore — status is optional
+        });
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
   <div class="app-shell">
+    <!-- Onboarding: full-screen replacement when setup is needed -->
+    <template v-if="appStore.needsSetup">
+      <OnboardingView />
+    </template>
+
+    <template v-else>
     <WindowToolbar />
     <NoticeBanner
-      v-if="appStore.needsSetup && !welcomeDismissed"
-      variant="info"
+      v-if="repoStatus && repoStatus.state === 'behind' && !repoBannerDismissed"
+      variant="warning"
       dismissible
       class="welcome-banner"
-      @dismiss="welcomeDismissed = true"
+      @dismiss="repoBannerDismissed = true"
     >
-      Welcome to Kit — set your skill library root in Settings to get started.
+      Skills repository is {{ repoStatus.behindBy }} commit{{ repoStatus.behindBy === 1 ? '' : 's' }} behind {{ repoStatus.upstream ?? 'remote' }} — pull to get the latest skills.
     </NoticeBanner>
     <div class="app-body">
       <SidebarNav />
@@ -31,6 +74,10 @@ const welcomeDismissed = ref(false);
         </router-view>
       </main>
     </div>
+    </template>
+
+    <!-- Skill peek panel -->
+    <SkillPeekPanel />
 
     <!-- Global error -->
     <div v-if="appStore.globalError" class="global-error">

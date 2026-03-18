@@ -48,7 +48,7 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
   gap: var(--space-2);
   height: var(--list-row-height);
   padding: 0 var(--space-3);
-  cursor: default;
+  cursor: pointer;
   transition: background var(--duration-fast) var(--ease-default);
   user-select: none;
 }
