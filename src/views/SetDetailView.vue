@@ -6,6 +6,7 @@ import { useLibraryStore } from "@/stores/libraryStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useAppStore } from "@/stores/appStore";
+import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
@@ -24,10 +25,11 @@ const libraryStore = useLibraryStore();
 const locationsStore = useLocationsStore();
 const preferencesStore = usePreferencesStore();
 
-const setId = computed(() => route.params.setId as string);
+const setKey = computed(() => decodeURIComponent(route.params.setKey as string));
 const detail = computed(() => setsStore.selectedDetail);
 
 const appStore = useAppStore();
+const skillPeekStore = useSkillPeekStore();
 const showDeleteConfirm = ref(false);
 const showSkillPicker = ref(false);
 const skillPickerQuery = ref("");
@@ -52,9 +54,9 @@ const availableSkills = computed(() => {
 });
 
 function loadDetail() {
-  const id = setId.value;
-  if (id) {
-    setsStore.selectSet(id);
+  const key = setKey.value;
+  if (key) {
+    setsStore.selectSet(key);
   }
 }
 
@@ -172,7 +174,7 @@ onUnmounted(() => {
   unlistenDragDrop?.();
 });
 
-watch(setId, loadDetail);
+watch(setKey, loadDetail);
 </script>
 
 <template>
@@ -224,7 +226,7 @@ watch(setId, loadDetail);
             :key="skill.id"
             class="skill-row"
           >
-            <div class="skill-row-content">
+            <div class="skill-row-content" @click="skillPeekStore.peek(skill.id)">
               <span class="skill-name">{{ skill.name }}</span>
               <Badge v-if="skill.archived" variant="default" compact>Archived</Badge>
             </div>
@@ -322,6 +324,16 @@ watch(setId, loadDetail);
             <span class="picker-row-name">{{ skill.name }}</span>
             <span v-if="skill.summary" class="picker-row-summary">{{ skill.summary }}</span>
           </div>
+          <button
+            class="info-button"
+            title="View skill details"
+            @click.stop="skillPeekStore.peek(skill.id)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4M12 8h.01" />
+            </svg>
+          </button>
           <svg
             class="add-icon"
             width="14"
@@ -469,6 +481,7 @@ watch(setId, loadDetail);
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+  cursor: pointer;
 }
 
 .skill-name {
@@ -657,6 +670,26 @@ watch(setId, loadDetail);
 .add-icon {
   color: var(--accent);
   flex-shrink: 0;
+}
+
+.info-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--ease-default);
+}
+
+.info-button:hover {
+  background: var(--surface-hover);
+  color: var(--accent);
 }
 
 .picker-empty {
