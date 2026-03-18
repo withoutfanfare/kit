@@ -3,6 +3,7 @@ import { ref, computed, watch } from "vue";
 import { useAssignmentStore } from "@/stores/assignmentStore";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useLocationsStore } from "@/stores/locationsStore";
+import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import type { LibraryListItem, SkillAssignment } from "@/types";
 import SheetPanel from "@/components/base/SheetPanel.vue";
 import SearchField from "@/components/base/SearchField.vue";
@@ -14,6 +15,7 @@ import SelectionPreview from "./SelectionPreview.vue";
 const assignmentStore = useAssignmentStore();
 const libraryStore = useLibraryStore();
 const locationsStore = useLocationsStore();
+const skillPeekStore = useSkillPeekStore();
 
 const searchQuery = ref("");
 
@@ -157,6 +159,16 @@ watch(
                   <span class="item-name">{{ item.name }}</span>
                   <span v-if="item.summary" class="item-summary">{{ item.summary }}</span>
                 </div>
+                <button
+                  class="info-button"
+                  title="View skill details"
+                  @click.prevent.stop="skillPeekStore.peek(item.id)"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4M12 8h.01" />
+                  </svg>
+                </button>
                 <Badge v-if="isInstalled(item)" variant="success" compact>Installed</Badge>
                 <Badge v-if="item.archived" variant="warning" compact>Archived</Badge>
               </label>
@@ -213,6 +225,16 @@ watch(
                 <div class="item-info">
                   <span class="item-name">{{ skill.name }}</span>
                 </div>
+                <button
+                  class="info-button"
+                  title="View skill details"
+                  @click.prevent.stop="skillPeekStore.peek(skill.skillId)"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4M12 8h.01" />
+                  </svg>
+                </button>
                 <Badge v-if="isMarkedForRemoval(skill.skillId)" variant="danger" compact>Remove</Badge>
               </label>
             </div>
@@ -419,6 +441,26 @@ watch(
   flex-shrink: 0;
   padding: var(--space-4);
   overflow-y: auto;
+}
+
+.info-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--ease-default);
+}
+
+.info-button:hover {
+  background: var(--surface-hover);
+  color: var(--accent);
 }
 
 /* Footer */
