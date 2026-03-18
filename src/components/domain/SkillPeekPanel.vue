@@ -13,7 +13,9 @@ const previousFocus = ref<HTMLElement | null>(null);
 
 function handleBackdropClick(event: MouseEvent) {
   event.stopPropagation();
-  peekStore.close();
+  if (event.target === event.currentTarget) {
+    peekStore.close();
+  }
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -58,7 +60,7 @@ watch(
       <div
         v-if="peekStore.isOpen"
         class="peek-backdrop"
-        @click.self="handleBackdropClick"
+        @click="handleBackdropClick"
       >
         <div
           ref="panelRef"

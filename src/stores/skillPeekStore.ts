@@ -42,8 +42,6 @@ export const useSkillPeekStore = defineStore("skillPeek", () => {
 
   function close() {
     peekSkillId.value = null;
-    detail.value = null;
-    error.value = null;
   }
 
   function clearCache() {
