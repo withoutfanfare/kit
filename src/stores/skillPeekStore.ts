@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import type { SkillDetail, SkillId, SkillAssignment } from "@/types";
+import type { SkillDetail, SkillId } from "@/types";
 
 export const useSkillPeekStore = defineStore("skillPeek", () => {
   const peekSkillId = ref<SkillId | null>(null);
@@ -12,12 +12,13 @@ export const useSkillPeekStore = defineStore("skillPeek", () => {
 
   const isOpen = computed(() => peekSkillId.value !== null);
 
-  async function peek(id: SkillId) {
+  async function peek(id: SkillId, path?: string) {
     peekSkillId.value = id;
     error.value = null;
 
-    if (cache.value[id]) {
-      detail.value = cache.value[id];
+    const cacheKey = path ? `${id}:${path}` : id;
+    if (cache.value[cacheKey]) {
+      detail.value = cache.value[cacheKey];
       return;
     }
 
@@ -26,8 +27,9 @@ export const useSkillPeekStore = defineStore("skillPeek", () => {
     try {
       const result = await invoke<SkillDetail>("get_skill_detail", {
         skillId: id,
+        skillPath: path ?? null,
       });
-      cache.value[id] = result;
+      cache.value[cacheKey] = result;
       if (peekSkillId.value === id) {
         detail.value = result;
       }
@@ -38,22 +40,6 @@ export const useSkillPeekStore = defineStore("skillPeek", () => {
     } finally {
       isLoading.value = false;
     }
-  }
-
-  function peekLocal(assignment: SkillAssignment) {
-    peekSkillId.value = assignment.skillId;
-    error.value = null;
-    isLoading.value = false;
-    detail.value = {
-      id: assignment.skillId,
-      name: assignment.name,
-      path: assignment.path,
-      archived: assignment.archived,
-      summary: null,
-      linkedLocations: [],
-      includedInSets: [],
-      usage: { lastUsedAt: null, useCount30d: 0 },
-    };
   }
 
   function close() {
@@ -71,7 +57,6 @@ export const useSkillPeekStore = defineStore("skillPeek", () => {
     error,
     isOpen,
     peek,
-    peekLocal,
     close,
     clearCache,
   };

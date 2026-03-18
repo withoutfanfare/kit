@@ -27,11 +27,7 @@ const localOnlySkills = computed(
 
 function peekSkill(skillId: string) {
   const skill = detail.value?.skills.find((s) => s.skillId === skillId);
-  if (skill && skill.source === "local") {
-    skillPeekStore.peekLocal(skill);
-  } else {
-    skillPeekStore.peek(skillId);
-  }
+  skillPeekStore.peek(skillId, skill?.path);
 }
 
 function loadDetail() {
