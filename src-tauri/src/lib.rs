@@ -3,6 +3,7 @@ pub mod domain;
 pub mod linker;
 pub mod scanner;
 pub mod state;
+pub mod tray;
 
 use commands::assignment::{apply_assignment, preview_assignment};
 use commands::bootstrap::{get_app_bootstrap, get_app_data_path, update_preferences};
@@ -13,6 +14,7 @@ use commands::locations::{
     update_location,
 };
 use commands::manifest::update_manifest_entry;
+use commands::repo::{copy_repo_pull_command, get_skills_repo_status, recheck_skills_repo_status, validate_skills_repository};
 use commands::sets::{add_skill_to_set, create_set, delete_set, get_set_detail, list_sets, remove_skill_from_set, update_set};
 use commands::usage::get_usage_summary;
 
@@ -55,12 +57,21 @@ pub fn run() {
             update_manifest_entry,
             // Usage
             get_usage_summary,
+            // Repository
+            validate_skills_repository,
+            get_skills_repo_status,
+            recheck_skills_repo_status,
+            copy_repo_pull_command,
             // External
             open_path_in_editor,
             reveal_in_finder,
             open_with_default_app,
             resolve_skill_path,
         ])
+        .setup(|app| {
+            tray::setup_tray(app.handle())?;
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

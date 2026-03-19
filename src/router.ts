@@ -39,17 +39,12 @@ const router = createRouter({
       component: () => import("@/views/SetsView.vue"),
       children: [
         {
-          path: ":setId",
+          path: ":setKey",
           name: "set-detail",
           component: () => import("@/views/SetDetailView.vue"),
           props: true,
         },
       ],
-    },
-    {
-      path: "/usage",
-      name: "usage",
-      component: () => import("@/views/UsageView.vue"),
     },
     {
       path: "/settings",

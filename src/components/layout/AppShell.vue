@@ -16,9 +16,13 @@ const router = useRouter();
 let unlistenNavigate: UnlistenFn | null = null;
 
 onMounted(async () => {
-  unlistenNavigate = await listen<string>("navigate", (event) => {
-    router.push(event.payload);
-  });
+  try {
+    unlistenNavigate = await listen<string>("navigate", (event) => {
+      router.push(event.payload);
+    });
+  } catch {
+    // Listen may fail when running frontend-only dev mode without Tauri
+  }
 });
 
 onUnmounted(() => {

@@ -14,12 +14,13 @@ pub fn open_path_in_editor(path: String, editor_command: String) -> Result<(), A
         return Err(AppError::new(format!("Path does not exist: {}", path)));
     }
 
-    let parts: Vec<&str> = editor_command.split_whitespace().collect();
+    let parts = shell_words::split(&editor_command)
+        .map_err(|e| AppError::new(format!("Invalid editor command '{}': {}", editor_command, e)))?;
     if parts.is_empty() {
         return Err(AppError::new("Editor command is empty"));
     }
 
-    let program = parts[0];
+    let program = &parts[0];
     let mut cmd = Command::new(program);
     for arg in &parts[1..] {
         cmd.arg(arg);

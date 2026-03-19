@@ -360,9 +360,9 @@ pub fn scan_location(
                                 let canon_str = canon.to_string_lossy().to_string();
                                 // Check by canonical path set (handles symlinked library entries)
                                 canonical_lib_paths.contains_key(&canon_str)
-                                    // Also check starts_with on canonical library root
+                                    // Also check starts_with using Path method (component-aware)
                                     || fs::canonicalize(library_root)
-                                        .map(|lr| canon_str.starts_with(&lr.to_string_lossy().to_string()))
+                                        .map(|lr| canon.starts_with(&lr))
                                         .unwrap_or(false)
                             })
                             .unwrap_or(false);
@@ -505,6 +505,27 @@ pub fn scan_location(
         }
     }
 
+    // Detect manifest set references that don't resolve to any existing set file
+    let all_known_set_ids: Vec<&str> = library_sets
+        .iter()
+        .map(|(id, _)| id.as_str())
+        .chain(project_sets.iter().map(|(id, _)| id.as_str()))
+        .collect();
+
+    for manifest_set_id in &manifest_set_ids {
+        if !all_known_set_ids.contains(&manifest_set_id.as_str()) {
+            issues.push(LocationIssue {
+                kind: IssueKind::MissingSet,
+                skill_name: manifest_set_id.clone(),
+                skill_id: None,
+                message: format!(
+                    "Set '{}' is declared in the manifest but no matching set file exists",
+                    manifest_set_id
+                ),
+            });
+        }
+    }
+
     let stats = LocationStats {
         linked_count: skill_assignments
             .iter()
@@ -628,5 +649,80 @@ pub fn skill_usage(
             last_used_at: None,
             use_count_30d: 0,
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_skill_md_basic() {
+        let content = "---\nname: My Skill\ndescription: A test skill\nversion: 1.0\n---\nBody text";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.name, "My Skill");
+        assert_eq!(fm.description.as_deref(), Some("A test skill"));
+        assert_eq!(fm.version.as_deref(), Some("1.0"));
+        assert!(!fm.archived);
+    }
+
+    #[test]
+    fn parse_skill_md_archived() {
+        let content = "---\nname: Old Skill\narchived: true\n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.name, "Old Skill");
+        assert!(fm.archived);
+    }
+
+    #[test]
+    fn parse_skill_md_quoted_values() {
+        let content = "---\nname: \"Quoted Name\"\ndescription: 'Single quoted'\n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.name, "Quoted Name");
+        assert_eq!(fm.description.as_deref(), Some("Single quoted"));
+    }
+
+    #[test]
+    fn parse_skill_md_no_frontmatter() {
+        let content = "Just some text, no frontmatter";
+        assert!(parse_skill_md(content).is_none());
+    }
+
+    #[test]
+    fn parse_skill_md_no_name() {
+        let content = "---\ndescription: No name field\n---\n";
+        assert!(parse_skill_md(content).is_none());
+    }
+
+    #[test]
+    fn parse_skill_md_unclosed_frontmatter() {
+        let content = "---\nname: Unclosed\n";
+        assert!(parse_skill_md(content).is_none());
+    }
+
+    #[test]
+    fn parse_skill_md_leading_whitespace() {
+        let content = "  \n---\nname: Indented\n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.name, "Indented");
+    }
+
+    #[test]
+    fn skill_usage_known() {
+        let mut map = HashMap::new();
+        map.insert("my-skill".to_string(), UsageRecord {
+            last_used_at: None,
+            use_count_30d: 5,
+        });
+        let usage = skill_usage("my-skill", &map);
+        assert_eq!(usage.use_count_30d, 5);
+    }
+
+    #[test]
+    fn skill_usage_unknown() {
+        let map = HashMap::new();
+        let usage = skill_usage("unknown", &map);
+        assert_eq!(usage.use_count_30d, 0);
+        assert!(usage.last_used_at.is_none());
     }
 }

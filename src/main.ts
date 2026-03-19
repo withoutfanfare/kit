@@ -8,3 +8,8 @@ const app = createApp(App);
 app.use(createPinia());
 app.use(router);
 app.mount("#app");
+
+// Expose navigation bridge for tray menu deep links
+(window as any).__navigateTo = (path: string) => {
+  router.push(path);
+};

@@ -4,7 +4,7 @@ use tauri::State;
 use crate::commands::AppError;
 use crate::domain::*;
 use crate::scanner;
-use crate::state::SharedState;
+use crate::state::{self, SharedState};
 
 #[tauri::command]
 pub fn update_manifest_entry(
@@ -65,7 +65,7 @@ pub fn update_manifest_entry(
 
     let json = serde_json::to_string_pretty(&value)
         .map_err(|e| AppError::new(format!("Failed to serialise manifest: {}", e)))?;
-    std::fs::write(&manifest_path, json)
+    state::atomic_write(&manifest_path, &json)
         .map_err(|e| AppError::new(format!("Failed to write manifest: {}", e)))?;
 
     // Re-scan

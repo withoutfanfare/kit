@@ -9,8 +9,8 @@ export type LinkState =
   | "broken_link";
 
 export type AppBootstrap = {
-  libraryRoot: string | null;
-  editorCommand: string | null;
+  libraryRoot: string;
+  editorCommand: string;
   defaultView: "locations" | "skills";
   showArchived: boolean;
   locations: SavedLocationSummary[];
@@ -66,7 +66,7 @@ export type SkillAssignment = {
 };
 
 export type LocationIssue = {
-  kind: "broken_link" | "declared_missing" | "linked_undeclared" | "stale";
+  kind: "broken_link" | "declared_missing" | "linked_undeclared" | "stale" | "missing_set";
   skillName: string;
   skillId: SkillId | null;
   message: string;
@@ -141,10 +141,33 @@ export type UsageSummary = {
 };
 
 export type Preferences = {
-  libraryRoot: string | null;
-  editorCommand: string | null;
+  libraryRoot: string;
+  editorCommand: string;
   defaultView: "locations" | "skills";
   showArchived: boolean;
 };
 
 export type UpdatePreferencesInput = Partial<Preferences>;
+
+export type SkillsRepoValidation = {
+  valid: boolean;
+  path: string;
+  isGitRepo: boolean;
+  detectedBranch: string | null;
+  skillCount: number;
+  issues: string[];
+};
+
+export type RepoState = "up_to_date" | "behind" | "ahead" | "diverged" | "dirty" | "unavailable";
+
+export type SkillsRepoStatus = {
+  path: string;
+  branch: string | null;
+  upstream: string | null;
+  state: RepoState;
+  aheadBy: number;
+  behindBy: number;
+  hasUncommittedChanges: boolean;
+  lastCheckedAt: string | null;
+  message: string;
+};

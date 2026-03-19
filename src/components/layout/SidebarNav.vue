@@ -7,7 +7,6 @@ const navItems = [
   { label: "Locations", subtitle: "Your projects", to: "/locations", icon: "folder" },
   { label: "Skills", subtitle: "Skill library", to: "/skills", icon: "puzzle" },
   { label: "Sets", subtitle: "Skill groups", to: "/sets", icon: "set" },
-  { label: "Usage", subtitle: "Skill analytics", to: "/usage", icon: "chart" },
 ];
 
 function isActive(to: string): boolean {

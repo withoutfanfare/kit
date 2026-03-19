@@ -42,6 +42,7 @@ pub enum IssueKind {
     DeclaredMissing,
     LinkedUndeclared,
     Stale,
+    MissingSet,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -265,6 +266,46 @@ pub struct RecentEntry {
 pub struct UnusedEntry {
     pub id: String,
     pub name: String,
+}
+
+// ---------------------------------------------------------------------------
+// Skills repository validation / status
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillsRepoValidation {
+    pub valid: bool,
+    pub path: String,
+    pub is_git_repo: bool,
+    pub detected_branch: Option<String>,
+    pub skill_count: usize,
+    pub issues: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillsRepoStatus {
+    pub path: String,
+    pub branch: Option<String>,
+    pub upstream: Option<String>,
+    pub state: RepoState,
+    pub ahead_by: usize,
+    pub behind_by: usize,
+    pub has_uncommitted_changes: bool,
+    pub last_checked_at: Option<String>,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RepoState {
+    UpToDate,
+    Behind,
+    Ahead,
+    Diverged,
+    Dirty,
+    Unavailable,
 }
 
 // ---------------------------------------------------------------------------
