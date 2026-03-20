@@ -104,6 +104,7 @@ pub struct PreferencesUpdate {
     pub editor_command: Option<String>,
     pub default_view: Option<DefaultView>,
     pub show_archived: Option<bool>,
+    pub track_skill_versions: Option<bool>,
 }
 
 // ---------------------------------------------------------------------------

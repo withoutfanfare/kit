@@ -32,6 +32,17 @@ export type SavedLocationSummary = {
   lastSyncedAt: string | null;
 };
 
+export type DetectedProjectType = {
+  name: string;
+  markerFile: string;
+};
+
+export type SkillRecommendation = {
+  skillId: SkillId;
+  skillName: string;
+  reason: string;
+};
+
 export type LocationDetail = {
   id: LocationId;
   label: string;
@@ -46,6 +57,9 @@ export type LocationDetail = {
     localOnlyCount: number;
     brokenCount: number;
   };
+  detectedProjectTypes: DetectedProjectType[];
+  skillRecommendations: SkillRecommendation[];
+  lastScannedAt: string | null;
 };
 
 export type SetAssignment = {
@@ -93,6 +107,9 @@ export type LibraryListItem = {
   archived: boolean;
   summary: string | null;
   linkedLocationCount: number;
+  useCount30d: number;
+  lastUsedAt: string | null;
+  isUnusedEverywhere: boolean;
 };
 
 export type PreviewChange = {
@@ -145,6 +162,7 @@ export type Preferences = {
   editorCommand: string;
   defaultView: "locations" | "skills";
   showArchived: boolean;
+  trackSkillVersions: boolean;
 };
 
 export type UpdatePreferencesInput = Partial<Preferences>;
@@ -170,4 +188,51 @@ export type SkillsRepoStatus = {
   hasUncommittedChanges: boolean;
   lastCheckedAt: string | null;
   message: string;
+};
+
+// Health check types
+export type HealthIssueSeverity = "error" | "warning" | "info";
+
+export type HealthIssue = {
+  severity: HealthIssueSeverity;
+  locationId: LocationId;
+  locationLabel: string;
+  description: string;
+  suggestion: string;
+  autoFixable: boolean;
+  skillId: SkillId | null;
+  kind: LocationIssue["kind"];
+};
+
+export type HealthCheckResult = {
+  issues: HealthIssue[];
+  locationCount: number;
+  healthyCount: number;
+  warningCount: number;
+  errorCount: number;
+  scannedAt: string;
+};
+
+// Export/import types
+export type ImportPreview = {
+  skills: Array<{ id: SkillId; name: string; alreadyExists: boolean }>;
+  setDefinition: { name: string; description: string | null; skills: string[] } | null;
+  conflictCount: number;
+};
+
+// Skill version tracking
+export type SkillVersionInfo = {
+  skillId: SkillId;
+  assignedHash: string | null;
+  currentHash: string | null;
+  hasChanged: boolean;
+  assignedAt: string | null;
+};
+
+// Watcher status
+export type WatcherStatus = "active" | "paused" | "error" | "stopped";
+
+export type WatcherStatusResponse = {
+  status: WatcherStatus;
+  watchedPath: string | null;
 };

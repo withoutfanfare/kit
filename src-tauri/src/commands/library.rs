@@ -29,7 +29,7 @@ pub fn list_library_items(
 
     let mut items: Vec<LibraryListItem> = Vec::new();
 
-    // Add skills — look up linked count from cached scans
+    // Add skills — look up linked count from cached scans, plus usage data
     for skill in &library_skills {
         let linked_count = location_scans
             .iter()
@@ -40,6 +40,8 @@ pub fn list_library_items(
             })
             .count();
 
+        let usage = scanner::skill_usage(&skill.folder_name, &guard.inner.usage);
+
         items.push(LibraryListItem {
             id: skill.folder_name.clone(),
             name: skill.name.clone(),
@@ -47,6 +49,9 @@ pub fn list_library_items(
             archived: skill.archived,
             summary: skill.description.clone(),
             linked_location_count: linked_count,
+            use_count_30d: usage.use_count_30d,
+            last_used_at: usage.last_used_at,
+            is_unused_everywhere: linked_count == 0,
         });
     }
 
@@ -70,6 +75,9 @@ pub fn list_library_items(
             archived: false,
             summary: set_def.description.clone(),
             linked_location_count: linked_count,
+            use_count_30d: 0,
+            last_used_at: None,
+            is_unused_everywhere: linked_count == 0,
         });
     }
 

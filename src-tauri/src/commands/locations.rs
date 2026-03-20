@@ -178,6 +178,13 @@ pub fn get_location_detail(
         &library_sets,
     );
 
+    let assigned_ids: Vec<String> = scan.skills.iter().map(|s| s.skill_id.clone()).collect();
+    let skill_recommendations = scanner::recommend_skills(
+        &scan.detected_project_types,
+        &library_skills,
+        &assigned_ids,
+    );
+
     Ok(LocationDetail {
         id: loc.id,
         label: loc.label,
@@ -188,6 +195,9 @@ pub fn get_location_detail(
         skills: scan.skills,
         issues: scan.issues,
         stats: scan.stats,
+        detected_project_types: scan.detected_project_types,
+        skill_recommendations,
+        last_scanned_at: loc.last_synced_at,
     })
 }
 
@@ -219,6 +229,13 @@ pub fn sync_location(
         &library_sets,
     );
 
+    let assigned_ids: Vec<String> = scan.skills.iter().map(|s| s.skill_id.clone()).collect();
+    let skill_recommendations = scanner::recommend_skills(
+        &scan.detected_project_types,
+        &library_skills,
+        &assigned_ids,
+    );
+
     Ok(LocationDetail {
         id: loc_snapshot.id,
         label: loc_snapshot.label,
@@ -229,5 +246,8 @@ pub fn sync_location(
         skills: scan.skills,
         issues: scan.issues,
         stats: scan.stats,
+        detected_project_types: scan.detected_project_types,
+        skill_recommendations,
+        last_scanned_at: loc_snapshot.last_synced_at,
     })
 }

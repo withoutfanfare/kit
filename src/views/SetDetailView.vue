@@ -30,6 +30,78 @@ const skillPickerQuery = ref("");
 const isDraggingSkill = ref(false);
 let unlistenDragDrop: UnlistenFn | null = null;
 
+// Drag-and-drop reordering state
+const dragIndex = ref<number | null>(null);
+const dragOverIndex = ref<number | null>(null);
+
+function onReorderDragStart(e: DragEvent, index: number) {
+  dragIndex.value = index;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+  }
+}
+
+function onReorderDragOver(e: DragEvent, index: number) {
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+  dragOverIndex.value = index;
+}
+
+function onReorderDragEnd() {
+  dragIndex.value = null;
+  dragOverIndex.value = null;
+}
+
+async function onReorderDrop(e: DragEvent, targetIndex: number) {
+  e.preventDefault();
+  const fromIndex = dragIndex.value;
+  dragIndex.value = null;
+  dragOverIndex.value = null;
+
+  if (fromIndex === null || fromIndex === targetIndex || !detail.value) return;
+
+  const skills = [...detail.value.skills];
+  const [moved] = skills.splice(fromIndex, 1);
+  skills.splice(targetIndex, 0, moved);
+
+  const newOrder = skills.map((s) => s.id);
+  await invoke("update_set", {
+    setId: detail.value.id,
+    scope: detail.value.scope,
+    ownerLocationId: detail.value.ownerLocationId ?? null,
+    skillIds: newOrder,
+  });
+  await setsStore.fetchSetDetail(
+    detail.value.id,
+    detail.value.scope,
+    detail.value.ownerLocationId ?? undefined
+  );
+}
+
+async function moveSkillInSet(index: number, direction: -1 | 1) {
+  if (!detail.value) return;
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= detail.value.skills.length) return;
+
+  const skills = [...detail.value.skills];
+  const [moved] = skills.splice(index, 1);
+  skills.splice(targetIndex, 0, moved);
+
+  const newOrder = skills.map((s) => s.id);
+  await invoke("update_set", {
+    setId: detail.value.id,
+    scope: detail.value.scope,
+    ownerLocationId: detail.value.ownerLocationId ?? null,
+    skillIds: newOrder,
+  });
+  await setsStore.fetchSetDetail(
+    detail.value.id,
+    detail.value.scope,
+    detail.value.ownerLocationId ?? undefined
+  );
+}
+
 const availableSkills = computed(() => {
   if (!detail.value) return [];
   const existingIds = new Set(detail.value.skills.map((s) => s.id));
@@ -216,13 +288,47 @@ watch(setKey, loadDetail);
         />
         <div v-if="detail.skills.length > 0" class="section-group">
           <div
-            v-for="skill in detail.skills"
+            v-for="(skill, index) in detail.skills"
             :key="skill.id"
             class="skill-row"
+            :class="{ 'drag-over': dragOverIndex === index, 'dragging': dragIndex === index }"
+            draggable="true"
+            @dragstart="onReorderDragStart($event, index)"
+            @dragover="onReorderDragOver($event, index)"
+            @dragend="onReorderDragEnd"
+            @drop="onReorderDrop($event, index)"
           >
+            <span class="drag-handle" title="Drag to reorder">
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                <circle cx="5" cy="4" r="1.5" />
+                <circle cx="11" cy="4" r="1.5" />
+                <circle cx="5" cy="8" r="1.5" />
+                <circle cx="11" cy="8" r="1.5" />
+                <circle cx="5" cy="12" r="1.5" />
+                <circle cx="11" cy="12" r="1.5" />
+              </svg>
+            </span>
             <div class="skill-row-content" @click="skillPeekStore.peek(skill.id)">
               <span class="skill-name">{{ skill.name }}</span>
               <SBadge v-if="skill.archived" variant="count">Archived</SBadge>
+            </div>
+            <div class="reorder-buttons">
+              <button
+                v-if="index > 0"
+                class="move-button"
+                title="Move up (Alt+Up)"
+                @click="moveSkillInSet(index, -1)"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+              </button>
+              <button
+                v-if="index < detail.skills.length - 1"
+                class="move-button"
+                title="Move down (Alt+Down)"
+                @click="moveSkillInSet(index, 1)"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
             </div>
             <button class="remove-button" title="Remove from set" @click="removeSkill(skill.id)">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -468,6 +574,54 @@ watch(setKey, loadDetail);
 
 .skill-row:hover {
   background: var(--surface-hover);
+}
+
+.skill-row.dragging {
+  opacity: 0.4;
+}
+
+.skill-row.drag-over {
+  border-top: 2px solid var(--accent);
+}
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  color: var(--text-tertiary);
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.reorder-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.move-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all var(--duration-fast) var(--ease-default);
+}
+
+.move-button:hover {
+  background: var(--accent-subtle);
+  color: var(--accent);
 }
 
 .skill-row-content {

@@ -8,6 +8,7 @@ const navItems = [
   { label: "Locations", subtitle: "Your projects", to: "/locations", icon: "folder" },
   { label: "Skills", subtitle: "Skill library", to: "/skills", icon: "puzzle" },
   { label: "Sets", subtitle: "Skill groups", to: "/sets", icon: "set" },
+  { label: "Health", subtitle: "Issue scanner", to: "/health", icon: "health" },
 ];
 
 function isActive(to: string): boolean {
@@ -35,6 +36,10 @@ function isActive(to: string): boolean {
             <svg v-else-if="item.icon === 'set'" width="16" height="16" viewBox="0 0 16 16" fill="none">
               <rect x="1.5" y="3" width="10" height="7" rx="1.5" fill="currentColor" opacity="0.4"/>
               <rect x="4.5" y="6" width="10" height="7" rx="1.5" fill="currentColor" opacity="0.7"/>
+            </svg>
+            <svg v-else-if="item.icon === 'health'" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 14s-5.5-3.5-5.5-7.5C2.5 4 4 2.5 5.75 2.5 6.87 2.5 7.63 3.1 8 3.8c.37-.7 1.13-1.3 2.25-1.3C12 2.5 13.5 4 13.5 6.5 13.5 10.5 8 14 8 14z" fill="currentColor" opacity="0.5"/>
+              <path d="M5.5 7.5h2v-2h1v2h2v1h-2v2h-1v-2h-2v-1z" fill="currentColor" opacity="0.9"/>
             </svg>
             <svg v-else-if="item.icon === 'chart'" width="16" height="16" viewBox="0 0 16 16" fill="none">
               <rect x="2" y="8" width="3" height="5" rx="0.5" fill="currentColor" opacity="0.7"/>

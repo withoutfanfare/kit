@@ -24,3 +24,6 @@ dirs = "6"
 walkdir = "2"
 tauri-plugin-window-state = "2.4.1"
 shell-words = "1"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+notify = { version = "7", features = ["macos_fsevent"] }
+notify-debouncer-mini = "0.5"

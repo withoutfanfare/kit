@@ -65,7 +65,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P2 (important)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Users managing skills across multiple projects have no single view to spot issues. Broken symlinks, outdated manifests, skill conflicts, and missing dependencies can silently degrade Claude Code sessions. A health check dashboard that scans all registered locations and surfaces issues at a glance would help users maintain their skill configurations proactively.
 - **Acceptance criteria:**
   - Dashboard view accessible from the main navigation
@@ -79,7 +80,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P3 (nice-to-have)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Teams using Claude Code with shared skill conventions currently have no structured way to distribute curated skill sets. Exporting a skill set (with all referenced skills and their SKILL.md manifests) as a portable bundle and importing it on another machine would enable team-wide skill standardisation without manual file copying.
 - **Acceptance criteria:**
   - Export a set (or selection of skills) as a .zip bundle containing SKILL.md files and set definition
@@ -92,7 +94,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P3 (nice-to-have)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** When users register a new project location, Kit has no awareness of what kind of project it is — a Laravel app, a Tauri app, a Python ML project — and therefore cannot suggest relevant skills. Scanning the project directory for framework markers (composer.json, Cargo.toml, package.json scripts, pyproject.toml) and recommending skills from the library that match the detected stack would reduce the skill assignment friction from "browse and guess" to "review and confirm".
 - **Acceptance criteria:**
   - Location scan detects project type from common framework files (Laravel, Tauri, Node.js, Python, Go, etc.)
@@ -105,7 +108,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Users browsing the skill library can see skill names and descriptions from frontmatter, but cannot read the full SKILL.md content without navigating to the skill detail view. An inline preview (expand-on-click or hover panel) showing the SKILL.md content with markdown rendering would let users evaluate skills quickly during browsing and assignment workflows, especially when exploring unfamiliar skills.
 - **Acceptance criteria:**
   - Expand-on-click or side panel preview showing rendered SKILL.md content
@@ -119,7 +123,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P2 (important)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Kit scans the skill library on launch and on manual refresh, but changes made to skills on disk (editing SKILL.md files, adding new skills, removing directories) are invisible until the user triggers a rescan. A filesystem watcher on the library root that detects changes and incrementally updates the library view would keep the UI in sync with reality, which is particularly important when users are actively developing skills in their editor alongside Kit.
 - **Acceptance criteria:**
   - Filesystem watcher active on the library root directory (recursive, watching for SKILL.md changes)
@@ -148,7 +153,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Kit tracks skill usage counters in state.json (per-skill invocation counts stored via the usage tracking system) but this data is not surfaced in the UI. Displaying usage frequency and last-used date on skill cards in the library view would help users identify their most valuable skills, spot unused skills that could be cleaned up, and make more informed assignment decisions. This turns invisible backend data into actionable user insight.
 - **Acceptance criteria:**
   - Skill cards show usage count badge and "last used" relative timestamp
@@ -177,7 +183,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Skills within a set are listed in the order they appear in the *.set.json file, but there is no way to reorder them from the UI. When sets represent a prioritised loadout (e.g. core skills first, optional skills last), the order matters for readability and intent. Drag-and-drop reordering would let users organise their sets semantically without manually editing JSON files.
 - **Acceptance criteria:**
   - Drag handle visible on each skill row within the set detail view
@@ -191,7 +198,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** Assigning a skill to a project currently requires navigating through the full assignment workflow — selecting a location, previewing changes, and confirming. For the common case of adding a single skill to the currently active location, this multi-step process is unnecessarily heavy. A quick-assign action on each skill card in the library view would reduce the most common assignment workflow to a single click, with the full preview still available for complex multi-skill assignments.
 - **Acceptance criteria:**
   - "Assign to [location name]" quick action visible on skill cards when an active location is selected
@@ -205,7 +213,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** When selecting a location in Kit's master-detail layout, the detail panel shows the list of assigned skills but lacks a summary overview. Users managing many locations need to quickly assess a location's state — how many skills are assigned, whether there are broken links or manifest issues, and when the location was last scanned. A compact dashboard header above the skill list showing these key metrics would provide instant situational awareness without navigating to the separate health check view.
 - **Acceptance criteria:**
   - Location detail panel shows a summary header with: assigned skill count, broken link count, last scan timestamp
@@ -218,7 +227,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** As the skill library grows, some skills may become orphaned — present in the library but never assigned to any location. These unused skills clutter the library view and may indicate outdated or superseded capabilities that should be archived or removed. Detecting skills that are not symlinked from any registered location and surfacing them in a "Not assigned anywhere" filter or badge would help users maintain a clean, intentional skill library.
 - **Acceptance criteria:**
   - Library view supports an "Unused" filter showing skills not assigned to any registered location
@@ -232,7 +242,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-20
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-20
 - **Description:** When a skill's SKILL.md is modified in the library (updated description, changed behaviour, new version), locations that have that skill assigned are unaware of the change. The symlink points to the updated file, so behaviour changes silently — which may be desirable but can also introduce unexpected changes. Tracking a content hash of each skill at assignment time and comparing it on subsequent scans would let Kit notify users when an assigned skill has been updated since it was linked, helping them review changes deliberately rather than being surprised by altered behaviour.
 - **Acceptance criteria:**
   - SKILL.md content hash recorded in state.json when a skill is assigned to a location

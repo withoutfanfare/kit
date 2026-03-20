@@ -6,10 +6,11 @@ import { useRouter } from "vue-router";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import WindowToolbar from "./WindowToolbar.vue";
 import SidebarNav from "./SidebarNav.vue";
-import { SNoticeBanner, SToast, SToastContainer } from "@stuntrocket/ui";
+import { SNoticeBanner } from "@stuntrocket/ui";
 import OnboardingView from "@/views/OnboardingView.vue";
 import SkillPeekPanel from "@/components/domain/SkillPeekPanel.vue";
 import { useAppStore } from "@/stores/appStore";
+import { useWatcherStore } from "@/stores/watcherStore";
 import type { SkillsRepoStatus } from "@/types";
 
 const router = useRouter();
@@ -30,6 +31,7 @@ onUnmounted(() => {
 });
 
 const appStore = useAppStore();
+const watcherStore = useWatcherStore();
 const repoBannerDismissed = ref(false);
 const repoStatus = ref<SkillsRepoStatus | null>(null);
 
@@ -44,6 +46,11 @@ watch(
         .catch(() => {
           // Silently ignore — status is optional
         });
+
+      // Start the filesystem watcher for live library updates
+      watcherStore.start().catch(() => {
+        // Watcher is optional — failure is non-critical
+      });
     }
   },
   { immediate: true }

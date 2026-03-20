@@ -1,5 +1,21 @@
 # Kit Roadmap Log
 
+## Cycle: 2026-03-20 23:59
+- **Items completed:**
+  - [Quality] Health check dashboard for all locations (P2, M)
+  - [Distribution] Skill library sharing via export/import (P3, M)
+  - [Innovation] Project-type detection with skill recommendations (P3, M)
+  - [UX/UI] Inline skill content preview in library view (P2, S)
+  - [Performance] Filesystem watcher for live skill library updates (P2, M)
+  - [UX/UI] Skill usage statistics visible on skill cards (P3, S)
+  - [UX/UI] Drag-and-drop skill reordering within sets (P3, S)
+  - [Feature] Quick-assign action for skills from library view (P2, S)
+  - [UX/UI] Location dashboard showing health status (P2, S)
+  - [Quality] Unused skill detection across all locations (P2, S)
+  - [Feature] Skill version tracking with update notifications (P3, S)
+- **Items archived:** none
+- **Observations:** Eleven items completed in a single batch, clearing all pending functional items except the L-sized skill dependency resolution (tagged "Needs review") and the Design System Adoption section. Kit is now at 4 pending items (1 functional + 3 design system). Backend additions: health check scanner, project-type detector (20+ framework markers), skill content hashing (DJB2), filesystem watcher (notify + debouncer), export/import commands (zip crate). Frontend additions: HealthView with summary cards and severity-grouped issues, watcher store with auto-refresh on library-changed events, library store gains unused filter and sort-by-usage, SkillsView gets inline preview + quick-assign + usage badges, LocationDetailView gets dashboard header with health/scan/project-type badges and skill recommendations, SetDetailView gets drag-and-drop reordering with keyboard alt+arrow alternative.
+
 ## Cycle: 2026-03-19 08:00
 - **Items added:**
   - [Quality] Fix build pipeline failures — Clippy warnings and DMG bundling (P1, S)

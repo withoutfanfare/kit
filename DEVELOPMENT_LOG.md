@@ -1,5 +1,25 @@
 # Kit Development Log
 
+## Cycle: 2026-03-20 23:59
+- App: Kit
+- Items completed:
+  - [Quality] Health check dashboard for all locations (P2/M) — new HealthView with summary cards (healthy/warning/error counts), severity-grouped issue list, fix-broken-links action, location filter via query param. Backend: `run_health_check` scanner function aggregates issues from all locations, `fix_broken_links` command removes broken symlinks.
+  - [Distribution] Skill library sharing via export/import (P3/M) — `export_skill_bundle` creates .kit-bundle.zip with SKILL.md files and kit-bundle.json manifest, `preview_import_bundle` shows conflicts, `import_skill_bundle` extracts skills with overwrite option. Uses zip crate (deflate compression).
+  - [Innovation] Project-type detection with skill recommendations (P3/M) — `detect_project_types` checks 20+ framework markers (package.json, Cargo.toml, etc.), `recommend_skills` matches skill names/descriptions against detected types. Badges shown on location detail, recommendations listed above skill list.
+  - [UX/UI] Inline skill content preview in library view (P2/S) — expand-on-click preview panel in SkillsView sidebar shows raw SKILL.md content via `read_skill_content` command. Truncated at 4000 chars. Toggle via eye icon.
+  - [Performance] Filesystem watcher for live skill library updates (P2/M) — `notify` crate with `notify-debouncer-mini` (2s debounce), watches library root recursively for SKILL.md changes, emits `library-changed` Tauri event. Watcher auto-starts on bootstrap. Store listens for events and refreshes library.
+  - [UX/UI] Skill usage statistics visible on skill cards (P3/S) — `LibraryListItem` gains `useCount30d`, `lastUsedAt`, `isUnusedEverywhere` fields populated from state.json usage map. Badge shown on skill rows in library sidebar. Sort-by-usage segmented control added.
+  - [UX/UI] Drag-and-drop skill reordering within sets (P3/S) — HTML5 drag-and-drop on skill rows in SetDetailView with drag handle, visual feedback (opacity + border), and Alt+Arrow keyboard alternative. Persists new order via `update_set` command.
+  - [Feature] Quick-assign action for skills from library view (P2/S) — "+" button on skill rows in SkillsView sidebar when an active location is selected. Single click invokes `apply_assignment` with the skill and shows success toast. Already-assigned skills show "assigned" badge.
+  - [UX/UI] Location dashboard showing health status (P2/S) — compact dashboard header above location detail content with skill count, issue count, health badge (healthy/warning/error), last scan time, and detected project type badges. Health badge click navigates to HealthView filtered to that location.
+  - [Quality] Unused skill detection across all locations (P2/S) — `isUnusedEverywhere` field computed from `linkedLocationCount === 0`. Library store gains `filterUnused` toggle and `unusedCount` computed. Filter shown as checkbox with count badge.
+  - [Feature] Skill version tracking with update notifications (P3/S) — `skill_hashes` map in state.json records DJB2 hash of SKILL.md at assignment time. `get_skill_versions` command compares current vs recorded hash. `SkillVersionInfo` type added. `trackSkillVersions` preference (default true).
+- Items attempted but failed: none
+- Branch: main
+- Tests passing: yes (cargo test 21/21, cargo clippy clean, vue-tsc clean)
+- Build status: compiles (cargo check, vue-tsc --noEmit)
+- Notes: Eleven items implemented in a single batch. New Rust dependencies: zip (deflate), notify + notify-debouncer-mini (filesystem watching). New command modules: health.rs, sharing.rs, watcher.rs. New frontend stores: healthStore.ts, watcherStore.ts. New route: /health. New view: HealthView.vue. Significant changes to domain.rs (8 new types), scanner.rs (4 new functions), lib.rs (9 new commands registered), types/index.ts (9 new types), SkillsView.vue (rewritten with usage/preview/quick-assign), LocationDetailView.vue (dashboard header + recommendations), SetDetailView.vue (drag-and-drop reordering).
+
 ## Cycle: 2026-03-20 23:30
 - App: Kit
 - Items completed:

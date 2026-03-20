@@ -79,6 +79,13 @@ pub fn update_manifest_entry(
         &library_sets,
     );
 
+    let assigned_ids: Vec<String> = scan.skills.iter().map(|s| s.skill_id.clone()).collect();
+    let skill_recommendations = scanner::recommend_skills(
+        &scan.detected_project_types,
+        &library_skills,
+        &assigned_ids,
+    );
+
     Ok(LocationDetail {
         id: loc.id,
         label: loc.label,
@@ -89,5 +96,8 @@ pub fn update_manifest_entry(
         skills: scan.skills,
         issues: scan.issues,
         stats: scan.stats,
+        detected_project_types: scan.detected_project_types,
+        skill_recommendations,
+        last_scanned_at: loc.last_synced_at,
     })
 }

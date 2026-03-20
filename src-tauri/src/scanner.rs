@@ -541,12 +541,15 @@ pub fn scan_location(
             .count(),
     };
 
+    let detected_project_types = detect_project_types(location_path);
+
     LocationScanResult {
         skills: skill_assignments,
         sets: set_assignments,
         issues,
         stats,
         manifest_path: manifest_path.map(|p| p.to_string_lossy().to_string()),
+        detected_project_types,
     }
 }
 
@@ -556,6 +559,7 @@ pub struct LocationScanResult {
     pub issues: Vec<LocationIssue>,
     pub stats: LocationStats,
     pub manifest_path: Option<String>,
+    pub detected_project_types: Vec<crate::domain::DetectedProjectType>,
 }
 
 // ---------------------------------------------------------------------------
@@ -649,6 +653,243 @@ pub fn skill_usage(
             last_used_at: None,
             use_count_30d: 0,
         },
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Project-type detection
+// ---------------------------------------------------------------------------
+
+/// Detect project types by looking for common framework marker files.
+pub fn detect_project_types(location_path: &Path) -> Vec<crate::domain::DetectedProjectType> {
+    let markers: Vec<(&str, &str)> = vec![
+        ("package.json", "Node.js"),
+        ("Cargo.toml", "Rust"),
+        ("pyproject.toml", "Python"),
+        ("requirements.txt", "Python"),
+        ("composer.json", "Laravel/PHP"),
+        ("go.mod", "Go"),
+        ("Gemfile", "Ruby"),
+        ("build.gradle", "Java/Gradle"),
+        ("pom.xml", "Java/Maven"),
+        ("pubspec.yaml", "Flutter/Dart"),
+        ("mix.exs", "Elixir"),
+        ("Package.swift", "Swift"),
+        ("tsconfig.json", "TypeScript"),
+        ("next.config.js", "Next.js"),
+        ("next.config.ts", "Next.js"),
+        ("nuxt.config.ts", "Nuxt"),
+        ("svelte.config.js", "SvelteKit"),
+        ("angular.json", "Angular"),
+        ("tauri.conf.json", "Tauri"),
+        ("docker-compose.yml", "Docker"),
+        ("Dockerfile", "Docker"),
+        ("terraform.tf", "Terraform"),
+    ];
+
+    let mut detected = Vec::new();
+    let mut seen_names = std::collections::HashSet::new();
+
+    for (file, name) in &markers {
+        // Check root and src-tauri/ for Tauri marker
+        let found = location_path.join(file).exists()
+            || location_path.join("src-tauri").join(file).exists();
+        if found && seen_names.insert(name.to_string()) {
+            detected.push(crate::domain::DetectedProjectType {
+                name: name.to_string(),
+                marker_file: file.to_string(),
+            });
+        }
+    }
+
+    detected
+}
+
+/// Recommend skills from the library based on detected project types.
+/// Matches skill folder names or descriptions against the detected type names.
+pub fn recommend_skills(
+    project_types: &[crate::domain::DetectedProjectType],
+    library_skills: &[SkillMeta],
+    already_assigned: &[String],
+) -> Vec<crate::domain::SkillRecommendation> {
+    if project_types.is_empty() {
+        return Vec::new();
+    }
+
+    let type_keywords: Vec<String> = project_types
+        .iter()
+        .flat_map(|pt| {
+            let lower = pt.name.to_lowercase();
+            // Split "Laravel/PHP" into ["laravel", "php"]
+            lower.split('/').map(|s| s.trim().to_string()).collect::<Vec<_>>()
+        })
+        .collect();
+
+    let assigned_set: std::collections::HashSet<&str> =
+        already_assigned.iter().map(|s| s.as_str()).collect();
+
+    let mut recommendations = Vec::new();
+
+    for skill in library_skills {
+        if skill.archived || assigned_set.contains(skill.folder_name.as_str()) {
+            continue;
+        }
+
+        // Check if skill name or description matches any project type keyword
+        let folder_lower = skill.folder_name.to_lowercase();
+        let name_lower = skill.name.to_lowercase();
+        let desc_lower = skill
+            .description
+            .as_deref()
+            .unwrap_or("")
+            .to_lowercase();
+
+        for keyword in &type_keywords {
+            if folder_lower.contains(keyword)
+                || name_lower.contains(keyword)
+                || desc_lower.contains(keyword)
+            {
+                let type_name = project_types
+                    .iter()
+                    .find(|pt| pt.name.to_lowercase().contains(keyword))
+                    .map(|pt| pt.name.clone())
+                    .unwrap_or_else(|| keyword.clone());
+
+                recommendations.push(crate::domain::SkillRecommendation {
+                    skill_id: skill.folder_name.clone(),
+                    skill_name: skill.name.clone(),
+                    reason: format!("Matches detected project type: {}", type_name),
+                });
+                break;
+            }
+        }
+    }
+
+    recommendations
+}
+
+// ---------------------------------------------------------------------------
+// Skill content hashing (for version tracking)
+// ---------------------------------------------------------------------------
+
+/// Compute a simple content hash of a SKILL.md file for change detection.
+/// Uses a basic hash to avoid pulling in a crypto crate.
+pub fn hash_skill_content(skill_path: &Path) -> Option<String> {
+    let skill_md = skill_path.join("SKILL.md");
+    let content = fs::read_to_string(&skill_md).ok()?;
+    // Simple DJB2 hash — sufficient for change detection (not security)
+    let mut hash: u64 = 5381;
+    for byte in content.bytes() {
+        hash = hash.wrapping_mul(33).wrapping_add(byte as u64);
+    }
+    Some(format!("{:016x}", hash))
+}
+
+// ---------------------------------------------------------------------------
+// Health check scanning
+// ---------------------------------------------------------------------------
+
+/// Run a health check across all registered locations, returning a unified
+/// list of issues with severity and suggested fixes.
+pub fn run_health_check(
+    locations: &[crate::domain::SavedLocation],
+    library_root: &Path,
+    library_skills: &[SkillMeta],
+    library_sets: &[(String, SetDefinition)],
+) -> crate::domain::HealthCheckResult {
+    use crate::domain::*;
+
+    let mut issues = Vec::new();
+    let mut healthy_count = 0;
+
+    // Check for duplicate skill IDs in the library
+    let mut seen_ids: HashMap<String, usize> = HashMap::new();
+    for skill in library_skills {
+        *seen_ids.entry(skill.folder_name.clone()).or_insert(0) += 1;
+    }
+    for (id, count) in &seen_ids {
+        if *count > 1 {
+            issues.push(HealthIssue {
+                severity: HealthIssueSeverity::Warning,
+                location_id: String::new(),
+                location_label: "Library".to_string(),
+                description: format!("Duplicate skill ID '{}' found {} times in library", id, count),
+                suggestion: "Rename one of the duplicate skill folders to have a unique ID".to_string(),
+                auto_fixable: false,
+                skill_id: Some(id.clone()),
+                kind: IssueKind::Stale,
+            });
+        }
+    }
+
+    for loc in locations {
+        let loc_path = PathBuf::from(&loc.path);
+        let scan = scan_location(&loc_path, library_root, library_skills, library_sets);
+        let mut loc_has_issues = false;
+
+        for issue in &scan.issues {
+            loc_has_issues = true;
+            let (severity, suggestion, auto_fixable) = match issue.kind {
+                IssueKind::BrokenLink => (
+                    HealthIssueSeverity::Error,
+                    "Remove the broken symlink".to_string(),
+                    true,
+                ),
+                IssueKind::DeclaredMissing => (
+                    HealthIssueSeverity::Warning,
+                    "Remove the declaration from the manifest, or re-link the skill".to_string(),
+                    false,
+                ),
+                IssueKind::LinkedUndeclared => (
+                    HealthIssueSeverity::Warning,
+                    "Add to manifest or unlink the skill".to_string(),
+                    false,
+                ),
+                IssueKind::Stale => (
+                    HealthIssueSeverity::Info,
+                    "Re-scan the location".to_string(),
+                    false,
+                ),
+                IssueKind::MissingSet => (
+                    HealthIssueSeverity::Warning,
+                    "Remove the set reference from the manifest or create the set file".to_string(),
+                    false,
+                ),
+            };
+
+            issues.push(HealthIssue {
+                severity,
+                location_id: loc.id.clone(),
+                location_label: loc.label.clone(),
+                description: issue.message.clone(),
+                suggestion,
+                auto_fixable,
+                skill_id: issue.skill_id.clone(),
+                kind: issue.kind.clone(),
+            });
+        }
+
+        if !loc_has_issues {
+            healthy_count += 1;
+        }
+    }
+
+    let error_count = issues
+        .iter()
+        .filter(|i| i.severity == HealthIssueSeverity::Error)
+        .count();
+    let warning_count = issues
+        .iter()
+        .filter(|i| i.severity == HealthIssueSeverity::Warning)
+        .count();
+
+    HealthCheckResult {
+        issues,
+        location_count: locations.len(),
+        healthy_count,
+        warning_count,
+        error_count,
+        scanned_at: chrono::Utc::now(),
     }
 }
 

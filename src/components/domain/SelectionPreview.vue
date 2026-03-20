@@ -36,7 +36,7 @@ defineProps<{
       <!-- Removes -->
       <div v-if="preview.removes.length > 0" class="preview-section">
         <div class="section-label">
-          <SBadge variant="danger" compact>- {{ preview.removes.length }}</SBadge>
+          <SBadge variant="error" compact>- {{ preview.removes.length }}</SBadge>
           <span>Remove</span>
         </div>
         <ul class="change-list">

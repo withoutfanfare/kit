@@ -12,9 +12,15 @@ export const useLibraryStore = defineStore("library", () => {
   const searchQuery = ref("");
   const filterArchived = ref(false);
   const filterKind = ref<"all" | "skill" | "set">("all");
+  const filterUnused = ref(false);
+  const sortBy = ref<"name" | "most_used" | "least_used">("name");
   const totalSkills = ref(0);
   const totalSets = ref(0);
   const detailError = ref<string | null>(null);
+
+  const unusedCount = computed(() =>
+    items.value.filter((i) => i.kind === "skill" && !i.archived && i.isUnusedEverywhere).length
+  );
 
   const filteredItems = computed(() => {
     let result = items.value;
@@ -24,6 +30,9 @@ export const useLibraryStore = defineStore("library", () => {
     if (filterKind.value !== "all") {
       result = result.filter((i) => i.kind === filterKind.value);
     }
+    if (filterUnused.value) {
+      result = result.filter((i) => i.isUnusedEverywhere);
+    }
     if (searchQuery.value.trim()) {
       const q = searchQuery.value.trim().toLowerCase();
       result = result.filter(
@@ -31,6 +40,12 @@ export const useLibraryStore = defineStore("library", () => {
           i.name.toLowerCase().includes(q) ||
           (i.summary && i.summary.toLowerCase().includes(q))
       );
+    }
+    // Sort
+    if (sortBy.value === "most_used") {
+      result = [...result].sort((a, b) => b.useCount30d - a.useCount30d);
+    } else if (sortBy.value === "least_used") {
+      result = [...result].sort((a, b) => a.useCount30d - b.useCount30d);
     }
     return result;
   });
@@ -96,6 +111,9 @@ export const useLibraryStore = defineStore("library", () => {
     searchQuery,
     filterArchived,
     filterKind,
+    filterUnused,
+    sortBy,
+    unusedCount,
     totalSkills,
     totalSets,
     detailError,

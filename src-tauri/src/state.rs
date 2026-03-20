@@ -24,6 +24,17 @@ pub struct PersistedState {
     /// Timestamp of the last skills repository status check.
     #[serde(default)]
     pub last_repo_check_at: Option<DateTime<Utc>>,
+    /// Content hashes of skills at the time they were assigned, keyed by
+    /// "locationId:skillId".
+    #[serde(default)]
+    pub skill_hashes: HashMap<String, SkillHashRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillHashRecord {
+    pub hash: String,
+    pub assigned_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -45,10 +56,12 @@ impl Default for PersistedState {
                 editor_command: String::from("code"),
                 default_view: DefaultView::Locations,
                 show_archived: false,
+                track_skill_versions: true,
             },
             locations: Vec::new(),
             usage: HashMap::new(),
             last_repo_check_at: None,
+            skill_hashes: HashMap::new(),
         }
     }
 }

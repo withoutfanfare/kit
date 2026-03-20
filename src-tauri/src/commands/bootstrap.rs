@@ -71,6 +71,9 @@ pub fn update_preferences(
     if let Some(archived) = prefs.show_archived {
         current.show_archived = archived;
     }
+    if let Some(track) = prefs.track_skill_versions {
+        current.track_skill_versions = track;
+    }
 
     let result = current.clone();
     guard.save().map_err(AppError::new)?;

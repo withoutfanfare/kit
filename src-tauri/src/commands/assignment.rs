@@ -355,6 +355,24 @@ pub fn apply_assignment(
     if let Some(loc_mut) = guard.find_location_mut(&location_id) {
         loc_mut.last_synced_at = Some(chrono::Utc::now());
     }
+
+    // Record skill content hashes for version tracking
+    if guard.inner.preferences.track_skill_versions {
+        for sid in &expanded_skill_ids {
+            let skill_path = library_root.join(sid);
+            if let Some(hash) = scanner::hash_skill_content(&skill_path) {
+                let key = format!("{}:{}", location_id, sid);
+                guard.inner.skill_hashes.insert(
+                    key,
+                    state::SkillHashRecord {
+                        hash,
+                        assigned_at: Some(chrono::Utc::now()),
+                    },
+                );
+            }
+        }
+    }
+
     guard.save().map_err(AppError::new)?;
 
     // Re-scan to build updated detail
@@ -367,6 +385,13 @@ pub fn apply_assignment(
         &library_sets,
     );
 
+    let assigned_ids: Vec<String> = scan.skills.iter().map(|s| s.skill_id.clone()).collect();
+    let skill_recommendations = scanner::recommend_skills(
+        &scan.detected_project_types,
+        &library_skills,
+        &assigned_ids,
+    );
+
     Ok(LocationDetail {
         id: loc.id,
         label: loc.label,
@@ -377,6 +402,9 @@ pub fn apply_assignment(
         skills: scan.skills,
         issues: scan.issues,
         stats: scan.stats,
+        detected_project_types: scan.detected_project_types,
+        skill_recommendations,
+        last_scanned_at: Some(chrono::Utc::now()),
     })
 }
 
