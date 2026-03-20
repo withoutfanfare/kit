@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import type { LocationId } from "@/types";
-import InlineTextField from "@/components/base/InlineTextField.vue";
+import { SInlineTextField } from "@stuntrocket/ui";
 
 const props = defineProps<{
   locationId: LocationId;
@@ -40,7 +40,7 @@ async function onSave(newValue: string) {
   <div class="manifest-entry-editor">
     <span class="entry-key">{{ entryKey }}</span>
     <div class="entry-value">
-      <InlineTextField
+      <SInlineTextField
         :model-value="entryValue"
         :error="error"
         placeholder="Value"

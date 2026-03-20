@@ -5,8 +5,7 @@ import { useLocationsStore } from "@/stores/locationsStore";
 import { useAssignmentStore } from "@/stores/assignmentStore";
 import { useAppStore } from "@/stores/appStore";
 import { invoke } from "@tauri-apps/api/core";
-import InlineTextField from "@/components/base/InlineTextField.vue";
-import { SButton } from "@stuntrocket/ui";
+import { SButton, SInlineTextField } from "@stuntrocket/ui";
 
 const props = defineProps<{
   detail: LocationDetail;
@@ -72,7 +71,7 @@ function addSkills() {
 <template>
   <div class="location-header">
     <div class="header-info">
-      <InlineTextField
+      <SInlineTextField
         :model-value="detail.label"
         placeholder="Location name"
         @update:model-value="updateLabel"

@@ -10,8 +10,7 @@ import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import InlineTextField from "@/components/base/InlineTextField.vue";
-import { SBadge, SButton, SSectionHeader, SConfirmDialog, SModal, SSearchInput } from "@stuntrocket/ui";
+import { SBadge, SButton, SConfirmDialog, SInlineTextField, SModal, SSearchInput, SSectionHeader } from "@stuntrocket/ui";
 
 const route = useRoute();
 const router = useRouter();
@@ -186,7 +185,7 @@ watch(setKey, loadDetail);
     </div>
     <div class="detail-header">
       <div class="header-title-row">
-        <InlineTextField
+        <SInlineTextField
           :model-value="detail.name"
           placeholder="Set name"
           class="header-name-field"
@@ -197,7 +196,7 @@ watch(setKey, loadDetail);
         </SBadge>
         <SBadge variant="count">{{ detail.skills.length }} skills</SBadge>
       </div>
-      <InlineTextField
+      <SInlineTextField
         :model-value="detail.description ?? ''"
         placeholder="Add a description..."
         class="header-description-field"
@@ -414,16 +413,16 @@ watch(setKey, loadDetail);
   gap: var(--space-2);
 }
 
-.header-name-field :deep(.field-display),
-.header-name-field :deep(.field-input) {
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
+.header-name-field :deep(input),
+.header-name-field :deep(span[role="button"]) {
+  font-size: var(--text-xl) !important;
+  font-weight: var(--weight-semibold) !important;
 }
 
-.header-description-field :deep(.field-display),
-.header-description-field :deep(.field-input) {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+.header-description-field :deep(input),
+.header-description-field :deep(span[role="button"]) {
+  font-size: var(--text-sm) !important;
+  color: var(--text-secondary) !important;
 }
 
 .header-path {
