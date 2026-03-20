@@ -1,5 +1,17 @@
 # Kit Development Log
 
+## Cycle: 2026-03-20 23:30
+- App: Kit
+- Items completed:
+  - [UX/UI] Add skill search and filtering in library view (P2/S) — enhanced existing search to match against frontmatter tags in addition to name/description; added clear button to SearchField component; improved empty state with contextual message and "Clear search" link; tags displayed as compact badges on skill rows
+  - [Quality] Add SKILL.md frontmatter validation with actionable error reporting (P2/S) — validate_skill_md() produces structured ValidationIssue objects with severity (error/warning), field name, message, and fix suggestion; checks for missing frontmatter delimiters, unclosed blocks, missing name, and missing description; skills with broken frontmatter now included in library list (not silently dropped) with error/warning badges in sidebar
+  - [Quality] Add set integrity validation ensuring all referenced skills exist (P2/S) — set items in library view show broken skill count badge when referenced skills are missing from library; set detail view marks missing skills with "missing" badge and strikethrough styling; SetSkillEntry gains `missing: bool` field
+- Items attempted but failed: none
+- Branch: feature/search-validation-set-integrity
+- Tests passing: yes (cargo test 29/29, cargo clippy clean, vue-tsc clean)
+- Build status: pending
+- Notes: All three items are P2/S and share backend types (ValidationIssue, tags on SkillMeta/LibraryListItem). Tags parsing handles comma-separated values on the `tags:` frontmatter line. 8 new Rust tests added covering tag parsing and validation scenarios. SearchField clear button is available to all consumers, not just SkillsView.
+
 ## Cycle: 2026-03-19 14:00
 - App: Kit
 - Items completed:
