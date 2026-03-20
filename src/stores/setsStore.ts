@@ -8,11 +8,17 @@ import type {
   SetScope,
   LocationId,
 } from "@/types";
+import {
+  type SetKey,
+  makeSetKey,
+  parseSetKey,
+  setKeyFromSummary,
+} from "@/utils/setKey";
 
 export const useSetsStore = defineStore("sets", () => {
   const items = ref<SetSummary[]>([]);
-  const selectedSetId = ref<SetId | null>(null);
-  const detailCache = ref<Record<SetId, SetDetail>>({});
+  const selectedSetKey = ref<SetKey | null>(null);
+  const detailCache = ref<Record<SetKey, SetDetail>>({});
   const isLoading = ref(false);
   const searchQuery = ref("");
   const scopeFilter = ref<"all" | "global" | "project">("all");
@@ -34,8 +40,8 @@ export const useSetsStore = defineStore("sets", () => {
   });
 
   const selectedDetail = computed(() =>
-    selectedSetId.value
-      ? detailCache.value[selectedSetId.value] ?? null
+    selectedSetKey.value
+      ? detailCache.value[selectedSetKey.value] ?? null
       : null
   );
 
@@ -58,7 +64,8 @@ export const useSetsStore = defineStore("sets", () => {
       scope,
       ownerLocationId: ownerLocationId ?? null,
     });
-    detailCache.value[id] = detail;
+    const key = makeSetKey(scope, ownerLocationId, id);
+    detailCache.value[key] = detail;
   }
 
   async function createSet(
@@ -74,7 +81,8 @@ export const useSetsStore = defineStore("sets", () => {
       description: description ?? null,
     });
     items.value.push(summary);
-    selectedSetId.value = summary.id;
+    const key = setKeyFromSummary(summary);
+    selectedSetKey.value = key;
     await fetchSetDetail(summary.id, summary.scope, summary.ownerLocationId ?? undefined);
   }
 
@@ -91,8 +99,11 @@ export const useSetsStore = defineStore("sets", () => {
       name: updates.name,
       description: updates.description,
     });
-    detailCache.value[id] = detail;
-    const idx = items.value.findIndex((s) => s.id === id);
+    const key = makeSetKey(scope, ownerLocationId, id);
+    detailCache.value[key] = detail;
+    const idx = items.value.findIndex(
+      (s) => setKeyFromSummary(s) === key
+    );
     if (idx >= 0) {
       if (updates.name !== undefined) items.value[idx].name = updates.name;
       if (updates.description !== undefined)
@@ -110,10 +121,13 @@ export const useSetsStore = defineStore("sets", () => {
       scope,
       ownerLocationId: ownerLocationId ?? null,
     });
-    items.value = items.value.filter((s) => s.id !== id);
-    delete detailCache.value[id];
-    if (selectedSetId.value === id) {
-      selectedSetId.value = null;
+    const key = makeSetKey(scope, ownerLocationId, id);
+    items.value = items.value.filter(
+      (s) => setKeyFromSummary(s) !== key
+    );
+    delete detailCache.value[key];
+    if (selectedSetKey.value === key) {
+      selectedSetKey.value = null;
     }
   }
 
@@ -129,8 +143,11 @@ export const useSetsStore = defineStore("sets", () => {
       scope,
       ownerLocationId: ownerLocationId ?? null,
     });
-    detailCache.value[setId] = detail;
-    const idx = items.value.findIndex((s) => s.id === setId);
+    const key = makeSetKey(scope, ownerLocationId, setId);
+    detailCache.value[key] = detail;
+    const idx = items.value.findIndex(
+      (s) => setKeyFromSummary(s) === key
+    );
     if (idx >= 0) {
       items.value[idx].skillCount = detail.skills.length;
     }
@@ -148,26 +165,27 @@ export const useSetsStore = defineStore("sets", () => {
       scope,
       ownerLocationId: ownerLocationId ?? null,
     });
-    detailCache.value[setId] = detail;
-    const idx = items.value.findIndex((s) => s.id === setId);
+    const key = makeSetKey(scope, ownerLocationId, setId);
+    detailCache.value[key] = detail;
+    const idx = items.value.findIndex(
+      (s) => setKeyFromSummary(s) === key
+    );
     if (idx >= 0) {
       items.value[idx].skillCount = detail.skills.length;
     }
   }
 
-  function selectSet(id: SetId | null) {
-    selectedSetId.value = id;
-    if (id && !detailCache.value[id]) {
-      const summary = items.value.find((s) => s.id === id);
-      if (summary) {
-        fetchSetDetail(id, summary.scope, summary.ownerLocationId ?? undefined);
-      }
+  function selectSet(key: SetKey | null) {
+    selectedSetKey.value = key;
+    if (key && !detailCache.value[key]) {
+      const { scope, ownerLocationId, id } = parseSetKey(key);
+      fetchSetDetail(id, scope, ownerLocationId);
     }
   }
 
   return {
     items,
-    selectedSetId,
+    selectedSetKey,
     detailCache,
     isLoading,
     searchQuery,

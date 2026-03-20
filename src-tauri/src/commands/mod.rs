@@ -4,6 +4,7 @@ pub mod external;
 pub mod library;
 pub mod locations;
 pub mod manifest;
+pub mod repo;
 pub mod sets;
 pub mod usage;
 

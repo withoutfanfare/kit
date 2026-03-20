@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::State;
 
 use crate::commands::AppError;
 use crate::domain::*;
 use crate::scanner;
-use crate::state::SharedState;
+use crate::state::{self, SharedState};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,7 +33,7 @@ fn resolve_set_path(
     set_id: &str,
     scope: &SetScope,
     owner_location_id: Option<&str>,
-    library_root: &PathBuf,
+    library_root: &Path,
     locations: &[SavedLocation],
 ) -> Result<PathBuf, AppError> {
     match scope {
@@ -108,7 +108,7 @@ fn count_assigned_locations(
 fn build_assigned_locations(
     set_id: &str,
     locations: &[SavedLocation],
-    library_root: &PathBuf,
+    library_root: &Path,
     library_skills: &[SkillMeta],
     library_sets: &[(String, SetDefinition)],
 ) -> Vec<SavedLocationSummary> {
@@ -196,7 +196,7 @@ pub fn create_set(
     owner_location_id: Option<String>,
     description: Option<String>,
     state: State<'_, SharedState>,
-) -> Result<SetDetail, AppError> {
+) -> Result<SetSummary, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
     let library_root = PathBuf::from(&prefs.library_root);
@@ -241,26 +241,17 @@ pub fn create_set(
     };
 
     let json = serde_json::to_string_pretty(&def)?;
-    std::fs::write(&set_file, json)?;
+    state::atomic_write(&set_file, &json)?;
 
-    let library_skills = scanner::scan_library_skills(&library_root);
-    let library_sets = scanner::scan_library_sets(&library_root);
-
-    Ok(SetDetail {
+    Ok(SetSummary {
         id: set_id,
         name,
         description,
         scope: parsed_scope,
         owner_location_id,
+        skill_count: 0,
+        assigned_location_count: 0,
         path: set_file.to_string_lossy().to_string(),
-        skills: Vec::new(),
-        assigned_locations: build_assigned_locations(
-            &def.name,
-            &locations,
-            &library_root,
-            &library_skills,
-            &library_sets,
-        ),
     })
 }
 
@@ -357,7 +348,7 @@ pub fn update_set(
     }
 
     let json = serde_json::to_string_pretty(&def)?;
-    std::fs::write(&set_path, json)?;
+    state::atomic_write(&set_path, &json)?;
 
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
@@ -416,7 +407,7 @@ pub fn add_skill_to_set(
     }
 
     let json = serde_json::to_string_pretty(&def)?;
-    std::fs::write(&set_path, json)?;
+    state::atomic_write(&set_path, &json)?;
 
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
@@ -473,7 +464,7 @@ pub fn remove_skill_from_set(
     def.skills.retain(|s| s != &skill_id);
 
     let json = serde_json::to_string_pretty(&def)?;
-    std::fs::write(&set_path, json)?;
+    state::atomic_write(&set_path, &json)?;
 
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
@@ -524,6 +515,46 @@ pub fn delete_set(
     }
 
     std::fs::remove_file(&set_path)?;
+
+    // Remove the set ID from all location manifests
+    let mut manifest_errors: Vec<String> = Vec::new();
+    for loc in &locations {
+        let manifest_path = PathBuf::from(&loc.path)
+            .join(".claude")
+            .join("settings.json");
+        if manifest_path.is_file() {
+            let manifest_sets = scanner::read_manifest_sets(&manifest_path);
+            if manifest_sets.contains(&set_id) {
+                match std::fs::read_to_string(&manifest_path)
+                    .map_err(|e| e.to_string())
+                    .and_then(|content| {
+                        serde_json::from_str::<serde_json::Value>(&content)
+                            .map_err(|e| e.to_string())
+                    })
+                    .and_then(|mut value| {
+                        if let Some(obj) = value.as_object_mut() {
+                            if let Some(serde_json::Value::Array(sets)) = obj.get_mut("sets") {
+                                sets.retain(|v| v.as_str() != Some(&set_id));
+                            }
+                        }
+                        let json = serde_json::to_string_pretty(&value)
+                            .map_err(|e| e.to_string())?;
+                        state::atomic_write(&manifest_path, &json)
+                            .map_err(|e| e.to_string())
+                    })
+                {
+                    Ok(_) => {}
+                    Err(e) => manifest_errors.push(format!("{}: {}", loc.label, e)),
+                }
+            }
+        }
+    }
+    if !manifest_errors.is_empty() {
+        return Err(AppError::new(format!(
+            "Set deleted but failed to update manifests: {}",
+            manifest_errors.join("; ")
+        )));
+    }
 
     // Drop the guard and re-acquire to call list_sets logic
     drop(guard);
@@ -579,4 +610,50 @@ pub fn delete_set(
     }
 
     Ok(summaries)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn kebab_case_basic() {
+        assert_eq!(to_kebab_case("My Cool Set"), "my-cool-set");
+    }
+
+    #[test]
+    fn kebab_case_special_chars() {
+        assert_eq!(to_kebab_case("Hello, World!"), "hello-world");
+    }
+
+    #[test]
+    fn kebab_case_already_kebab() {
+        assert_eq!(to_kebab_case("already-kebab"), "already-kebab");
+    }
+
+    #[test]
+    fn kebab_case_multiple_dashes() {
+        assert_eq!(to_kebab_case("a---b"), "a-b");
+    }
+
+    #[test]
+    fn kebab_case_empty() {
+        assert_eq!(to_kebab_case(""), "");
+    }
+
+    #[test]
+    fn kebab_case_only_special_chars() {
+        assert_eq!(to_kebab_case("!@#$%"), "");
+    }
+
+    #[test]
+    fn parse_scope_valid() {
+        assert_eq!(parse_scope("global").unwrap(), SetScope::Global);
+        assert_eq!(parse_scope("project").unwrap(), SetScope::Project);
+    }
+
+    #[test]
+    fn parse_scope_invalid() {
+        assert!(parse_scope("invalid").is_err());
+    }
 }

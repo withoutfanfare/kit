@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useSetsStore } from "@/stores/setsStore";
+import { useLocationsStore } from "@/stores/locationsStore";
 import { useRouter } from "vue-router";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import EmptyState from "@/components/layout/EmptyState.vue";
@@ -10,9 +11,11 @@ import SearchField from "@/components/base/SearchField.vue";
 import SegmentedControl from "@/components/base/SegmentedControl.vue";
 import PrimaryButton from "@/components/base/PrimaryButton.vue";
 import SecondaryButton from "@/components/base/SecondaryButton.vue";
-import type { SetScope } from "@/types";
+import type { SetScope, SetSummary } from "@/types";
+import { setKeyFromSummary } from "@/utils/setKey";
 
 const setsStore = useSetsStore();
+const locationsStore = useLocationsStore();
 const router = useRouter();
 
 const scopeOptions = [
@@ -26,33 +29,37 @@ const showNewSetDialog = ref(false);
 const newSetName = ref("");
 const newSetScope = ref<SetScope>("global");
 const newSetDescription = ref("");
+const newSetOwnerLocationId = ref<string | undefined>(undefined);
 const isCreating = ref(false);
 
-function selectSet(id: string) {
-  setsStore.selectSet(id);
-  router.push(`/sets/${id}`);
+function selectSet(set: SetSummary) {
+  const key = setKeyFromSummary(set);
+  setsStore.selectSet(key);
+  router.push(`/sets/${encodeURIComponent(key)}`);
 }
 
 function openNewSetDialog() {
   newSetName.value = "";
   newSetScope.value = "global";
   newSetDescription.value = "";
+  newSetOwnerLocationId.value = undefined;
   showNewSetDialog.value = true;
 }
 
 async function handleCreateSet() {
   if (!newSetName.value.trim()) return;
+  if (newSetScope.value === "project" && !newSetOwnerLocationId.value) return;
   isCreating.value = true;
   try {
     await setsStore.createSet(
       newSetName.value.trim(),
       newSetScope.value,
-      undefined,
+      newSetScope.value === "project" ? newSetOwnerLocationId.value : undefined,
       newSetDescription.value.trim() || undefined
     );
     showNewSetDialog.value = false;
-    if (setsStore.selectedSetId) {
-      router.push(`/sets/${setsStore.selectedSetId}`);
+    if (setsStore.selectedSetKey) {
+      router.push(`/sets/${encodeURIComponent(setsStore.selectedSetKey)}`);
     }
   } finally {
     isCreating.value = false;
@@ -61,6 +68,7 @@ async function handleCreateSet() {
 
 onMounted(() => {
   setsStore.fetchSets();
+  locationsStore.fetchList();
 });
 </script>
 
@@ -82,10 +90,10 @@ onMounted(() => {
         <div class="sidebar-items">
           <SetRow
             v-for="item in setsStore.filteredItems"
-            :key="item.id"
+            :key="setKeyFromSummary(item)"
             :set="item"
-            :selected="item.id === setsStore.selectedSetId"
-            @click="selectSet(item.id)"
+            :selected="setKeyFromSummary(item) === setsStore.selectedSetKey"
+            @click="selectSet(item)"
           />
           <div
             v-if="setsStore.filteredItems.length === 0 && !setsStore.isLoading"
@@ -100,7 +108,7 @@ onMounted(() => {
       </div>
     </template>
     <template #main>
-      <router-view v-if="setsStore.selectedSetId" />
+      <router-view v-if="setsStore.selectedSetKey" />
       <EmptyState
         v-else-if="setsStore.items.length === 0 && !setsStore.isLoading"
         title="No sets yet"
@@ -154,6 +162,23 @@ onMounted(() => {
                 ]"
               />
             </div>
+            <div v-if="newSetScope === 'project'" class="form-field">
+              <label class="form-label" for="set-owner">Location</label>
+              <select
+                id="set-owner"
+                v-model="newSetOwnerLocationId"
+                class="form-input"
+              >
+                <option :value="undefined" disabled>Select a location...</option>
+                <option
+                  v-for="loc in locationsStore.locationList"
+                  :key="loc.id"
+                  :value="loc.id"
+                >
+                  {{ loc.label }}
+                </option>
+              </select>
+            </div>
             <div class="form-field">
               <label class="form-label" for="set-description">Description (optional)</label>
               <input
@@ -170,7 +195,7 @@ onMounted(() => {
             <SecondaryButton label="Cancel" @click="showNewSetDialog = false" />
             <PrimaryButton
               label="Create"
-              :disabled="!newSetName.trim()"
+              :disabled="!newSetName.trim() || (newSetScope === 'project' && !newSetOwnerLocationId)"
               :loading="isCreating"
               @click="handleCreateSet"
             />

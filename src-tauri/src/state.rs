@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
+
+use chrono::{DateTime, Utc};
 
 use crate::domain::{DefaultView, Preferences, SavedLocation};
 
@@ -19,6 +21,9 @@ pub struct PersistedState {
     /// Lightweight per-skill usage counters keyed by skill folder name.
     #[serde(default)]
     pub usage: HashMap<String, UsageRecord>,
+    /// Timestamp of the last skills repository status check.
+    #[serde(default)]
+    pub last_repo_check_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -43,6 +48,7 @@ impl Default for PersistedState {
             },
             locations: Vec::new(),
             usage: HashMap::new(),
+            last_repo_check_at: None,
         }
     }
 }
@@ -80,7 +86,7 @@ impl AppState {
         }
         let json = serde_json::to_string_pretty(&self.inner)
             .map_err(|e| format!("Failed to serialise state: {e}"))?;
-        fs::write(&self.state_path, json)
+        atomic_write(&self.state_path, &json)
             .map_err(|e| format!("Failed to write state file: {e}"))?;
         Ok(())
     }
@@ -116,6 +122,19 @@ pub fn new_shared_state() -> SharedState {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/// Write content to a file atomically by writing to a .tmp sibling then renaming.
+pub fn atomic_write(path: &Path, content: &str) -> Result<(), std::io::Error> {
+    let mut tmp_name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "file".to_string());
+    tmp_name.push_str(".tmp");
+    let tmp_path = path.with_file_name(&tmp_name);
+    fs::write(&tmp_path, content)?;
+    fs::rename(&tmp_path, path)?;
+    Ok(())
+}
 
 fn state_file_path() -> PathBuf {
     let home = dirs::home_dir().expect("Could not determine home directory");

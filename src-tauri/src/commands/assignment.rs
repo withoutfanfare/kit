@@ -1,11 +1,21 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::State;
 
 use crate::commands::AppError;
 use crate::domain::*;
 use crate::linker;
 use crate::scanner;
-use crate::state::SharedState;
+use crate::state::{self, SharedState};
+
+/// Reject skill IDs that contain path traversal characters.
+fn validate_skill_ids(ids: &[String]) -> Result<(), AppError> {
+    for sid in ids {
+        if sid.contains('/') || sid.contains('\\') || sid.contains("..") {
+            return Err(AppError::new(format!("Invalid skill ID: {}", sid)));
+        }
+    }
+    Ok(())
+}
 
 #[tauri::command]
 pub fn preview_assignment(
@@ -16,6 +26,9 @@ pub fn preview_assignment(
     set_ids_to_remove: Vec<String>,
     state: State<'_, SharedState>,
 ) -> Result<AssignmentPreview, AppError> {
+    validate_skill_ids(&skill_ids_to_add)?;
+    validate_skill_ids(&skill_ids_to_remove)?;
+
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
     let library_root = PathBuf::from(&prefs.library_root);
@@ -219,6 +232,9 @@ pub fn apply_assignment(
     update_manifest: bool,
     state: State<'_, SharedState>,
 ) -> Result<LocationDetail, AppError> {
+    validate_skill_ids(&skill_ids_to_add)?;
+    validate_skill_ids(&skill_ids_to_remove)?;
+
     let mut guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
     let library_root = PathBuf::from(&prefs.library_root);
@@ -366,7 +382,7 @@ pub fn apply_assignment(
 
 /// Helper to update the manifest's `skills` and `sets` arrays.
 fn update_manifest_skills_and_sets(
-    location_path: &PathBuf,
+    location_path: &Path,
     skills_to_add: &[String],
     skills_to_remove: &[String],
     sets_to_add: &[String],
@@ -434,7 +450,7 @@ fn update_manifest_skills_and_sets(
 
     let json = serde_json::to_string_pretty(&value)
         .map_err(|e| AppError::new(format!("Failed to serialise manifest: {}", e)))?;
-    std::fs::write(&manifest_path, json)
+    state::atomic_write(&manifest_path, &json)
         .map_err(|e| AppError::new(format!("Failed to write manifest: {}", e)))?;
 
     Ok(())

@@ -24,7 +24,11 @@ export const useLocationsStore = defineStore("locations", () => {
   );
 
   async function fetchList() {
-    locationList.value = await invoke<SavedLocationSummary[]>("list_locations");
+    try {
+      locationList.value = await invoke<SavedLocationSummary[]>("list_locations");
+    } catch {
+      // Retain existing list on failure — bootstrap data is the initial fallback
+    }
   }
 
   async function fetchDetail(id: LocationId) {
@@ -89,8 +93,11 @@ export const useLocationsStore = defineStore("locations", () => {
       locationList.value[idx] = {
         ...locationList.value[idx],
         issueCount: detail.issues.length,
-        installedSkillCount: detail.skills.length,
+        installedSkillCount: detail.skills.filter(
+          (s) => s.linkState === "linked" || s.linkState === "local_only"
+        ).length,
         installedSetCount: detail.sets.length,
+        lastSyncedAt: new Date().toISOString(),
       };
     }
   }

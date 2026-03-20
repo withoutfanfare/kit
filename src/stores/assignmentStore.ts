@@ -18,6 +18,7 @@ export const useAssignmentStore = defineStore("assignment", () => {
   const selectedSetIds = ref<Set<SetId>>(new Set());
   const removeSkillIds = ref<Set<SkillId>>(new Set());
   const preview = ref<AssignmentPreview | null>(null);
+  const previewError = ref<string | null>(null);
   const isPreviewLoading = ref(false);
   const isApplying = ref(false);
 
@@ -76,16 +77,22 @@ export const useAssignmentStore = defineStore("assignment", () => {
   async function fetchPreview() {
     if (!locationId.value || !hasSelections.value) {
       preview.value = null;
+      previewError.value = null;
       return;
     }
     isPreviewLoading.value = true;
+    previewError.value = null;
     try {
       preview.value = await invoke<AssignmentPreview>("preview_assignment", {
         locationId: locationId.value,
         skillIdsToAdd: [...selectedSkillIds.value],
         setIdsToAdd: [...selectedSetIds.value],
         skillIdsToRemove: [...removeSkillIds.value],
+        setIdsToRemove: [],
       });
+    } catch (err) {
+      preview.value = null;
+      previewError.value = err instanceof Error ? err.message : "Failed to generate preview";
     } finally {
       isPreviewLoading.value = false;
     }
@@ -100,6 +107,7 @@ export const useAssignmentStore = defineStore("assignment", () => {
         skillIdsToAdd: [...selectedSkillIds.value],
         setIdsToAdd: [...selectedSetIds.value],
         skillIdsToRemove: [...removeSkillIds.value],
+        setIdsToRemove: [],
         updateManifest: true,
       });
 
@@ -112,8 +120,11 @@ export const useAssignmentStore = defineStore("assignment", () => {
         locations.locationList[idx] = {
           ...locations.locationList[idx],
           issueCount: detail.issues.length,
-          installedSkillCount: detail.skills.length,
+          installedSkillCount: detail.skills.filter(
+            (s) => s.linkState === "linked" || s.linkState === "local_only"
+          ).length,
           installedSetCount: detail.sets.length,
+          lastSyncedAt: new Date().toISOString(),
         };
       }
 
@@ -139,6 +150,7 @@ export const useAssignmentStore = defineStore("assignment", () => {
     selectedSetIds,
     removeSkillIds,
     preview,
+    previewError,
     isPreviewLoading,
     isApplying,
     hasSelections,

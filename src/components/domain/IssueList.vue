@@ -31,6 +31,7 @@ const groupedIssues = computed<IssueGroup[]>(() => {
     declared_missing: { label: "Declared but Missing", variant: "warning" },
     linked_undeclared: { label: "Linked but Undeclared", variant: "warning" },
     stale: { label: "Stale", variant: "warning" },
+    missing_set: { label: "Missing Sets", variant: "warning" },
   };
 
   const groups: IssueGroup[] = [];
@@ -87,6 +88,7 @@ async function unlinkSkill(skillId: string) {
       skillIdsToAdd: [],
       skillIdsToRemove: [skillId],
       setIdsToAdd: [],
+      setIdsToRemove: [],
       updateManifest: false,
     });
     await locationsStore.fetchDetail(props.locationId);

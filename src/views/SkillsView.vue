@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch } from "vue";
+import { onMounted } from "vue";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useRouter } from "vue-router";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
@@ -29,23 +29,10 @@ onMounted(() => {
   libraryStore.fetchItems();
 });
 
-watch(
-  () => libraryStore.searchQuery,
-  () => {
-    libraryStore.fetchItems();
-  }
-);
-
-watch(
-  () => libraryStore.filterArchived,
-  () => {
-    libraryStore.fetchItems();
-  }
-);
 </script>
 
 <template>
-  <SplitPaneLayout :show-inspector="!!libraryStore.selectedDetail">
+  <SplitPaneLayout :show-inspector="false">
     <template #sidebar>
       <div class="library-sidebar">
         <div class="sidebar-controls">

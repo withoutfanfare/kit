@@ -4,8 +4,8 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Preferences, UpdatePreferencesInput } from "@/types";
 
 export const usePreferencesStore = defineStore("preferences", () => {
-  const libraryRoot = ref<string | null>(null);
-  const editorCommand = ref<string | null>(null);
+  const libraryRoot = ref("");
+  const editorCommand = ref("");
   const defaultView = ref<"locations" | "skills">("locations");
   const showArchived = ref(false);
 

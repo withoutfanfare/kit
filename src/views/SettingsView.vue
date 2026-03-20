@@ -4,10 +4,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useLibraryStore } from "@/stores/libraryStore";
+import { useAppStore } from "@/stores/appStore";
+import type { SkillsRepoStatus, RepoState } from "@/types";
 import SecondaryButton from "@/components/base/SecondaryButton.vue";
+import Badge from "@/components/base/Badge.vue";
 
 const preferencesStore = usePreferencesStore();
 const libraryStore = useLibraryStore();
+const appStore = useAppStore();
 
 const editorDraft = ref(preferencesStore.editorCommand ?? "");
 const isTestingEditor = ref(false);
@@ -18,6 +22,130 @@ const libraryPath = computed(() => preferencesStore.libraryRoot ?? "Not set");
 
 const skillCount = computed(() => libraryStore.totalSkills);
 const setCount = computed(() => libraryStore.totalSets);
+
+// Skills Repository
+const repoStatus = ref<SkillsRepoStatus | null>(null);
+const isCheckingRepo = ref(false);
+const repoStatusError = ref<string | null>(null);
+
+function repoStateColour(state: RepoState): "success" | "warning" | "danger" | "default" {
+  switch (state) {
+    case "up_to_date":
+      return "success";
+    case "behind":
+    case "ahead":
+    case "diverged":
+    case "dirty":
+      return "warning";
+    case "unavailable":
+      return "danger";
+    default:
+      return "default";
+  }
+}
+
+function repoStateLabel(state: RepoState): string {
+  switch (state) {
+    case "up_to_date":
+      return "Up to date";
+    case "behind":
+      return "Behind remote";
+    case "ahead":
+      return "Ahead of remote";
+    case "diverged":
+      return "Diverged";
+    case "dirty":
+      return "Uncommitted changes";
+    case "unavailable":
+      return "Unavailable";
+    default:
+      return state;
+  }
+}
+
+async function fetchRepoStatus() {
+  isCheckingRepo.value = true;
+  repoStatusError.value = null;
+  try {
+    repoStatus.value = await invoke<SkillsRepoStatus>("get_skills_repo_status");
+  } catch (err) {
+    repoStatusError.value =
+      err instanceof Error ? err.message : "Failed to check repository status";
+  } finally {
+    isCheckingRepo.value = false;
+  }
+}
+
+async function recheckRepoStatus() {
+  isCheckingRepo.value = true;
+  repoStatusError.value = null;
+  try {
+    repoStatus.value = await invoke<SkillsRepoStatus>("recheck_skills_repo_status");
+  } catch (err) {
+    repoStatusError.value =
+      err instanceof Error ? err.message : "Failed to check repository status";
+  } finally {
+    isCheckingRepo.value = false;
+  }
+}
+
+async function changeRepoPath() {
+  const selected = await open({
+    directory: true,
+    multiple: false,
+    title: "Choose Skills Repository",
+  });
+  if (selected && typeof selected === "string") {
+    await preferencesStore.update({ libraryRoot: selected });
+    await fetchRepoStatus();
+  }
+}
+
+async function revealRepo() {
+  if (!preferencesStore.libraryRoot) return;
+  await invoke("reveal_in_finder", { path: preferencesStore.libraryRoot });
+}
+
+async function openRepoInEditor() {
+  if (!preferencesStore.libraryRoot) return;
+  const command = preferencesStore.editorCommand;
+  if (!command) {
+    appStore.toast("Set an editor command first", "info");
+    return;
+  }
+  try {
+    await invoke("open_path_in_editor", {
+      path: preferencesStore.libraryRoot,
+      editorCommand: command,
+    });
+  } catch (err) {
+    appStore.toast(
+      err instanceof Error ? err.message : "Failed to open in editor",
+      "error"
+    );
+  }
+}
+
+async function copyPullCommand() {
+  try {
+    const cmd = await invoke<string>("copy_repo_pull_command");
+    await navigator.clipboard.writeText(cmd);
+    appStore.toast("Pull command copied to clipboard", "success");
+  } catch {
+    // Fallback: construct the command manually
+    const branch = repoStatus.value?.branch ?? "main";
+    const cmd = `cd "${preferencesStore.libraryRoot}" && git pull origin ${branch}`;
+    try {
+      await navigator.clipboard.writeText(cmd);
+      appStore.toast("Pull command copied to clipboard", "success");
+    } catch (err) {
+      appStore.toast(
+        err instanceof Error ? err.message : "Failed to copy",
+        "error"
+      );
+    }
+  }
+}
 
 // General
 async function onDefaultViewChange(event: Event) {
@@ -30,24 +158,12 @@ async function onShowArchivedChange(event: Event) {
   await preferencesStore.update({ showArchived: checked });
 }
 
-// Library
-async function changeLibraryRoot() {
-  const selected = await open({
-    directory: true,
-    multiple: false,
-    title: "Select Library Root",
-  });
-  if (selected && typeof selected === "string") {
-    await preferencesStore.update({ libraryRoot: selected });
-  }
-}
-
 // Editor
 async function saveEditorCommand() {
   const trimmed = editorDraft.value.trim();
   if (trimmed === (preferencesStore.editorCommand ?? "")) return;
   await preferencesStore.update({
-    editorCommand: trimmed || null,
+    editorCommand: trimmed,
   });
 }
 
@@ -86,6 +202,10 @@ onMounted(async () => {
     appDataPath.value = await invoke<string>("get_app_data_path");
   } catch {
     // Fall back to displaying ~/.kit if the command fails
+  }
+  // Fetch skills repo status
+  if (preferencesStore.libraryRoot) {
+    await fetchRepoStatus();
   }
 });
 </script>
@@ -129,17 +249,102 @@ onMounted(async () => {
       </div>
     </section>
 
+    <!-- Skills Repository -->
+    <section class="settings-section">
+      <h2 class="section-title">Skills Repository</h2>
+      <div class="settings-group">
+        <div class="setting-row">
+          <div class="setting-label">
+            <span class="label-text">Path</span>
+            <span class="label-path mono">{{ libraryPath }}</span>
+          </div>
+          <SecondaryButton label="Change" @click="changeRepoPath" />
+        </div>
+
+        <!-- Branch -->
+        <div v-if="repoStatus?.branch" class="setting-row">
+          <div class="setting-label">
+            <span class="label-text">Branch</span>
+          </div>
+          <Badge variant="accent">{{ repoStatus.branch }}</Badge>
+        </div>
+
+        <!-- Status -->
+        <div v-if="repoStatus" class="setting-row">
+          <div class="setting-label">
+            <span class="label-text">Status</span>
+          </div>
+          <div class="repo-status-display">
+            <span class="repo-status-dot" :class="repoStateColour(repoStatus.state)" />
+            <span class="repo-status-text" :class="repoStateColour(repoStatus.state)">
+              {{ repoStateLabel(repoStatus.state) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Ahead / Behind counts -->
+        <div v-if="repoStatus && (repoStatus.aheadBy > 0 || repoStatus.behindBy > 0)" class="setting-row">
+          <div class="setting-label">
+            <span class="label-text">Sync</span>
+          </div>
+          <div class="setting-counts">
+            <span v-if="repoStatus.aheadBy > 0" class="count-item">{{ repoStatus.aheadBy }} ahead</span>
+            <span v-if="repoStatus.aheadBy > 0 && repoStatus.behindBy > 0" class="count-divider">&middot;</span>
+            <span v-if="repoStatus.behindBy > 0" class="count-item">{{ repoStatus.behindBy }} behind</span>
+          </div>
+        </div>
+
+        <!-- Uncommitted changes warning -->
+        <div v-if="repoStatus?.hasUncommittedChanges" class="setting-row">
+          <div class="setting-label">
+            <span class="label-text warning-text">Has uncommitted changes</span>
+          </div>
+        </div>
+
+        <!-- Message -->
+        <div v-if="repoStatus?.message" class="setting-row">
+          <div class="setting-label">
+            <span class="label-description">{{ repoStatus.message }}</span>
+          </div>
+        </div>
+
+        <!-- Last checked -->
+        <div v-if="repoStatus?.lastCheckedAt" class="setting-row">
+          <div class="setting-label">
+            <span class="label-text">Last checked</span>
+          </div>
+          <span class="label-description">{{ repoStatus.lastCheckedAt }}</span>
+        </div>
+
+        <!-- Error -->
+        <div v-if="repoStatusError" class="setting-row">
+          <span class="repo-status-text danger">{{ repoStatusError }}</span>
+        </div>
+
+        <!-- Actions -->
+        <div class="setting-row repo-actions-row">
+          <div class="repo-actions">
+            <SecondaryButton label="Reveal" @click="revealRepo" />
+            <SecondaryButton label="Open in Editor" @click="openRepoInEditor" />
+            <SecondaryButton
+              label="Check for Updates"
+              :loading="isCheckingRepo"
+              @click="recheckRepoStatus"
+            />
+            <SecondaryButton
+              v-if="repoStatus && repoStatus.behindBy > 0"
+              label="Copy Pull Command"
+              @click="copyPullCommand"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Library -->
     <section class="settings-section">
       <h2 class="section-title">Library</h2>
       <div class="settings-group">
-        <div class="setting-row">
-          <div class="setting-label">
-            <span class="label-text">Library root</span>
-            <span class="label-path">{{ libraryPath }}</span>
-          </div>
-          <SecondaryButton label="Change" @click="changeLibraryRoot" />
-        </div>
         <div class="setting-row">
           <div class="setting-label">
             <span class="label-text">Contents</span>
@@ -426,5 +631,80 @@ onMounted(async () => {
 
 .count-divider {
   color: var(--text-tertiary);
+}
+
+/* Mono path */
+.mono {
+  font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", monospace;
+}
+
+/* Repo status */
+.repo-status-display {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.repo-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.repo-status-dot.success {
+  background: var(--success);
+}
+
+.repo-status-dot.warning {
+  background: var(--warning);
+}
+
+.repo-status-dot.danger {
+  background: var(--danger);
+}
+
+.repo-status-dot.default {
+  background: var(--text-tertiary);
+}
+
+.repo-status-text {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.repo-status-text.success {
+  color: var(--success);
+}
+
+.repo-status-text.warning {
+  color: var(--warning);
+}
+
+.repo-status-text.danger {
+  color: var(--danger);
+}
+
+.repo-status-text.default {
+  color: var(--text-secondary);
+}
+
+.warning-text {
+  color: var(--warning);
+}
+
+/* Repo action buttons */
+.repo-actions-row {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.repo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 </style>
