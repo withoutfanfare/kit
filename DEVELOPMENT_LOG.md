@@ -9,7 +9,7 @@
 - Items attempted but failed: none
 - Branch: feature/search-validation-set-integrity
 - Tests passing: yes (cargo test 29/29, cargo clippy clean, vue-tsc clean)
-- Build status: pending
+- Build status: success (Kit.app + DMG bundled)
 - Notes: All three items are P2/S and share backend types (ValidationIssue, tags on SkillMeta/LibraryListItem). Tags parsing handles comma-separated values on the `tags:` frontmatter line. 8 new Rust tests added covering tag parsing and validation scenarios. SearchField clear button is available to all consumers, not just SkillsView.
 
 ## Cycle: 2026-03-19 14:00
