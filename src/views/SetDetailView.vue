@@ -10,13 +10,8 @@ import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import Badge from "@/components/base/Badge.vue";
 import InlineTextField from "@/components/base/InlineTextField.vue";
-import SectionHeader from "@/components/base/SectionHeader.vue";
-import SecondaryButton from "@/components/base/SecondaryButton.vue";
-import ConfirmDialog from "@/components/base/ConfirmDialog.vue";
-import SheetPanel from "@/components/base/SheetPanel.vue";
-import SearchField from "@/components/base/SearchField.vue";
+import { SBadge, SButton, SSectionHeader, SConfirmDialog, SModal, SSearchInput } from "@stuntrocket/ui";
 
 const route = useRoute();
 const router = useRouter();
@@ -197,10 +192,10 @@ watch(setKey, loadDetail);
           class="header-name-field"
           @update:model-value="updateName"
         />
-        <Badge :variant="detail.scope === 'global' ? 'accent' : 'default'">
+        <SBadge :variant="detail.scope === 'global' ? 'accent' : 'default'">
           {{ detail.scope === 'global' ? 'Global' : 'Project' }}
-        </Badge>
-        <Badge compact>{{ detail.skills.length }} skills</Badge>
+        </SBadge>
+        <SBadge variant="count">{{ detail.skills.length }} skills</SBadge>
       </div>
       <InlineTextField
         :model-value="detail.description ?? ''"
@@ -214,7 +209,7 @@ watch(setKey, loadDetail);
     <div class="detail-content">
       <!-- Skills section -->
       <div class="detail-section">
-        <SectionHeader
+        <SSectionHeader
           title="Skills"
           :count="detail.skills.length"
           action-label="Add"
@@ -228,7 +223,7 @@ watch(setKey, loadDetail);
           >
             <div class="skill-row-content" @click="skillPeekStore.peek(skill.id)">
               <span class="skill-name">{{ skill.name }}</span>
-              <Badge v-if="skill.archived" variant="default" compact>Archived</Badge>
+              <SBadge v-if="skill.archived" variant="count">Archived</SBadge>
             </div>
             <button class="remove-button" title="Remove from set" @click="removeSkill(skill.id)">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -245,7 +240,7 @@ watch(setKey, loadDetail);
 
       <!-- Assigned Locations section -->
       <div class="detail-section">
-        <SectionHeader
+        <SSectionHeader
           title="Assigned Locations"
           :count="detail.assignedLocations.length"
         />
@@ -282,10 +277,10 @@ watch(setKey, loadDetail);
 
       <!-- Actions section -->
       <div class="detail-section">
-        <SectionHeader title="Actions" />
+        <SSectionHeader title="Actions" />
         <div class="actions-row">
-          <SecondaryButton label="Open in Editor" @click="openInEditor" />
-          <SecondaryButton label="Delete Set" @click="showDeleteConfirm = true" />
+          <SButton variant="secondary" size="sm" @click="openInEditor">Open in Editor</SButton>
+          <SButton variant="secondary" size="sm" @click="showDeleteConfirm = true">Delete Set</SButton>
         </div>
       </div>
     </div>
@@ -295,7 +290,7 @@ watch(setKey, loadDetail);
   </div>
 
   <!-- Delete Confirm -->
-  <ConfirmDialog
+  <SConfirmDialog
     :open="showDeleteConfirm"
     title="Delete set?"
     :message="detail ? `This will permanently remove '${detail.name}' and unlink it from all locations.` : ''"
@@ -303,13 +298,14 @@ watch(setKey, loadDetail);
     danger
     @confirm="confirmDelete"
     @cancel="showDeleteConfirm = false"
+    @close="showDeleteConfirm = false"
   />
 
   <!-- Skill Picker Sheet -->
-  <SheetPanel :open="showSkillPicker" @close="showSkillPicker = false">
+  <SModal :open="showSkillPicker" max-width="max-w-3xl" @close="showSkillPicker = false">
     <div class="picker-content">
       <h3 class="picker-title">Add skills to set</h3>
-      <SearchField
+      <SSearchInput
         v-model="skillPickerQuery"
         placeholder="Search skills..."
       />
@@ -354,7 +350,7 @@ watch(setKey, loadDetail);
         </div>
       </div>
     </div>
-  </SheetPanel>
+  </SModal>
   </div>
 </template>
 

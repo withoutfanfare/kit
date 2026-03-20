@@ -2,7 +2,7 @@
 import { watch, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { useLibraryStore } from "@/stores/libraryStore";
-import Badge from "@/components/base/Badge.vue";
+import { SBadge } from "@stuntrocket/ui";
 import LinkedLocationsList from "@/components/domain/LinkedLocationsList.vue";
 import UsageSummaryPanel from "@/components/domain/UsageSummaryPanel.vue";
 
@@ -30,7 +30,7 @@ watch(skillId, loadDetail);
     <div class="detail-header">
       <div class="header-title-row">
         <h2 class="header-name">{{ detail.name }}</h2>
-        <Badge v-if="detail.archived" variant="default">Archived</Badge>
+        <SBadge v-if="detail.archived" variant="default">Archived</SBadge>
       </div>
       <span class="header-path">{{ detail.path }}</span>
     </div>

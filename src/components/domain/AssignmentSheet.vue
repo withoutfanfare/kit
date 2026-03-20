@@ -5,11 +5,7 @@ import { useLibraryStore } from "@/stores/libraryStore";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import type { LibraryListItem, SkillAssignment } from "@/types";
-import SheetPanel from "@/components/base/SheetPanel.vue";
-import SearchField from "@/components/base/SearchField.vue";
-import PrimaryButton from "@/components/base/PrimaryButton.vue";
-import SecondaryButton from "@/components/base/SecondaryButton.vue";
-import Badge from "@/components/base/Badge.vue";
+import { SModal, SSearchInput, SButton, SBadge } from "@stuntrocket/ui";
 import SelectionPreview from "./SelectionPreview.vue";
 
 const assignmentStore = useAssignmentStore();
@@ -110,7 +106,7 @@ watch(
 </script>
 
 <template>
-  <SheetPanel :open="assignmentStore.isOpen" @close="handleClose">
+  <SModal :open="assignmentStore.isOpen" max-width="max-w-4xl" @close="handleClose">
     <div class="assignment-sheet">
       <!-- Header -->
       <div class="sheet-header">
@@ -125,7 +121,7 @@ watch(
         <!-- Left: Library list -->
         <div class="library-panel">
           <div class="library-search">
-            <SearchField
+            <SSearchInput
               v-model="searchQuery"
               placeholder="Search skills and sets..."
             />
@@ -136,7 +132,7 @@ watch(
             <div v-if="skills.length > 0" class="list-group">
               <div class="group-label">
                 Skills
-                <Badge compact>{{ skills.length }}</Badge>
+                <SBadge>{{ skills.length }}</SBadge>
               </div>
               <label
                 v-for="item in skills"
@@ -169,8 +165,8 @@ watch(
                     <path d="M12 16v-4M12 8h.01" />
                   </svg>
                 </button>
-                <Badge v-if="isInstalled(item)" variant="success" compact>Installed</Badge>
-                <Badge v-if="item.archived" variant="warning" compact>Archived</Badge>
+                <SBadge v-if="isInstalled(item)" variant="success">Installed</SBadge>
+                <SBadge v-if="item.archived" variant="warning">Archived</SBadge>
               </label>
             </div>
 
@@ -178,7 +174,7 @@ watch(
             <div v-if="sets.length > 0" class="list-group">
               <div class="group-label">
                 Sets
-                <Badge compact>{{ sets.length }}</Badge>
+                <SBadge>{{ sets.length }}</SBadge>
               </div>
               <label
                 v-for="item in sets"
@@ -200,7 +196,7 @@ watch(
                   <span class="item-name">{{ item.name }}</span>
                   <span v-if="item.summary" class="item-summary">{{ item.summary }}</span>
                 </div>
-                <Badge v-if="isInstalled(item)" variant="success" compact>Installed</Badge>
+                <SBadge v-if="isInstalled(item)" variant="success">Installed</SBadge>
               </label>
             </div>
 
@@ -208,7 +204,7 @@ watch(
             <div v-if="installedSkills.length > 0" class="list-group">
               <div class="group-label">
                 Installed
-                <Badge compact>{{ installedSkills.length }}</Badge>
+                <SBadge>{{ installedSkills.length }}</SBadge>
               </div>
               <label
                 v-for="skill in installedSkills"
@@ -235,7 +231,7 @@ watch(
                     <path d="M12 16v-4M12 8h.01" />
                   </svg>
                 </button>
-                <Badge v-if="isMarkedForRemoval(skill.skillId)" variant="danger" compact>Remove</Badge>
+                <SBadge v-if="isMarkedForRemoval(skill.skillId)" variant="error">Remove</SBadge>
               </label>
             </div>
 
@@ -257,16 +253,15 @@ watch(
 
       <!-- Footer -->
       <div class="sheet-footer">
-        <SecondaryButton label="Cancel" @click="handleClose" />
-        <PrimaryButton
-          label="Apply Changes"
+        <SButton variant="secondary" @click="handleClose">Cancel</SButton>
+        <SButton
           :disabled="!assignmentStore.hasSelections"
           :loading="assignmentStore.isApplying"
           @click="handleApply"
-        />
+        >Apply Changes</SButton>
       </div>
     </div>
-  </SheetPanel>
+  </SModal>
 </template>
 
 <style scoped>

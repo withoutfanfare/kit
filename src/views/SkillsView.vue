@@ -3,11 +3,8 @@ import { onMounted } from "vue";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useRouter } from "vue-router";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
-import EmptyState from "@/components/layout/EmptyState.vue";
 import SkillInspector from "@/components/domain/SkillInspector.vue";
-import SearchField from "@/components/base/SearchField.vue";
-import SegmentedControl from "@/components/base/SegmentedControl.vue";
-import Badge from "@/components/base/Badge.vue";
+import { SBadge, SSearchInput, SSegmentedControl, SEmptyState } from "@stuntrocket/ui";
 
 const libraryStore = useLibraryStore();
 const router = useRouter();
@@ -36,12 +33,12 @@ onMounted(() => {
     <template #sidebar>
       <div class="library-sidebar">
         <div class="sidebar-controls">
-          <SearchField
+          <SSearchInput
             v-model="libraryStore.searchQuery"
             placeholder="Search library..."
             compact
           />
-          <SegmentedControl
+          <SSegmentedControl
             v-model="libraryStore.filterKind"
             :options="filterOptions"
           />
@@ -62,10 +59,10 @@ onMounted(() => {
               <span v-if="item.summary" class="row-summary">{{ item.summary }}</span>
             </div>
             <div class="row-meta">
-              <Badge v-if="item.archived" variant="default" compact>archived</Badge>
-              <Badge :variant="item.kind === 'skill' ? 'accent' : 'default'" compact>
+              <SBadge v-if="item.archived" variant="default" compact>archived</SBadge>
+              <SBadge :variant="item.kind === 'skill' ? 'accent' : 'default'" compact>
                 {{ item.kind }}
-              </Badge>
+              </SBadge>
             </div>
           </div>
           <div v-if="libraryStore.filteredItems.length === 0 && !libraryStore.isLoading" class="list-empty">
@@ -76,12 +73,12 @@ onMounted(() => {
     </template>
     <template #main>
       <router-view v-if="libraryStore.selectedSkillId" />
-      <EmptyState
+      <SEmptyState
         v-else-if="libraryStore.items.length === 0 && !libraryStore.isLoading"
         title="No skills in library"
         description="Set your skill library root in Settings to browse and manage skills."
       />
-      <EmptyState
+      <SEmptyState
         v-else-if="!libraryStore.isLoading"
         title="Select a skill"
         description="Choose a skill from the sidebar to see where it's used and manage it."

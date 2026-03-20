@@ -3,8 +3,7 @@ import { watch, ref, nextTick } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
-import Badge from "@/components/base/Badge.vue";
-import SecondaryButton from "@/components/base/SecondaryButton.vue";
+import { SBadge, SButton } from "@stuntrocket/ui";
 
 const peekStore = useSkillPeekStore();
 const preferencesStore = usePreferencesStore();
@@ -86,14 +85,14 @@ watch(
           <!-- Error state -->
           <div v-else-if="peekStore.error" class="peek-error">
             <p class="error-message">{{ peekStore.error }}</p>
-            <SecondaryButton label="Close" @click="peekStore.close()" />
+            <SButton variant="secondary" size="sm" @click="peekStore.close()">Close</SButton>
           </div>
 
           <!-- Loaded state -->
           <template v-else-if="peekStore.detail">
             <div class="peek-header">
               <h3 class="peek-name">{{ peekStore.detail.name }}</h3>
-              <Badge v-if="peekStore.detail.archived" variant="default" compact>Archived</Badge>
+              <SBadge v-if="peekStore.detail.archived" variant="count">Archived</SBadge>
             </div>
 
             <span class="peek-path">{{ peekStore.detail.path }}</span>
@@ -137,8 +136,8 @@ watch(
             </div>
 
             <div class="peek-actions">
-              <SecondaryButton label="Open in Editor" @click="openInEditor" />
-              <SecondaryButton label="Reveal in Finder" @click="revealInFinder" />
+              <SButton variant="secondary" size="sm" @click="openInEditor">Open in Editor</SButton>
+              <SButton variant="secondary" size="sm" @click="revealInFinder">Reveal in Finder</SButton>
             </div>
           </template>
         </div>
@@ -301,7 +300,7 @@ watch(
   padding-top: var(--space-3);
 }
 
-.peek-actions :deep(.secondary-button) {
+.peek-actions :deep(button) {
   width: 100%;
   justify-content: center;
 }

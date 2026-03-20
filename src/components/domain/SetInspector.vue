@@ -6,9 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import InspectorPanel from "@/components/layout/InspectorPanel.vue";
-import SecondaryButton from "@/components/base/SecondaryButton.vue";
-import Badge from "@/components/base/Badge.vue";
-import ConfirmDialog from "@/components/base/ConfirmDialog.vue";
+import { SBadge, SButton, SConfirmDialog } from "@stuntrocket/ui";
 
 const props = defineProps<{
   detail: SetDetail;
@@ -51,9 +49,9 @@ async function confirmDelete() {
       <div class="inspector-field">
         <span class="field-label">Scope</span>
         <span class="field-value">
-          <Badge :variant="detail.scope === 'global' ? 'accent' : 'default'" compact>
+          <SBadge :variant="detail.scope === 'global' ? 'accent' : 'default'">
             {{ detail.scope === 'global' ? 'Global' : 'Project' }}
-          </Badge>
+          </SBadge>
         </span>
       </div>
       <div class="inspector-field">
@@ -82,13 +80,13 @@ async function confirmDelete() {
     </div>
 
     <div class="inspector-actions">
-      <SecondaryButton label="Open in Editor" @click="openInEditor" />
-      <SecondaryButton label="Reveal in Finder" @click="revealInFinder" />
-      <SecondaryButton label="Delete Set" @click="showDeleteConfirm = true" />
+      <SButton variant="secondary" size="sm" @click="openInEditor">Open in Editor</SButton>
+      <SButton variant="secondary" size="sm" @click="revealInFinder">Reveal in Finder</SButton>
+      <SButton variant="secondary" size="sm" @click="showDeleteConfirm = true">Delete Set</SButton>
     </div>
   </InspectorPanel>
 
-  <ConfirmDialog
+  <SConfirmDialog
     :open="showDeleteConfirm"
     title="Delete set?"
     :message="`This will permanently remove '${detail.name}' and unlink it from all locations.`"
@@ -96,6 +94,7 @@ async function confirmDelete() {
     danger
     @confirm="confirmDelete"
     @cancel="showDeleteConfirm = false"
+    @close="showDeleteConfirm = false"
   />
 </template>
 
@@ -152,7 +151,7 @@ async function confirmDelete() {
   gap: var(--space-2);
 }
 
-.inspector-actions :deep(.secondary-button) {
+.inspector-actions :deep(button) {
   width: 100%;
   justify-content: center;
 }

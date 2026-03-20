@@ -89,6 +89,12 @@ pub struct Preferences {
     pub editor_command: String,
     pub default_view: DefaultView,
     pub show_archived: bool,
+    #[serde(default = "default_true")]
+    pub track_skill_versions: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,6 +134,9 @@ pub struct LocationDetail {
     pub skills: Vec<SkillAssignment>,
     pub issues: Vec<LocationIssue>,
     pub stats: LocationStats,
+    pub detected_project_types: Vec<DetectedProjectType>,
+    pub skill_recommendations: Vec<SkillRecommendation>,
+    pub last_scanned_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -208,6 +217,9 @@ pub struct LibraryListItem {
     pub archived: bool,
     pub summary: Option<String>,
     pub linked_location_count: usize,
+    pub use_count_30d: usize,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub is_unused_everywhere: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -306,6 +318,105 @@ pub enum RepoState {
     Diverged,
     Dirty,
     Unavailable,
+}
+
+// ---------------------------------------------------------------------------
+// Health check types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum HealthIssueSeverity {
+    Error,
+    Warning,
+    Info,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthIssue {
+    pub severity: HealthIssueSeverity,
+    pub location_id: String,
+    pub location_label: String,
+    pub description: String,
+    pub suggestion: String,
+    pub auto_fixable: bool,
+    pub skill_id: Option<String>,
+    pub kind: IssueKind,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthCheckResult {
+    pub issues: Vec<HealthIssue>,
+    pub location_count: usize,
+    pub healthy_count: usize,
+    pub warning_count: usize,
+    pub error_count: usize,
+    pub scanned_at: DateTime<Utc>,
+}
+
+// ---------------------------------------------------------------------------
+// Project-type detection types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DetectedProjectType {
+    pub name: String,
+    pub marker_file: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillRecommendation {
+    pub skill_id: String,
+    pub skill_name: String,
+    pub reason: String,
+}
+
+// ---------------------------------------------------------------------------
+// Export/import types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportManifest {
+    pub name: String,
+    pub description: Option<String>,
+    pub exported_at: DateTime<Utc>,
+    pub skills: Vec<String>,
+    pub set_definition: Option<SetDefinition>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportPreview {
+    pub skills: Vec<ImportSkillEntry>,
+    pub set_definition: Option<SetDefinition>,
+    pub conflict_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportSkillEntry {
+    pub id: String,
+    pub name: String,
+    pub already_exists: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Skill version tracking types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillVersionInfo {
+    pub skill_id: String,
+    pub assigned_hash: Option<String>,
+    pub current_hash: Option<String>,
+    pub has_changed: bool,
+    pub assigned_at: Option<DateTime<Utc>>,
 }
 
 // ---------------------------------------------------------------------------

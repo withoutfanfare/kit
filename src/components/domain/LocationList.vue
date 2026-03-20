@@ -3,7 +3,7 @@ import { useLocationsStore } from "@/stores/locationsStore";
 import { useRouter } from "vue-router";
 import { open } from "@tauri-apps/plugin-dialog";
 import LocationRow from "@/components/domain/LocationRow.vue";
-import PrimaryButton from "@/components/base/PrimaryButton.vue";
+import { SButton } from "@stuntrocket/ui";
 
 const locationsStore = useLocationsStore();
 const router = useRouter();
@@ -46,7 +46,7 @@ async function addLocation() {
       </div>
     </div>
     <div class="list-footer">
-      <PrimaryButton label="Add Location" @click="addLocation" />
+      <SButton @click="addLocation">Add Location</SButton>
     </div>
   </div>
 </template>
@@ -96,7 +96,7 @@ async function addLocation() {
   display: flex;
 }
 
-.list-footer :deep(.primary-button) {
+.list-footer :deep(button) {
   width: 100%;
 }
 </style>

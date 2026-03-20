@@ -7,8 +7,7 @@ import { useAppStore } from "@/stores/appStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useLocationsStore } from "@/stores/locationsStore";
 import type { SkillsRepoValidation } from "@/types";
-import PrimaryButton from "@/components/base/PrimaryButton.vue";
-import SecondaryButton from "@/components/base/SecondaryButton.vue";
+import { SButton } from "@stuntrocket/ui";
 
 const router = useRouter();
 const appStore = useAppStore();
@@ -116,11 +115,11 @@ async function completeSetup() {
           {{ validationError }}
         </div>
 
-        <PrimaryButton
-          label="Choose Skills Repository"
+        <SButton
+          variant="primary"
           :loading="isValidating"
           @click="chooseRepository"
-        />
+        >Choose Skills Repository</SButton>
       </template>
 
       <!-- Step: Validated -->
@@ -201,21 +200,21 @@ async function completeSetup() {
             </svg>
             <span class="added-project-path">{{ addedProjectPath }}</span>
           </div>
-          <SecondaryButton
+          <SButton
             v-else
-            label="Add First Project"
+            variant="secondary"
             :loading="isAddingProject"
             @click="addFirstProject"
-          />
+          >Add First Project</SButton>
         </div>
 
         <div class="onboarding-actions">
-          <SecondaryButton label="Back" @click="step = 'welcome'" />
-          <PrimaryButton
-            label="Open Kit"
+          <SButton variant="secondary" @click="step = 'welcome'">Back</SButton>
+          <SButton
+            variant="primary"
             :loading="isCompleting"
             @click="completeSetup"
-          />
+          >Open Kit</SButton>
         </div>
       </template>
     </div>

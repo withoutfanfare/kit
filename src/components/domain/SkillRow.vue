@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SkillAssignment } from "@/types";
-import Badge from "@/components/base/Badge.vue";
+import { SBadge } from "@stuntrocket/ui";
 
 defineProps<{
   skill: SkillAssignment;
@@ -34,10 +34,10 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
   <div class="skill-row" :class="{ archived: skill.archived }" @click="$emit('select')">
     <span class="status-dot" :class="dotVariant(skill.linkState)" />
     <span class="skill-name">{{ skill.name }}</span>
-    <Badge v-if="skill.archived" variant="default" compact>archived</Badge>
-    <Badge :variant="sourceBadgeVariant(skill.source)" compact>
+    <SBadge v-if="skill.archived" variant="count">archived</SBadge>
+    <SBadge :variant="sourceBadgeVariant(skill.source)">
       {{ skill.source }}
-    </Badge>
+    </SBadge>
   </div>
 </template>
 

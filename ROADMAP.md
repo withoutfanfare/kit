@@ -201,6 +201,47 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
   - Quick-assign respects the same validation rules as the full assignment workflow (duplicate detection, path safety)
   - Full assignment workflow remains available for batch operations and cross-location assignments
 
+### [UX/UI] Add location dashboard showing assigned skill count, health status, and last scan time
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-20
+- **Status:** pending
+- **Description:** When selecting a location in Kit's master-detail layout, the detail panel shows the list of assigned skills but lacks a summary overview. Users managing many locations need to quickly assess a location's state — how many skills are assigned, whether there are broken links or manifest issues, and when the location was last scanned. A compact dashboard header above the skill list showing these key metrics would provide instant situational awareness without navigating to the separate health check view.
+- **Acceptance criteria:**
+  - Location detail panel shows a summary header with: assigned skill count, broken link count, last scan timestamp
+  - Health status badge (healthy/warning/error) based on scan results
+  - Click on health badge navigates to the health check dashboard filtered to that location
+  - Summary data sourced from existing scanner results (no additional filesystem operations)
+  - Summary updates automatically when skills are assigned, removed, or the location is rescanned
+
+### [Quality] Add unused skill detection across all locations
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-20
+- **Status:** pending
+- **Description:** As the skill library grows, some skills may become orphaned — present in the library but never assigned to any location. These unused skills clutter the library view and may indicate outdated or superseded capabilities that should be archived or removed. Detecting skills that are not symlinked from any registered location and surfacing them in a "Not assigned anywhere" filter or badge would help users maintain a clean, intentional skill library.
+- **Acceptance criteria:**
+  - Library view supports an "Unused" filter showing skills not assigned to any registered location
+  - Unused skill count displayed as a badge in the filter bar
+  - Unused detection considers all registered locations (not just the active one)
+  - Detection runs as part of the existing library scan (no separate scan required)
+  - Skills recently added (< 24 hours) excluded from the unused indicator to avoid false positives during setup
+  - Results included in the health check dashboard under a "Library hygiene" section
+
+### [Feature] Add skill version tracking with update notifications when library skills change
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-20
+- **Status:** pending
+- **Description:** When a skill's SKILL.md is modified in the library (updated description, changed behaviour, new version), locations that have that skill assigned are unaware of the change. The symlink points to the updated file, so behaviour changes silently — which may be desirable but can also introduce unexpected changes. Tracking a content hash of each skill at assignment time and comparing it on subsequent scans would let Kit notify users when an assigned skill has been updated since it was linked, helping them review changes deliberately rather than being surprised by altered behaviour.
+- **Acceptance criteria:**
+  - SKILL.md content hash recorded in state.json when a skill is assigned to a location
+  - Subsequent scans compare current hash against recorded hash
+  - "Updated since assignment" badge shown on skill cards where hashes differ
+  - Badge click shows a summary of what changed (date assigned vs current modification date)
+  - Notification toast when scanning reveals updated skills (with count)
+  - Hash tracking opt-in via settings (default: enabled) to avoid noise for users who always want latest
+
 ## Design System Adoption
 
 These items implement the Scooda design system (derived from the Dalil app styleguide) to achieve premium visual uniformity across all Tauri applications. Items are ordered by dependency — foundation must complete before migration, migration before polish.

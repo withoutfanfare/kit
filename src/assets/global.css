@@ -1,61 +1,141 @@
-@import "./tokens.css";
+@import "tailwindcss";
+@import "@stuntrocket/ui/tokens.css";
+@import "@stuntrocket/ui/base.css";
+@import "@stuntrocket/ui/scrollbar.css";
+@source "../";
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* ═══════════════════════════════════════════════════
+   Kit Accent Override — Slate Blue
+   ═══════════════════════════════════════════════════ */
+
+:root {
+  --color-accent: #5b7a94;
+  --color-accent-hover: #4d6a82;
+  --color-accent-subtle: rgba(91, 122, 148, 0.10);
+
+  /* Kit uses system fonts — override library Poppins */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Kit-specific layout tokens */
+  --toolbar-height: 44px;
+  --titlebar-height: 28px;
+
+  /* Scrollbar — slate-blue tinted */
+  --scrollbar-thumb: rgba(91, 122, 148, 0.38);
+  --scrollbar-thumb-hover: rgba(91, 122, 148, 0.58);
+  --scrollbar-thumb-active: rgba(91, 122, 148, 0.75);
 }
+
+.dark {
+  --color-accent: #7a9ab4;
+  --color-accent-hover: #8aaac4;
+  --color-accent-subtle: rgba(122, 154, 180, 0.14);
+
+  --scrollbar-thumb: rgba(122, 154, 180, 0.45);
+  --scrollbar-thumb-hover: rgba(122, 154, 180, 0.66);
+  --scrollbar-thumb-active: rgba(122, 154, 180, 0.8);
+}
+
+/* Kit also supports prefers-color-scheme — auto-apply dark tokens */
+@media (prefers-color-scheme: dark) {
+  html:not(.light) {
+    --color-surface: #171717;
+    --color-surface-app: #1E1E1E;
+    --color-surface-secondary: #262626;
+    --color-sidebar: #1A1A1A;
+    --color-text-primary: #EDEDED;
+    --color-text-secondary: #999999;
+    --color-text-tertiary: #666666;
+    --color-text-inverse: #1A1A1A;
+    --color-border: #303030;
+    --color-accent: #7a9ab4;
+    --color-accent-hover: #8aaac4;
+    --color-accent-subtle: rgba(122, 154, 180, 0.14);
+    --color-success: #6AAA7B;
+    --color-warning: #D4A442;
+    --color-danger: #D46464;
+    --color-border-subtle: rgba(255, 255, 255, 0.08);
+    --color-border-default: rgba(255, 255, 255, 0.12);
+    --color-border-strong: rgba(255, 255, 255, 0.18);
+    --color-surface-hover: rgba(255, 255, 255, 0.04);
+    --color-surface-selected: rgba(150, 170, 190, 0.10);
+    --color-surface-selected-strong: rgba(150, 170, 190, 0.16);
+    --color-success-subtle: rgba(106, 170, 123, 0.14);
+    --color-warning-subtle: rgba(212, 164, 66, 0.14);
+    --color-danger-subtle: rgba(212, 100, 100, 0.14);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-sheet: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --scrollbar-thumb: rgba(122, 154, 180, 0.45);
+    --scrollbar-thumb-hover: rgba(122, 154, 180, 0.66);
+    --scrollbar-thumb-active: rgba(122, 154, 180, 0.8);
+    --scrollbar-track: rgba(115, 115, 115, 0.2);
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════
+   Compatibility Aliases — Kit's old token names
+   Maps var(--xxx) to var(--color-xxx) for components
+   that still use the legacy token convention.
+   ═══════════════════════════════════════════════════ */
+
+:root {
+  /* Surfaces */
+  --surface-app: var(--color-surface-app);
+  --surface-sidebar: var(--color-sidebar);
+  --surface-panel: var(--color-surface);
+  --surface-hover: var(--color-surface-hover);
+  --surface-selected: var(--color-surface-selected);
+  --surface-selected-strong: var(--color-surface-selected-strong);
+
+  /* Text */
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-tertiary);
+  --text-inverse: var(--color-text-inverse);
+
+  /* Borders */
+  --border-subtle: var(--color-border-subtle);
+  --border-default: var(--color-border-default);
+  --border-strong: var(--color-border-strong);
+
+  /* Colour roles */
+  --accent: var(--color-accent);
+  --accent-hover: var(--color-accent-hover);
+  --accent-subtle: var(--color-accent-subtle);
+  --success: var(--color-success);
+  --success-subtle: var(--color-success-subtle);
+  --warning: var(--color-warning);
+  --warning-subtle: var(--color-warning-subtle);
+  --danger: var(--color-danger);
+  --danger-subtle: var(--color-danger-subtle);
+
+  /* Typography sizes (Kit uses fixed px sizes) */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 20px;
+
+  /* Font weights */
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   Kit App-Specific Styles
+   ═══════════════════════════════════════════════════ */
 
 html,
 body,
 #app {
   height: 100%;
   overflow: hidden;
-}
-
-body {
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  line-height: 1.4;
-  color: var(--text-primary);
-  background: var(--surface-app);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  user-select: none;
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
-}
-
-/* Selection */
-::selection {
-  background: var(--accent-subtle);
-  color: var(--text-primary);
-}
-
-/* Focus ring */
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-  border-radius: var(--radius-sm);
 }
 
 /* Drag region for macOS title bar */

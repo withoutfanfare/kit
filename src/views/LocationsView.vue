@@ -6,8 +6,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
-import EmptyState from "@/components/layout/EmptyState.vue";
 import LocationList from "@/components/domain/LocationList.vue";
+import { SEmptyState } from "@stuntrocket/ui";
 import AssignmentSheet from "@/components/domain/AssignmentSheet.vue";
 
 const locationsStore = useLocationsStore();
@@ -137,14 +137,14 @@ onUnmounted(() => {
       </template>
       <template #main>
         <router-view v-if="locationsStore.selectedLocationId" />
-        <EmptyState
+        <SEmptyState
           v-else-if="locationsStore.locationList.length === 0"
           title="Add your first project"
           description="Drag a project folder here, or click the button below."
           action-label="Add Location"
           @action="addLocation"
         />
-        <EmptyState
+        <SEmptyState
           v-else
           title="Select a location"
           description="Choose a project from the sidebar, or drag a folder here to add it."

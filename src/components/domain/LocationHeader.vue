@@ -6,7 +6,7 @@ import { useAssignmentStore } from "@/stores/assignmentStore";
 import { useAppStore } from "@/stores/appStore";
 import { invoke } from "@tauri-apps/api/core";
 import InlineTextField from "@/components/base/InlineTextField.vue";
-import PrimaryButton from "@/components/base/PrimaryButton.vue";
+import { SButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
   detail: LocationDetail;
@@ -80,7 +80,7 @@ function addSkills() {
       <span class="header-path">{{ detail.path }}</span>
     </div>
     <div class="header-actions">
-      <PrimaryButton label="Add Skills" @click="addSkills" />
+      <SButton @click="addSkills">Add Skills</SButton>
       <button
         class="sync-button"
         :class="syncState"

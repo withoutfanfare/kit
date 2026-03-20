@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SetSummary } from "@/types";
-import Badge from "@/components/base/Badge.vue";
+import { SBadge } from "@stuntrocket/ui";
 
 defineProps<{
   set: SetSummary;
@@ -15,10 +15,10 @@ defineProps<{
       <span v-if="set.description" class="row-description">{{ set.description }}</span>
     </div>
     <div class="row-meta">
-      <Badge compact>{{ set.skillCount }}</Badge>
-      <Badge :variant="set.scope === 'global' ? 'accent' : 'default'" compact>
+      <SBadge variant="count">{{ set.skillCount }}</SBadge>
+      <SBadge :variant="set.scope === 'global' ? 'accent' : 'default'">
         {{ set.scope === 'global' ? 'Global' : 'Project' }}
-      </Badge>
+      </SBadge>
     </div>
   </div>
 </template>

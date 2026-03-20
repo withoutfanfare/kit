@@ -6,8 +6,7 @@ import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useAppStore } from "@/stores/appStore";
 import type { SkillsRepoStatus, RepoState } from "@/types";
-import SecondaryButton from "@/components/base/SecondaryButton.vue";
-import Badge from "@/components/base/Badge.vue";
+import { SButton, SBadge } from "@stuntrocket/ui";
 
 const preferencesStore = usePreferencesStore();
 const libraryStore = useLibraryStore();
@@ -258,7 +257,7 @@ onMounted(async () => {
             <span class="label-text">Path</span>
             <span class="label-path mono">{{ libraryPath }}</span>
           </div>
-          <SecondaryButton label="Change" @click="changeRepoPath" />
+          <SButton variant="secondary" size="sm" @click="changeRepoPath">Change</SButton>
         </div>
 
         <!-- Branch -->
@@ -266,7 +265,7 @@ onMounted(async () => {
           <div class="setting-label">
             <span class="label-text">Branch</span>
           </div>
-          <Badge variant="accent">{{ repoStatus.branch }}</Badge>
+          <SBadge variant="accent">{{ repoStatus.branch }}</SBadge>
         </div>
 
         <!-- Status -->
@@ -324,18 +323,20 @@ onMounted(async () => {
         <!-- Actions -->
         <div class="setting-row repo-actions-row">
           <div class="repo-actions">
-            <SecondaryButton label="Reveal" @click="revealRepo" />
-            <SecondaryButton label="Open in Editor" @click="openRepoInEditor" />
-            <SecondaryButton
-              label="Check for Updates"
+            <SButton variant="secondary" size="sm" @click="revealRepo">Reveal</SButton>
+            <SButton variant="secondary" size="sm" @click="openRepoInEditor">Open in Editor</SButton>
+            <SButton
+              variant="secondary"
+              size="sm"
               :loading="isCheckingRepo"
               @click="recheckRepoStatus"
-            />
-            <SecondaryButton
+            >Check for Updates</SButton>
+            <SButton
               v-if="repoStatus && repoStatus.behindBy > 0"
-              label="Copy Pull Command"
+              variant="secondary"
+              size="sm"
               @click="copyPullCommand"
-            />
+            >Copy Pull Command</SButton>
           </div>
         </div>
       </div>
@@ -376,12 +377,13 @@ onMounted(async () => {
               @blur="saveEditorCommand"
               @keydown.enter="($event.target as HTMLInputElement).blur()"
             />
-            <SecondaryButton
-              label="Test"
+            <SButton
+              variant="secondary"
+              size="sm"
               :disabled="!editorDraft.trim()"
               :loading="isTestingEditor"
               @click="testEditor"
-            />
+            >Test</SButton>
           </div>
         </div>
         <div v-if="editorTestResult" class="setting-row test-result">
@@ -404,7 +406,7 @@ onMounted(async () => {
             <span class="label-text">App data</span>
             <span class="label-path">{{ appDataPath ?? "~/.kit" }}</span>
           </div>
-          <SecondaryButton label="Reveal" @click="revealAppData" />
+          <SButton variant="secondary" size="sm" @click="revealAppData">Reveal</SButton>
         </div>
       </div>
     </section>

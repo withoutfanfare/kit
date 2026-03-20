@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SavedLocationSummary } from "@/types";
-import Badge from "@/components/base/Badge.vue";
+import { SBadge } from "@stuntrocket/ui";
 
 defineProps<{
   location: SavedLocationSummary;
@@ -21,9 +21,9 @@ function truncatePath(path: string, maxLen = 32): string {
       <span class="row-label">{{ location.label }}</span>
       <span class="row-path">{{ truncatePath(location.path) }}</span>
     </div>
-    <Badge v-if="location.issueCount > 0" variant="warning" compact>
+    <SBadge v-if="location.issueCount > 0" variant="warning">
       {{ location.issueCount }}
-    </Badge>
+    </SBadge>
   </div>
 </template>
 

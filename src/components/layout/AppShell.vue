@@ -6,7 +6,7 @@ import { useRouter } from "vue-router";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import WindowToolbar from "./WindowToolbar.vue";
 import SidebarNav from "./SidebarNav.vue";
-import NoticeBanner from "@/components/base/NoticeBanner.vue";
+import { SNoticeBanner, SToast, SToastContainer } from "@stuntrocket/ui";
 import OnboardingView from "@/views/OnboardingView.vue";
 import SkillPeekPanel from "@/components/domain/SkillPeekPanel.vue";
 import { useAppStore } from "@/stores/appStore";
@@ -59,7 +59,7 @@ watch(
 
     <template v-else>
     <WindowToolbar />
-    <NoticeBanner
+    <SNoticeBanner
       v-if="repoStatus && repoStatus.state === 'behind' && !repoBannerDismissed"
       variant="warning"
       dismissible
@@ -67,7 +67,7 @@ watch(
       @dismiss="repoBannerDismissed = true"
     >
       Skills repository is {{ repoStatus.behindBy }} commit{{ repoStatus.behindBy === 1 ? '' : 's' }} behind {{ repoStatus.upstream ?? 'remote' }} — pull to get the latest skills.
-    </NoticeBanner>
+    </SNoticeBanner>
     <div class="app-body">
       <SidebarNav />
       <main class="app-content">

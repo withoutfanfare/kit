@@ -6,7 +6,7 @@ import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useAppStore } from "@/stores/appStore";
 import { invoke } from "@tauri-apps/api/core";
 import InspectorPanel from "@/components/layout/InspectorPanel.vue";
-import SecondaryButton from "@/components/base/SecondaryButton.vue";
+import { SButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
   detail: LocationDetail;
@@ -78,16 +78,16 @@ async function openManifest() {
       </div>
     </div>
     <div class="inspector-actions">
-      <SecondaryButton label="Sync" @click="syncLocation" />
-      <SecondaryButton
+      <SButton variant="secondary" @click="syncLocation">Sync</SButton>
+      <SButton
         v-if="detail.manifestPath"
-        label="Open Manifest"
+        variant="secondary"
         @click="openManifest"
-      />
-      <SecondaryButton
-        label="Remove Location"
+      >Open Manifest</SButton>
+      <SButton
+        variant="secondary"
         @click="removeLocation"
-      />
+      >Remove Location</SButton>
     </div>
   </InspectorPanel>
 </template>
@@ -133,7 +133,7 @@ async function openManifest() {
   gap: var(--space-2);
 }
 
-.inspector-actions :deep(.secondary-button) {
+.inspector-actions :deep(button) {
   width: 100%;
   justify-content: center;
 }

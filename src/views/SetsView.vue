@@ -4,13 +4,9 @@ import { useSetsStore } from "@/stores/setsStore";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useRouter } from "vue-router";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
-import EmptyState from "@/components/layout/EmptyState.vue";
 import SetRow from "@/components/domain/SetRow.vue";
 import SetInspector from "@/components/domain/SetInspector.vue";
-import SearchField from "@/components/base/SearchField.vue";
-import SegmentedControl from "@/components/base/SegmentedControl.vue";
-import PrimaryButton from "@/components/base/PrimaryButton.vue";
-import SecondaryButton from "@/components/base/SecondaryButton.vue";
+import { SSearchInput, SSegmentedControl, SButton, SEmptyState } from "@stuntrocket/ui";
 import type { SetScope, SetSummary } from "@/types";
 import { setKeyFromSummary } from "@/utils/setKey";
 
@@ -77,12 +73,12 @@ onMounted(() => {
     <template #sidebar>
       <div class="sets-sidebar">
         <div class="sidebar-controls">
-          <SearchField
+          <SSearchInput
             v-model="setsStore.searchQuery"
             placeholder="Search sets..."
             compact
           />
-          <SegmentedControl
+          <SSegmentedControl
             v-model="setsStore.scopeFilter"
             :options="scopeOptions"
           />
@@ -103,20 +99,20 @@ onMounted(() => {
           </div>
         </div>
         <div class="sidebar-footer">
-          <PrimaryButton label="New Set" @click="openNewSetDialog" />
+          <SButton variant="primary" @click="openNewSetDialog">New Set</SButton>
         </div>
       </div>
     </template>
     <template #main>
       <router-view v-if="setsStore.selectedSetKey" />
-      <EmptyState
+      <SEmptyState
         v-else-if="setsStore.items.length === 0 && !setsStore.isLoading"
         title="No sets yet"
         description="Create a set to group related skills together and assign them to locations."
         action-label="Create Set"
         @action="openNewSetDialog"
       />
-      <EmptyState
+      <SEmptyState
         v-else-if="!setsStore.isLoading"
         title="Select a set"
         description="Choose a set from the sidebar to view its skills and manage assignments."
@@ -154,7 +150,7 @@ onMounted(() => {
             </div>
             <div class="form-field">
               <label class="form-label">Scope</label>
-              <SegmentedControl
+              <SSegmentedControl
                 v-model="(newSetScope as string)"
                 :options="[
                   { label: 'Global', value: 'global' },
@@ -192,13 +188,13 @@ onMounted(() => {
             </div>
           </div>
           <div class="dialog-actions">
-            <SecondaryButton label="Cancel" @click="showNewSetDialog = false" />
-            <PrimaryButton
-              label="Create"
+            <SButton variant="secondary" @click="showNewSetDialog = false">Cancel</SButton>
+            <SButton
+              variant="primary"
               :disabled="!newSetName.trim() || (newSetScope === 'project' && !newSetOwnerLocationId)"
               :loading="isCreating"
               @click="handleCreateSet"
-            />
+            >Create</SButton>
           </div>
         </div>
       </div>

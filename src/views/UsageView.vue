@@ -2,8 +2,7 @@
 import { onMounted } from "vue";
 import { useUsageStore } from "@/stores/usageStore";
 import { useSkillPeekStore } from "@/stores/skillPeekStore";
-import SectionHeader from "@/components/base/SectionHeader.vue";
-import Badge from "@/components/base/Badge.vue";
+import { SSectionHeader, SBadge } from "@stuntrocket/ui";
 
 const usageStore = useUsageStore();
 const skillPeekStore = useSkillPeekStore();
@@ -54,7 +53,7 @@ onMounted(() => {
     <div v-else class="usage-content">
       <!-- Most Used -->
       <section class="usage-section">
-        <SectionHeader title="Most Used" :count="usageStore.summary.mostUsed.length" />
+        <SSectionHeader title="Most Used" :count="usageStore.summary.mostUsed.length" />
         <div class="grouped-list">
           <div
             v-for="(item, index) in usageStore.summary.mostUsed"
@@ -66,7 +65,7 @@ onMounted(() => {
               <span class="rank">{{ index + 1 }}</span>
               <span class="item-name">{{ item.name }}</span>
             </div>
-            <Badge compact>{{ item.count }}</Badge>
+            <SBadge variant="count">{{ item.count }}</SBadge>
           </div>
           <div v-if="usageStore.summary.mostUsed.length === 0" class="list-empty">
             No usage data for this period
@@ -76,7 +75,7 @@ onMounted(() => {
 
       <!-- Recently Used -->
       <section class="usage-section">
-        <SectionHeader title="Recently Used" :count="usageStore.summary.recentlyUsed.length" />
+        <SSectionHeader title="Recently Used" :count="usageStore.summary.recentlyUsed.length" />
         <div class="grouped-list">
           <div
             v-for="item in usageStore.summary.recentlyUsed"
@@ -95,7 +94,7 @@ onMounted(() => {
 
       <!-- Unused -->
       <section class="usage-section">
-        <SectionHeader title="Unused" :count="usageStore.summary.unused.length" />
+        <SSectionHeader title="Unused" :count="usageStore.summary.unused.length" />
         <div class="grouped-list">
           <div
             v-for="item in usageStore.summary.unused"
@@ -113,7 +112,7 @@ onMounted(() => {
 
       <!-- Suggestions -->
       <section v-if="usageStore.summary.suggestions.length > 0" class="usage-section">
-        <SectionHeader title="Suggestions" />
+        <SSectionHeader title="Suggestions" />
         <div class="grouped-list">
           <div
             v-for="(suggestion, idx) in usageStore.summary.suggestions"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AssignmentPreview } from "@/types";
-import Badge from "@/components/base/Badge.vue";
+import { SBadge } from "@stuntrocket/ui";
 
 defineProps<{
   preview: AssignmentPreview | null;
@@ -21,7 +21,7 @@ defineProps<{
       <!-- Adds -->
       <div v-if="preview.adds.length > 0" class="preview-section">
         <div class="section-label">
-          <Badge variant="success" compact>+ {{ preview.adds.length }}</Badge>
+          <SBadge variant="success" compact>+ {{ preview.adds.length }}</SBadge>
           <span>Add</span>
         </div>
         <ul class="change-list">
@@ -36,7 +36,7 @@ defineProps<{
       <!-- Removes -->
       <div v-if="preview.removes.length > 0" class="preview-section">
         <div class="section-label">
-          <Badge variant="danger" compact>- {{ preview.removes.length }}</Badge>
+          <SBadge variant="danger" compact>- {{ preview.removes.length }}</SBadge>
           <span>Remove</span>
         </div>
         <ul class="change-list">
@@ -51,7 +51,7 @@ defineProps<{
       <!-- Manifest updates -->
       <div v-if="preview.manifestUpdates.length > 0" class="preview-section">
         <div class="section-label">
-          <Badge compact>{{ preview.manifestUpdates.length }}</Badge>
+          <SBadge compact>{{ preview.manifestUpdates.length }}</SBadge>
           <span>Manifest updates</span>
         </div>
         <ul class="change-list">
@@ -70,7 +70,7 @@ defineProps<{
       <!-- Warnings -->
       <div v-if="preview.warnings.length > 0" class="preview-section">
         <div class="section-label">
-          <Badge variant="warning" compact>{{ preview.warnings.length }}</Badge>
+          <SBadge variant="warning" compact>{{ preview.warnings.length }}</SBadge>
           <span>Warnings</span>
         </div>
         <ul class="warning-list">

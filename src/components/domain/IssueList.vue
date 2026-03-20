@@ -4,8 +4,7 @@ import { computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useAppStore } from "@/stores/appStore";
-import Badge from "@/components/base/Badge.vue";
-import SecondaryButton from "@/components/base/SecondaryButton.vue";
+import { SBadge, SButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
   issues: LocationIssue[];
@@ -112,7 +111,7 @@ async function syncLocation() {
   <div class="issue-list">
     <div class="section-header">
       <span class="section-title">Issues</span>
-      <Badge variant="warning" compact>{{ issues.length }}</Badge>
+      <SBadge variant="warning">{{ issues.length }}</SBadge>
     </div>
     <div v-for="group in groupedIssues" :key="group.kind" class="issue-group">
       <div class="group-banner" :class="group.variant">
@@ -128,38 +127,23 @@ async function syncLocation() {
           <div class="issue-actions">
             <!-- Broken link: Remove the broken symlink -->
             <template v-if="issue.kind === 'broken_link'">
-              <SecondaryButton
-                label="Remove"
-                @click="unlinkSkill(issue.skillId!)"
-              />
+              <SButton variant="secondary" @click="unlinkSkill(issue.skillId!)">Remove</SButton>
             </template>
 
             <!-- Declared but missing: Remove from manifest -->
             <template v-else-if="issue.kind === 'declared_missing'">
-              <SecondaryButton
-                label="Remove declaration"
-                @click="removeFromManifest(issue.skillId!)"
-              />
+              <SButton variant="secondary" @click="removeFromManifest(issue.skillId!)">Remove declaration</SButton>
             </template>
 
             <!-- Linked but undeclared: two separate buttons -->
             <template v-else-if="issue.kind === 'linked_undeclared'">
-              <SecondaryButton
-                label="Add to manifest"
-                @click="addToManifest(issue.skillId!)"
-              />
-              <SecondaryButton
-                label="Unlink"
-                @click="unlinkSkill(issue.skillId!)"
-              />
+              <SButton variant="secondary" @click="addToManifest(issue.skillId!)">Add to manifest</SButton>
+              <SButton variant="secondary" @click="unlinkSkill(issue.skillId!)">Unlink</SButton>
             </template>
 
             <!-- Stale -->
             <template v-else-if="issue.kind === 'stale'">
-              <SecondaryButton
-                label="Sync"
-                @click="syncLocation"
-              />
+              <SButton variant="secondary" @click="syncLocation">Sync</SButton>
             </template>
           </div>
         </div>

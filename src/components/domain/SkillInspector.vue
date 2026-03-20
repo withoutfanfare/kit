@@ -4,8 +4,7 @@ import { useLibraryStore } from "@/stores/libraryStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { invoke } from "@tauri-apps/api/core";
 import InspectorPanel from "@/components/layout/InspectorPanel.vue";
-import SecondaryButton from "@/components/base/SecondaryButton.vue";
-import Badge from "@/components/base/Badge.vue";
+import { SBadge, SButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
   detail: SkillDetail;
@@ -41,7 +40,7 @@ async function revealInFinder() {
       <div class="inspector-field">
         <span class="field-label">State</span>
         <span class="field-value">
-          <Badge v-if="detail.archived" variant="default" compact>Archived</Badge>
+          <SBadge v-if="detail.archived" variant="count">Archived</SBadge>
           <span v-else class="state-active">Active</span>
         </span>
       </div>
@@ -85,12 +84,11 @@ async function revealInFinder() {
     </div>
 
     <div class="inspector-actions">
-      <SecondaryButton
-        :label="detail.archived ? 'Unarchive' : 'Archive'"
-        @click="toggleArchive"
-      />
-      <SecondaryButton label="Open in Editor" @click="openInEditor" />
-      <SecondaryButton label="Reveal in Finder" @click="revealInFinder" />
+      <SButton variant="secondary" size="sm" @click="toggleArchive">
+        {{ detail.archived ? 'Unarchive' : 'Archive' }}
+      </SButton>
+      <SButton variant="secondary" size="sm" @click="openInEditor">Open in Editor</SButton>
+      <SButton variant="secondary" size="sm" @click="revealInFinder">Reveal in Finder</SButton>
     </div>
   </InspectorPanel>
 </template>
@@ -154,7 +152,7 @@ async function revealInFinder() {
   gap: var(--space-2);
 }
 
-.inspector-actions :deep(.secondary-button) {
+.inspector-actions :deep(button) {
   width: 100%;
   justify-content: center;
 }
