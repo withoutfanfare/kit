@@ -38,7 +38,8 @@ export const useLibraryStore = defineStore("library", () => {
       result = result.filter(
         (i) =>
           i.name.toLowerCase().includes(q) ||
-          (i.summary && i.summary.toLowerCase().includes(q))
+          (i.summary && i.summary.toLowerCase().includes(q)) ||
+          i.tags.some((t) => t.toLowerCase().includes(q))
       );
     }
     // Sort

@@ -100,6 +100,15 @@ export type SkillDetail = {
   };
 };
 
+export type ValidationSeverity = "error" | "warning";
+
+export type ValidationIssue = {
+  field: string;
+  message: string;
+  suggestion: string;
+  severity: ValidationSeverity;
+};
+
 export type LibraryListItem = {
   id: string;
   name: string;
@@ -110,6 +119,9 @@ export type LibraryListItem = {
   useCount30d: number;
   lastUsedAt: string | null;
   isUnusedEverywhere: boolean;
+  tags: string[];
+  validationIssues: ValidationIssue[];
+  brokenSkillCount: number;
 };
 
 export type PreviewChange = {
@@ -146,7 +158,7 @@ export type SetDetail = {
   scope: SetScope;
   ownerLocationId: LocationId | null;
   path: string;
-  skills: Array<{ id: SkillId; name: string; archived: boolean }>;
+  skills: Array<{ id: SkillId; name: string; archived: boolean; missing: boolean }>;
   assignedLocations: SavedLocationSummary[];
 };
 

@@ -308,9 +308,10 @@ watch(setKey, loadDetail);
                 <circle cx="11" cy="12" r="1.5" />
               </svg>
             </span>
-            <div class="skill-row-content" @click="skillPeekStore.peek(skill.id)">
-              <span class="skill-name">{{ skill.name }}</span>
-              <SBadge v-if="skill.archived" variant="count">Archived</SBadge>
+            <div class="skill-row-content" @click="!skill.missing && skillPeekStore.peek(skill.id)">
+              <span class="skill-name" :class="{ 'skill-missing': skill.missing }">{{ skill.name }}</span>
+              <SBadge v-if="skill.missing" variant="error">missing</SBadge>
+              <SBadge v-else-if="skill.archived" variant="count">Archived</SBadge>
             </div>
             <div class="reorder-buttons">
               <button
@@ -640,6 +641,11 @@ watch(setKey, loadDetail);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.skill-name.skill-missing {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
 }
 
 .remove-button {

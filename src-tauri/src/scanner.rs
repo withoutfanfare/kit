@@ -26,6 +26,7 @@ pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
     let mut description: Option<String> = None;
     let mut version: Option<String> = None;
     let mut archived = false;
+    let mut tags: Vec<String> = Vec::new();
 
     for line in yaml_block.lines() {
         let line = line.trim();
@@ -37,6 +38,13 @@ pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
                 "description" => description = Some(val.to_string()),
                 "version" => version = Some(val.to_string()),
                 "archived" => archived = val == "true",
+                "tags" => {
+                    tags = val
+                        .split(',')
+                        .map(|t| t.trim().to_string())
+                        .filter(|t| !t.is_empty())
+                        .collect();
+                }
                 _ => {}
             }
         }
@@ -47,6 +55,7 @@ pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
         description,
         version,
         archived,
+        tags,
     })
 }
 
@@ -56,6 +65,67 @@ pub struct SkillFrontmatter {
     pub description: Option<String>,
     pub version: Option<String>,
     pub archived: bool,
+    pub tags: Vec<String>,
+}
+
+/// Validate SKILL.md frontmatter and return any issues found.
+/// Works on raw content so it can report problems even when parsing fails.
+pub fn validate_skill_md(content: &str) -> Vec<ValidationIssue> {
+    let mut issues = Vec::new();
+    let trimmed = content.trim_start();
+
+    if !trimmed.starts_with("---") {
+        issues.push(ValidationIssue {
+            field: "frontmatter".to_string(),
+            message: "Missing YAML frontmatter delimiters (---)".to_string(),
+            suggestion: "Add --- at the start and end of the frontmatter block".to_string(),
+            severity: ValidationSeverity::Error,
+        });
+        return issues;
+    }
+
+    let after_first = &trimmed[3..];
+    if !after_first.contains("---") {
+        issues.push(ValidationIssue {
+            field: "frontmatter".to_string(),
+            message: "Unclosed frontmatter block — missing closing ---".to_string(),
+            suggestion: "Add a closing --- line after the frontmatter fields".to_string(),
+            severity: ValidationSeverity::Error,
+        });
+        return issues;
+    }
+
+    // If we can't parse it fully, report that
+    match parse_skill_md(content) {
+        None => {
+            issues.push(ValidationIssue {
+                field: "name".to_string(),
+                message: "Required field 'name' is missing".to_string(),
+                suggestion: "Add 'name: Your Skill Name' to the frontmatter".to_string(),
+                severity: ValidationSeverity::Error,
+            });
+        }
+        Some(fm) => {
+            if fm.name.trim().is_empty() {
+                issues.push(ValidationIssue {
+                    field: "name".to_string(),
+                    message: "Field 'name' is empty".to_string(),
+                    suggestion: "Set a descriptive name for this skill".to_string(),
+                    severity: ValidationSeverity::Error,
+                });
+            }
+            if fm.description.is_none() {
+                issues.push(ValidationIssue {
+                    field: "description".to_string(),
+                    message: "Optional field 'description' is missing".to_string(),
+                    suggestion: "Add 'description: ...' to help users understand this skill".to_string(),
+                    severity: ValidationSeverity::Warning,
+                });
+            }
+        }
+    }
+
+    issues
 }
 
 // ---------------------------------------------------------------------------
@@ -63,6 +133,7 @@ pub struct SkillFrontmatter {
 // ---------------------------------------------------------------------------
 
 /// Scan the library root for skills (folders containing SKILL.md).
+/// Skills with validation errors are still included (not silently dropped).
 pub fn scan_library_skills(library_root: &Path) -> Vec<SkillMeta> {
     let mut skills = Vec::new();
     if !library_root.is_dir() {
@@ -98,19 +169,39 @@ pub fn scan_library_skills(library_root: &Path) -> Vec<SkillMeta> {
             Err(_) => continue,
         };
 
-        if let Some(fm) = parse_skill_md(&content) {
-            let canonical_path = fs::canonicalize(&path)
-                .ok()
-                .map(|p| p.to_string_lossy().to_string());
-            skills.push(SkillMeta {
-                name: fm.name,
-                description: fm.description,
-                version: fm.version,
-                archived: fm.archived,
-                folder_name: folder_name.clone(),
-                path: path.to_string_lossy().to_string(),
-                canonical_path,
-            });
+        let validation_issues = validate_skill_md(&content);
+        let canonical_path = fs::canonicalize(&path)
+            .ok()
+            .map(|p| p.to_string_lossy().to_string());
+
+        match parse_skill_md(&content) {
+            Some(fm) => {
+                skills.push(SkillMeta {
+                    name: fm.name,
+                    description: fm.description,
+                    version: fm.version,
+                    archived: fm.archived,
+                    tags: fm.tags,
+                    folder_name: folder_name.clone(),
+                    path: path.to_string_lossy().to_string(),
+                    canonical_path,
+                    validation_issues,
+                });
+            }
+            None => {
+                // Include the skill even when frontmatter parsing fails
+                skills.push(SkillMeta {
+                    name: folder_name.clone(),
+                    description: None,
+                    version: None,
+                    archived: false,
+                    tags: Vec::new(),
+                    folder_name: folder_name.clone(),
+                    path: path.to_string_lossy().to_string(),
+                    canonical_path,
+                    validation_issues,
+                });
+            }
         }
     }
 
@@ -965,5 +1056,68 @@ mod tests {
         let usage = skill_usage("unknown", &map);
         assert_eq!(usage.use_count_30d, 0);
         assert!(usage.last_used_at.is_none());
+    }
+
+    // --- Tags parsing ---
+
+    #[test]
+    fn parse_skill_md_tags() {
+        let content = "---\nname: Tagged Skill\ntags: rust, tauri, vue\n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.tags, vec!["rust", "tauri", "vue"]);
+    }
+
+    #[test]
+    fn parse_skill_md_no_tags() {
+        let content = "---\nname: No Tags\n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert!(fm.tags.is_empty());
+    }
+
+    #[test]
+    fn parse_skill_md_empty_tags() {
+        let content = "---\nname: Empty Tags\ntags: \n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert!(fm.tags.is_empty());
+    }
+
+    // --- Validation ---
+
+    #[test]
+    fn validate_no_frontmatter() {
+        let issues = validate_skill_md("Just text");
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].severity, ValidationSeverity::Error);
+        assert!(issues[0].message.contains("frontmatter"));
+    }
+
+    #[test]
+    fn validate_unclosed_frontmatter() {
+        let issues = validate_skill_md("---\nname: Test\n");
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].severity, ValidationSeverity::Error);
+        assert!(issues[0].message.contains("Unclosed"));
+    }
+
+    #[test]
+    fn validate_missing_name() {
+        let issues = validate_skill_md("---\ndescription: No name\n---\n");
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].field, "name");
+        assert_eq!(issues[0].severity, ValidationSeverity::Error);
+    }
+
+    #[test]
+    fn validate_missing_description_warning() {
+        let issues = validate_skill_md("---\nname: Test\n---\n");
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].field, "description");
+        assert_eq!(issues[0].severity, ValidationSeverity::Warning);
+    }
+
+    #[test]
+    fn validate_complete_frontmatter_no_issues() {
+        let issues = validate_skill_md("---\nname: Test\ndescription: A skill\n---\n");
+        assert!(issues.is_empty());
     }
 }

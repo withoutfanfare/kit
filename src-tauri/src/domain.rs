@@ -47,6 +47,22 @@ pub enum IssueKind {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+pub enum ValidationSeverity {
+    Error,
+    Warning,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidationIssue {
+    pub field: String,
+    pub message: String,
+    pub suggestion: String,
+    pub severity: ValidationSeverity,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum PreviewChangeKind {
     AddLink,
     RemoveLink,
@@ -221,6 +237,9 @@ pub struct LibraryListItem {
     pub use_count_30d: usize,
     pub last_used_at: Option<DateTime<Utc>>,
     pub is_unused_everywhere: bool,
+    pub tags: Vec<String>,
+    pub validation_issues: Vec<ValidationIssue>,
+    pub broken_skill_count: usize,
 }
 
 // ---------------------------------------------------------------------------
@@ -441,10 +460,12 @@ pub struct SkillMeta {
     pub description: Option<String>,
     pub version: Option<String>,
     pub archived: bool,
+    pub tags: Vec<String>,
     pub folder_name: String,
     pub path: String,
     /// Canonical (fully resolved, symlink-followed) path to the skill folder.
     pub canonical_path: Option<String>,
+    pub validation_issues: Vec<ValidationIssue>,
 }
 
 /// A set definition loaded from a `.set.json` file.
@@ -499,4 +520,5 @@ pub struct SetSkillEntry {
     pub id: String,
     pub name: String,
     pub archived: bool,
+    pub missing: bool,
 }

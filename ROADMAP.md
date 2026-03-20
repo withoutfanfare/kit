@@ -255,22 +255,22 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 
 ## Design System Adoption
 
-These items implement the Scooda design system (derived from the Dalil app styleguide) to achieve premium visual uniformity across all Tauri applications. Items are ordered by dependency — foundation must complete before migration, migration before polish.
+These items implement the @stuntrocket/ui design system to achieve premium visual uniformity across all Tauri applications. Items are ordered by dependency — foundation must complete before migration, migration before polish.
 
 ### [Foundation] Integrate @stuntrocket/ui shared component library and design tokens
 - **Priority:** P1 (critical)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
 - **Status:** pending
-- **Description:** Kit uses Vue 3 + Tailwind with design tokens in assets/tokens.css supporting light/dark via prefers-color-scheme. Adopting the Scooda design system requires installing @stuntrocket/ui from the local Verdaccio registry, replacing the current token system with Scooda shared tokens, and switching from prefers-color-scheme to class-based dark mode (.dark on html). Kit's macOS-native aesthetic (system-ui font, small text) needs to shift to Poppins with the Scooda type scale.
+- **Description:** Kit uses Vue 3 + Tailwind with design tokens in assets/tokens.css supporting light/dark via prefers-color-scheme. Adopting the @stuntrocket/ui design system requires installing @stuntrocket/ui from the local Verdaccio registry, replacing the current token system with @stuntrocket/ui shared tokens, and switching from prefers-color-scheme to class-based dark mode (.dark on html). Kit's macOS-native aesthetic (system-ui font, small text) needs to shift to Poppins with the @stuntrocket/ui type scale.
 - **Acceptance criteria:**
   - .npmrc configured with @stuntrocket:registry=http://localhost:4873
   - @stuntrocket/ui installed as a dependency
-  - assets/tokens.css replaced with Scooda tokens.css import
+  - assets/tokens.css replaced with @stuntrocket/ui tokens.css import
   - Dark mode implementation changed from prefers-color-scheme to class-based (.dark)
   - Dark mode toggle and localStorage persistence added
   - Poppins font loaded as primary sans font (replacing system-ui)
-  - Colour palette, spacing, and typography aligned to Scooda values
+  - Colour palette, spacing, and typography aligned to @stuntrocket/ui values
 
 ### [UI Migration] Replace bespoke components with @stuntrocket/ui shared components
 - **Priority:** P1 (critical)
@@ -288,19 +288,19 @@ These items implement the Scooda design system (derived from the Dalil app style
   - Toast/notification system uses @stuntrocket/ui Toast
   - No locally-defined UI primitive components remain
 
-### [Polish] Achieve full Scooda styleguide visual conformance
+### [Polish] Achieve full @stuntrocket/ui styleguide visual conformance
 - **Priority:** P2 (important)
 - **Size:** L (3-8hrs)
 - **Added:** 2026-03-19
 - **Status:** pending
-- **Description:** After component migration, apply the remaining Scooda specifications: ambient background blobs, custom scrollbars, micro-animations, macOS titlebar integration, z-index layering, and accessibility compliance. Kit's small-text-size aesthetic needs particular attention during the typography migration to ensure readability at Scooda's slightly larger base size.
+- **Description:** After component migration, apply the remaining @stuntrocket/ui specifications: ambient background blobs, custom scrollbars, micro-animations, macOS titlebar integration, z-index layering, and accessibility compliance. Kit's small-text-size aesthetic needs particular attention during the typography migration to ensure readability at @stuntrocket/ui's slightly larger base size.
 - **Acceptance criteria:**
-  - Ambient background blobs with Scooda colours and drift animations
+  - Ambient background blobs with @stuntrocket/ui colours and drift animations
   - Custom scrollbars with accent-tinted thumb
-  - Micro-animations on all interactive elements per Scooda timing scale
+  - Micro-animations on all interactive elements per @stuntrocket/ui timing scale
   - macOS titlebar with drag region and 78px traffic light padding
-  - Z-index layering matches Scooda scale
+  - Z-index layering matches @stuntrocket/ui scale
   - prefers-reduced-motion respected
   - Focus rings on all interactive elements
-  - Typography visually balanced at Scooda's 15px base (verify density modes still work)
+  - Typography visually balanced at @stuntrocket/ui's 15px base (verify density modes still work)
   - Visual side-by-side comparison with Dalil passes review

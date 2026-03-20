@@ -67,7 +67,7 @@ fn parse_scope(scope: &str) -> Result<SetScope, AppError> {
 }
 
 /// Build skill entries for a set definition, resolving names and archived
-/// status from the library.
+/// status from the library. Skills not found in the library are marked as missing.
 fn build_skill_entries(
     skill_ids: &[String],
     library_skills: &[SkillMeta],
@@ -82,6 +82,7 @@ fn build_skill_entries(
                     .map(|m| m.name.clone())
                     .unwrap_or_else(|| sid.clone()),
                 archived: meta.map(|m| m.archived).unwrap_or(false),
+                missing: meta.is_none(),
             }
         })
         .collect()

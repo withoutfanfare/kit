@@ -52,6 +52,9 @@ pub fn list_library_items(
             use_count_30d: usage.use_count_30d,
             last_used_at: usage.last_used_at,
             is_unused_everywhere: linked_count == 0,
+            tags: skill.tags.clone(),
+            validation_issues: skill.validation_issues.clone(),
+            broken_skill_count: 0,
         });
     }
 
@@ -68,6 +71,13 @@ pub fn list_library_items(
             })
             .count();
 
+        // Count skills referenced by this set that don't exist in the library
+        let broken_skill_count = set_def
+            .skills
+            .iter()
+            .filter(|sid| !library_skills.iter().any(|s| s.folder_name == **sid))
+            .count();
+
         items.push(LibraryListItem {
             id: set_id.clone(),
             name: set_def.name.clone(),
@@ -78,6 +88,9 @@ pub fn list_library_items(
             use_count_30d: 0,
             last_used_at: None,
             is_unused_everywhere: linked_count == 0,
+            tags: Vec::new(),
+            validation_issues: Vec::new(),
+            broken_skill_count,
         });
     }
 

@@ -148,12 +148,33 @@ onMounted(() => {
               <div class="row-content">
                 <span class="row-name">{{ item.name }}</span>
                 <span v-if="item.summary" class="row-summary">{{ item.summary }}</span>
+                <div v-if="item.tags.length > 0" class="row-tags">
+                  <SBadge v-for="tag in item.tags" :key="tag" variant="default" compact>{{ tag }}</SBadge>
+                </div>
               </div>
               <div class="row-meta">
                 <SBadge v-if="item.useCount30d > 0" variant="count" compact>
                   {{ item.useCount30d }} uses
                 </SBadge>
                 <span v-if="item.kind === 'skill' && item.useCount30d === 0 && item.isUnusedEverywhere" class="unused-dot" title="Not assigned anywhere" />
+                <SBadge
+                  v-if="item.validationIssues.some((i: any) => i.severity === 'error')"
+                  variant="error"
+                  compact
+                  :title="item.validationIssues.filter((i: any) => i.severity === 'error').map((i: any) => i.message).join(', ')"
+                >error</SBadge>
+                <SBadge
+                  v-else-if="item.validationIssues.some((i: any) => i.severity === 'warning')"
+                  variant="warning"
+                  compact
+                  :title="item.validationIssues.filter((i: any) => i.severity === 'warning').map((i: any) => i.message).join(', ')"
+                >warning</SBadge>
+                <SBadge
+                  v-if="item.kind === 'set' && item.brokenSkillCount > 0"
+                  variant="error"
+                  compact
+                  :title="`${item.brokenSkillCount} referenced skill(s) not found in library`"
+                >{{ item.brokenSkillCount }} missing</SBadge>
                 <SBadge v-if="item.archived" variant="default" compact>archived</SBadge>
                 <SBadge :variant="item.kind === 'skill' ? 'accent' : 'default'" compact>
                   {{ item.kind }}
@@ -196,7 +217,14 @@ onMounted(() => {
             </div>
           </div>
           <div v-if="libraryStore.filteredItems.length === 0 && !libraryStore.isLoading" class="list-empty">
-            <span class="list-empty-text">No items found</span>
+            <span class="list-empty-text">
+              {{ libraryStore.searchQuery ? 'No items match your search' : 'No items found' }}
+            </span>
+            <button
+              v-if="libraryStore.searchQuery"
+              class="list-empty-clear"
+              @click="libraryStore.searchQuery = ''"
+            >Clear search</button>
           </div>
         </div>
       </div>
@@ -403,15 +431,38 @@ onMounted(() => {
   padding: var(--space-2);
 }
 
+.row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 2px;
+}
+
 .list-empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--space-2);
   padding: var(--space-6);
 }
 
 .list-empty-text {
   font-size: var(--text-sm);
   color: var(--text-tertiary);
+}
+
+.list-empty-clear {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.list-empty-clear:hover {
+  text-decoration: underline;
 }
 </style>
