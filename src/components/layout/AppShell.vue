@@ -9,8 +9,11 @@ import SidebarNav from "./SidebarNav.vue";
 import { SNoticeBanner } from "@stuntrocket/ui";
 import OnboardingView from "@/views/OnboardingView.vue";
 import SkillPeekPanel from "@/components/domain/SkillPeekPanel.vue";
+import BulkAssignModal from "@/components/domain/BulkAssignModal.vue";
 import { useAppStore } from "@/stores/appStore";
 import { useWatcherStore } from "@/stores/watcherStore";
+import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
+import ShortcutHelpOverlay from "@/components/domain/ShortcutHelpOverlay.vue";
 import type { SkillsRepoStatus } from "@/types";
 
 const router = useRouter();
@@ -32,6 +35,7 @@ onUnmounted(() => {
 
 const appStore = useAppStore();
 const watcherStore = useWatcherStore();
+useKeyboardShortcuts();
 const repoBannerDismissed = ref(false);
 const repoStatus = ref<SkillsRepoStatus | null>(null);
 
@@ -89,6 +93,12 @@ watch(
 
     <!-- Skill peek panel -->
     <SkillPeekPanel />
+
+    <!-- Bulk assign modal -->
+    <BulkAssignModal />
+
+    <!-- Keyboard shortcut help overlay -->
+    <ShortcutHelpOverlay />
 
     <!-- Global error -->
     <div v-if="appStore.globalError" class="global-error">

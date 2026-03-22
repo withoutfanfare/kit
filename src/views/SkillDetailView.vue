@@ -2,6 +2,7 @@
 import { watch, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { useLibraryStore } from "@/stores/libraryStore";
+import { useBulkAssignStore } from "@/stores/bulkAssignStore";
 import { SBadge } from "@stuntrocket/ui";
 import LinkedLocationsList from "@/components/domain/LinkedLocationsList.vue";
 import UsageSummaryPanel from "@/components/domain/UsageSummaryPanel.vue";
@@ -10,6 +11,8 @@ const route = useRoute();
 const libraryStore = useLibraryStore();
 
 const skillId = computed(() => route.params.skillId as string);
+
+const bulkAssignStore = useBulkAssignStore();
 
 const detail = computed(() => libraryStore.selectedDetail);
 
@@ -31,6 +34,13 @@ watch(skillId, loadDetail);
       <div class="header-title-row">
         <h2 class="header-name">{{ detail.name }}</h2>
         <SBadge v-if="detail.archived" variant="default">Archived</SBadge>
+        <button
+          class="bulk-assign-btn"
+          title="Assign this skill to multiple locations"
+          @click="bulkAssignStore.open([detail.id])"
+        >
+          Assign to locations
+        </button>
       </div>
       <span class="header-path">{{ detail.path }}</span>
     </div>
@@ -96,6 +106,26 @@ watch(skillId, loadDetail);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
   margin: 0;
+  flex: 1;
+}
+
+.bulk-assign-btn {
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-default);
+  white-space: nowrap;
+}
+
+.bulk-assign-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 
 .header-path {

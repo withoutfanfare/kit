@@ -440,6 +440,20 @@ pub struct SkillVersionInfo {
 }
 
 // ---------------------------------------------------------------------------
+// Changelog types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangelogEntry {
+    pub skill_id: String,
+    pub name: String,
+    pub modified_at: DateTime<Utc>,
+    pub size_bytes: u64,
+    pub assigned_location_count: usize,
+}
+
+// ---------------------------------------------------------------------------
 // Internal / persistence types
 // ---------------------------------------------------------------------------
 

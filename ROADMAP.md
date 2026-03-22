@@ -253,6 +253,95 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
   - Notification toast when scanning reveals updated skills (with count)
   - Hash tracking opt-in via settings (default: enabled) to avoid noise for users who always want latest
 
+### [UX/UI] Add skill content diff viewer comparing current version against assignment-time snapshot
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-22
+- **Status:** pending
+- **Description:** The version tracking item records content hashes at assignment time and flags when a skill has changed, but users can only see that something changed — not what changed. When a skill is updated (new behaviour, revised instructions, different triggers), users need to review the actual content differences before deciding whether the change is safe for their project. A diff viewer showing the assignment-time content alongside the current content would close the gap between "this skill changed" and "here's exactly what changed", enabling informed decisions about whether to accept, re-assign, or investigate the update.
+- **Acceptance criteria:**
+  - "View changes" action available on skill cards showing the "Updated since assignment" badge
+  - Diff view shows assignment-time content vs current content in a side-by-side or unified diff format
+  - Added lines highlighted green, removed lines highlighted red (standard diff colouring)
+  - Assignment-time content snapshot stored alongside the content hash in state.json (requires extending the hash record)
+  - Diff viewer dismissible via Escape or clicking outside
+  - If assignment-time content is unavailable (skills assigned before this feature), show a "No baseline snapshot" message with option to capture current content as the new baseline
+
+### [UX/UI] Add skill changelog showing recent modifications across the library
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-22
+- **Completed:** 2026-03-22
+- **Status:** completed
+- **Description:** The completed version tracking item flags when individual assigned skills have changed since assignment, but there is no library-wide view of recent modifications. Skill authors iterating on multiple skills — and project owners consuming skills from a shared library — need to see what changed across the library recently. A chronological changelog showing recently modified skills with timestamps, content size changes, and brief summaries would help library maintainers stay informed about skill ecosystem evolution and project owners understand which updates might affect their loadouts, complementing the per-assignment diff viewer with a macro-level perspective.
+- **Acceptance criteria:**
+  - Changelog view accessible from the library navigation showing skills modified within a configurable window (default: last 7 days)
+  - Each entry shows: skill name, modification timestamp, content size delta (bytes added/removed), file system modification date
+  - Entries sorted by most recently modified first
+  - Click on an entry navigates to the skill detail with the inline preview expanded
+  - Changelog derived from filesystem metadata and existing content hashes (no additional tracking overhead)
+  - Filter by date range and optionally by skills assigned to a specific location
+
+### [Feature] Add bulk skill assignment to multiple locations in one operation
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-22
+- **Completed:** 2026-03-22
+- **Status:** completed
+- **Description:** When a new skill is created that applies to many projects — a universal coding standard, a shared debugging workflow, or a new team convention — the user must assign it to each location individually via the quick-assign action or the full assignment workflow. For users managing 10+ locations, this is tedious and error-prone (easy to miss a location). A bulk assignment flow (select skill → select multiple target locations → preview all changes → apply) would reduce repetitive work and ensure consistent skill deployment across the portfolio.
+- **Acceptance criteria:**
+  - "Assign to multiple locations" action available on skill cards in the library view
+  - Location multi-select dialog showing all registered locations with current assignment status for the skill
+  - Preview step showing: locations that will receive the skill, locations already assigned (skipped), any conflicts
+  - Bulk apply creates symlinks and updates manifests for all selected locations in sequence
+  - Success summary showing: assignments created, skipped (already assigned), failed (with reason)
+  - Bulk assignment respects the same validation rules as single assignment (duplicate detection, path safety)
+
+### [UX/UI] Add keyboard shortcuts for library and location navigation
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-22
+- **Completed:** 2026-03-22
+- **Status:** completed
+- **Description:** Kit targets power users who manage Claude Code skills across multiple projects — the same audience that uses keyboard-driven workflows in their editors and terminals. Despite this, Kit has no keyboard shortcuts for any operation. Every other app in the portfolio has keyboard shortcuts implemented or planned. Navigation shortcuts (Cmd+1/2/3 for view switching, j/k for list navigation, / for search focus, Enter for detail, Cmd+N for new) would bring Kit in line with the portfolio standard and match the expectations of its target audience.
+- **Acceptance criteria:**
+  - Cmd+1 switches to Library view, Cmd+2 to Locations view, Cmd+3 to Sets view
+  - j/k navigates up/down through the active list (skills, locations, or sets)
+  - Enter opens the detail panel for the selected item
+  - / focuses the search input (library view)
+  - Cmd+N opens the create dialog for the current view context (new location, new set)
+  - Escape closes any open panel or dialog
+  - All shortcuts documented in a help overlay (Cmd+/)
+  - No conflicts with system-level macOS shortcuts
+
+### [Feature] Add location skill comparison view showing assignment differences between locations
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-22
+- **Status:** pending
+- **Description:** When standardising Claude Code skill configurations across projects — ensuring all Laravel projects have the same debugging and testing skills, or verifying that a new project has the same loadout as an established reference project — users must manually switch between locations and visually compare their assigned skills. A side-by-side comparison of two selected locations showing skills unique to each, skills shared by both, and version differences (using the existing content hash tracking, completed) would make loadout standardisation a one-screen operation rather than a tedious back-and-forth mental comparison.
+- **Acceptance criteria:**
+  - "Compare locations" action available from the locations view (select two locations)
+  - Comparison view shows three columns: skills only in Location A, skills in both, skills only in Location B
+  - Shared skills with different content hashes (version tracking, completed) flagged as "different versions"
+  - Quick-assign action available from the comparison view to copy missing skills from one location to the other
+  - Comparison exportable as a text summary for documentation or team communication
+  - Works across all registered locations (not limited to the active location)
+
+### [Distribution] Add one-click skill library backup and restore for machine migration and disaster recovery
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-23
+- **Status:** pending
+- **Description:** Kit's skill library and configuration are filesystem-based — skill folders with SKILL.md files, set definition JSON files, and state.json tracking usage counters and preferences. If a developer replaces their machine, reformats their disk, or wants to replicate their skill setup on a second workstation, there is no structured backup or migration path. The export/import feature (completed) handles individual sets and skill bundles, but does not capture the full library state (directory structure, state.json, all set definitions, preferences). A one-click backup producing a single portable archive — and a restore that reconstructs the complete library — would make Kit's skill ecosystem durable and portable across machines.
+- **Acceptance criteria:**
+  - "Backup library" action in settings produces a single .zip archive containing: all skill folders with SKILL.md files, all set definitions (*.set.json), state.json (usage counters, preferences), and library root path metadata
+  - Archive includes a manifest file listing contents with checksums for integrity verification
+  - "Restore library" action accepts a backup archive and reconstructs the library at a user-selected location
+  - Restore handles conflicts: existing skills with matching names prompt for overwrite/skip/rename
+  - Backup and restore accessible from the settings view with progress indicator
+  - Backup file named descriptively (e.g. kit-library-backup-2026-03-23.zip)
+
 ## Design System Adoption
 
 These items implement the @stuntrocket/ui design system to achieve premium visual uniformity across all Tauri applications. Items are ordered by dependency — foundation must complete before migration, migration before polish.

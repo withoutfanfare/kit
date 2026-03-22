@@ -1,5 +1,17 @@
 # Kit Development Log
 
+## Cycle: 2026-03-22
+- App: Kit
+- Items completed:
+  - [UX/UI] Add keyboard shortcuts for library and location navigation (P2/S) — `useKeyboardShortcuts` composable with Cmd+1-5 view switching (Locations, Skills, Sets, Changelog, Health), j/k list navigation, Enter for detail, / for search focus, Cmd+/ shortcut help overlay. Input suppression for focused text fields. ShortcutHelpOverlay modal with grouped shortcuts.
+  - [UX/UI] Add skill changelog showing recent modifications across the library (P2/S) — Rust `get_skill_changelog` command scans library skills by filesystem modification time, accepts optional `days` filter, returns `Vec<ChangelogEntry>` sorted by most recent. Frontend: changelogStore with day filter + search, ChangelogView with date range segmented control (All/7/30/90 days), time-ago display, size formatting, click-to-navigate. New /changelog route and sidebar nav link.
+  - [Feature] Add bulk skill assignment to multiple locations in one operation (P2/S) — Rust `bulk_assign_skills` command iterates location IDs, creates symlinks, updates manifests, records version hashes per location. Returns per-location success/error results. Frontend: bulkAssignStore with location multi-select, select-all/deselect-all, BulkAssignModal with checkbox list showing location label/path/skill count and result badges. "Assign to locations" button on SkillDetailView header.
+- Items attempted but failed: none
+- Branch: main
+- Tests passing: yes (cargo test 29/29, cargo clippy clean, vue-tsc clean)
+- Build status: compiles (cargo check, vue-tsc --noEmit)
+- Notes: Three P2/S items implemented. New files: composables/useKeyboardShortcuts.ts, components/domain/ShortcutHelpOverlay.vue, components/domain/BulkAssignModal.vue, stores/changelogStore.ts, stores/bulkAssignStore.ts, views/ChangelogView.vue, commands/changelog.rs. Modified: domain.rs (ChangelogEntry + BulkAssignResult types), assignment.rs (bulk_assign_skills command), lib.rs (2 new commands registered), types/index.ts (2 new types), router.ts (/changelog route), SidebarNav.vue (Changelog nav item), AppShell.vue (BulkAssignModal + ShortcutHelpOverlay), SkillDetailView.vue (bulk assign button).
+
 ## Cycle: 2026-03-20 23:59
 - App: Kit
 - Items completed:

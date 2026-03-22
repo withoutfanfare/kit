@@ -47,6 +47,11 @@ const router = createRouter({
       ],
     },
     {
+      path: "/changelog",
+      name: "changelog",
+      component: () => import("@/views/ChangelogView.vue"),
+    },
+    {
       path: "/health",
       name: "health",
       component: () => import("@/views/HealthView.vue"),

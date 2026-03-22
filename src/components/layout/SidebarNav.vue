@@ -8,6 +8,7 @@ const navItems = [
   { label: "Locations", subtitle: "Your projects", to: "/locations", icon: "folder" },
   { label: "Skills", subtitle: "Skill library", to: "/skills", icon: "puzzle" },
   { label: "Sets", subtitle: "Skill groups", to: "/sets", icon: "set" },
+  { label: "Changelog", subtitle: "Recent changes", to: "/changelog", icon: "chart" },
   { label: "Health", subtitle: "Issue scanner", to: "/health", icon: "health" },
 ];
 

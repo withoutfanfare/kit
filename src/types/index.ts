@@ -241,6 +241,23 @@ export type SkillVersionInfo = {
   assignedAt: string | null;
 };
 
+// Bulk assignment types
+export type BulkAssignResult = {
+  locationId: LocationId;
+  locationLabel: string;
+  success: boolean;
+  error: string | null;
+};
+
+// Changelog types
+export type ChangelogEntry = {
+  skillId: SkillId;
+  name: string;
+  modifiedAt: string;
+  sizeBytes: number;
+  assignedLocationCount: number;
+};
+
 // Watcher status
 export type WatcherStatus = "active" | "paused" | "error" | "stopped";
 

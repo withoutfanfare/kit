@@ -408,6 +408,138 @@ pub fn apply_assignment(
     })
 }
 
+/// Result of a single location in a bulk assignment operation.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkAssignResult {
+    pub location_id: String,
+    pub location_label: String,
+    pub success: bool,
+    pub error: Option<String>,
+}
+
+/// Assign skills to multiple locations in a single operation.
+#[tauri::command]
+pub fn bulk_assign_skills(
+    location_ids: Vec<String>,
+    skill_ids: Vec<String>,
+    state: State<'_, SharedState>,
+) -> Result<Vec<BulkAssignResult>, AppError> {
+    validate_skill_ids(&skill_ids)?;
+
+    let mut results: Vec<BulkAssignResult> = Vec::new();
+    let mut guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
+    let prefs = guard.preferences().clone();
+    let library_root = PathBuf::from(&prefs.library_root);
+
+    for loc_id in &location_ids {
+        let loc = match guard.find_location(loc_id) {
+            Some(l) => l.clone(),
+            None => {
+                results.push(BulkAssignResult {
+                    location_id: loc_id.clone(),
+                    location_label: loc_id.clone(),
+                    success: false,
+                    error: Some(format!("Location not found: {}", loc_id)),
+                });
+                continue;
+            }
+        };
+
+        let location_path = PathBuf::from(&loc.path);
+
+        // Create symlinks
+        let skills_dir = match linker::ensure_skills_dir(&location_path) {
+            Ok(sd) => sd,
+            Err(e) => {
+                results.push(BulkAssignResult {
+                    location_id: loc_id.clone(),
+                    location_label: loc.label.clone(),
+                    success: false,
+                    error: Some(e),
+                });
+                continue;
+            }
+        };
+
+        let mut had_error = false;
+        for sid in &skill_ids {
+            let target = library_root.join(sid);
+            let link_path = skills_dir.join(sid);
+
+            // Skip if already exists
+            if std::fs::symlink_metadata(&link_path).is_ok() {
+                continue;
+            }
+
+            if let Err(e) = linker::create_skill_link(&target, &link_path) {
+                results.push(BulkAssignResult {
+                    location_id: loc_id.clone(),
+                    location_label: loc.label.clone(),
+                    success: false,
+                    error: Some(e),
+                });
+                had_error = true;
+                break;
+            }
+        }
+
+        if had_error {
+            continue;
+        }
+
+        // Update manifest
+        if let Err(e) = update_manifest_skills_and_sets(
+            &location_path,
+            &skill_ids,
+            &[],
+            &[],
+            &[],
+        ) {
+            results.push(BulkAssignResult {
+                location_id: loc_id.clone(),
+                location_label: loc.label.clone(),
+                success: false,
+                error: Some(e.message),
+            });
+            continue;
+        }
+
+        // Record version hashes
+        if guard.inner.preferences.track_skill_versions {
+            for sid in &skill_ids {
+                let skill_path = library_root.join(sid);
+                if let Some(hash) = scanner::hash_skill_content(&skill_path) {
+                    let key = format!("{}:{}", loc_id, sid);
+                    guard.inner.skill_hashes.insert(
+                        key,
+                        state::SkillHashRecord {
+                            hash,
+                            assigned_at: Some(chrono::Utc::now()),
+                        },
+                    );
+                }
+            }
+        }
+
+        // Update last synced
+        if let Some(loc_mut) = guard.find_location_mut(loc_id) {
+            loc_mut.last_synced_at = Some(chrono::Utc::now());
+        }
+
+        results.push(BulkAssignResult {
+            location_id: loc_id.clone(),
+            location_label: loc.label.clone(),
+            success: true,
+            error: None,
+        });
+    }
+
+    guard.save().map_err(AppError::new)?;
+
+    Ok(results)
+}
+
 /// Helper to update the manifest's `skills` and `sets` arrays.
 fn update_manifest_skills_and_sets(
     location_path: &Path,

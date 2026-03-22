@@ -6,8 +6,9 @@ pub mod state;
 pub mod tray;
 pub mod watcher;
 
-use commands::assignment::{apply_assignment, preview_assignment};
+use commands::assignment::{apply_assignment, bulk_assign_skills, preview_assignment};
 use commands::bootstrap::{get_app_bootstrap, get_app_data_path, update_preferences};
+use commands::changelog::get_skill_changelog;
 use commands::external::{open_path_in_editor, open_with_default_app, resolve_skill_path, reveal_in_finder};
 use commands::health::{fix_broken_links, get_skill_versions, read_skill_content, run_health_check};
 use commands::library::{archive_skill, get_skill_detail, list_library_items, unarchive_skill};
@@ -50,6 +51,7 @@ pub fn run() {
             // Assignment
             preview_assignment,
             apply_assignment,
+            bulk_assign_skills,
             // Sets
             list_sets,
             create_set,
@@ -81,6 +83,8 @@ pub fn run() {
             export_skill_bundle,
             preview_import_bundle,
             import_skill_bundle,
+            // Changelog
+            get_skill_changelog,
             // Filesystem watcher
             start_library_watcher,
             stop_library_watcher,

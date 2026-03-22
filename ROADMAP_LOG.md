@@ -1,5 +1,45 @@
 # Kit Roadmap Log
 
+## Cycle: 2026-03-22 (implementation)
+- **Items completed:**
+  - [UX/UI] Add keyboard shortcuts for library and location navigation (P2, S)
+  - [UX/UI] Add skill changelog showing recent modifications across the library (P2, S)
+  - [Feature] Add bulk skill assignment to multiple locations in one operation (P2, S)
+- **Items added:** none
+- **Items archived:** none
+- **Observations:** Three P2/S items implemented in a single batch. Keyboard shortcuts bring Kit in line with the portfolio standard. Changelog provides library-wide modification visibility. Bulk assignment eliminates repetitive per-location assignment for shared skills. Kit now has 4 pending functional items (diff viewer P2/S, location comparison P2/S, library backup P3/S, dependency resolution P3/L) + 3 design system items.
+
+## Cycle: 2026-03-23 09:00
+- **Items added:**
+  - [Distribution] Add one-click skill library backup and restore for machine migration and disaster recovery (P3, S)
+- **Items archived:** none
+- **Observations:** Added one item filling the Distribution category gap — Kit had no pending Distribution items after the export/import feature was completed. Library backup/restore addresses a durability gap that the export/import feature only partially covers (individual sets vs full library state). Kit has 7 functional pending items + 3 design system = 10 total. The keyboard shortcuts (P2, S) and skill content diff viewer (P2, S) pair would deliver the highest daily-use improvement — shortcuts for navigation speed, diff viewer for informed skill update decisions.
+
+## Cycle: 2026-03-23 03:00
+- **Items added:**
+  - [Feature] Add location skill comparison view showing assignment differences between locations (P2, S)
+- **Items archived:** none
+- **Observations:** Kit has 7 pending functional items + 3 design system = 10 total. Added location comparison to address a skill standardisation gap — users managing Claude Code skills across 10+ projects must manually switch between locations and visually compare assignments to ensure consistency. A side-by-side view showing unique and shared skills (with version difference flagging via the completed content hash tracking) would make loadout standardisation a one-screen operation. This complements the completed quick-assign and unused skill detection features by adding a comparison perspective. Bulk assignment (P2, S) and keyboard shortcuts (P2, S) remain the highest-priority items. The dependency resolution item (P3, L) remains tagged as "Needs review".
+
+## Cycle: 2026-03-22 21:00
+- **Items added:**
+  - [Feature] Add bulk skill assignment to multiple locations in one operation (P2, S)
+  - [UX/UI] Add keyboard shortcuts for library and location navigation (P2, S)
+- **Items archived:** none
+- **Observations:** Kit has 5 pending functional items + 3 design system = 8 total. Bulk assignment (P2, S) addresses the most repetitive workflow for users managing many locations — when a new universal skill is created, assigning it to 10+ locations one by one is tedious and error-prone. Keyboard shortcuts (P2, S) bring Kit in line with the portfolio standard — every other app has shortcuts implemented or planned, but Kit (which targets the most keyboard-driven audience: Claude Code power users) has none. Both are small and build on existing infrastructure (assignment workflow, existing UI patterns). The diff viewer (P2, S) and changelog (P2, S) form the strongest pair for skill evolution awareness. The dependency resolution item (P3, L, Needs review) remains the most speculative pending feature.
+
+## Cycle: 2026-03-22 15:00
+- **Items added:**
+  - [UX/UI] Add skill changelog showing recent modifications across the library (P2, S)
+- **Items archived:** none
+- **Observations:** Kit has 3 pending functional items + 3 design system = 6 total. Added a library changelog (P2, S) to provide a macro-level view of skill evolution. The completed version tracking item flags per-assignment changes, and the diff viewer (P2, S) shows what changed in individual skills — but neither provides a library-wide "what's been modified recently" view. Skill authors iterating on multiple skills and project owners consuming from shared libraries need this temporal overview. The item builds on existing filesystem metadata and content hashes with no additional tracking overhead. The diff viewer (P2, S) and changelog (P2, S) together form a strong "skill evolution awareness" pair. The dependency resolution item (P3, L, Needs review) remains the most speculative item.
+
+## Cycle: 2026-03-22 09:00
+- **Items added:**
+  - [UX/UI] Add skill content diff viewer comparing current version against assignment-time snapshot (P2, S)
+- **Items archived:** none
+- **Observations:** Kit has 2 pending functional items + 3 design system = 5 total pending. The existing functional item is skill dependency resolution (P3, L, Needs review). Added a content diff viewer (P2, S) to close the gap in the version tracking workflow: the completed version tracking item records content hashes and flags when skills change, but users can only see that something changed — not what. When a skill's SKILL.md is updated, users need to review actual content differences before accepting the change into their project. This extends state.json to store the assignment-time content snapshot alongside the hash. The diff viewer (P2, S) is now the highest-priority functional item, ahead of the dependency resolution feature (P3, L).
+
 ## Cycle: 2026-03-20 23:59
 - **Items completed:**
   - [Quality] Health check dashboard for all locations (P2, M)

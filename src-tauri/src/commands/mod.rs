@@ -1,5 +1,6 @@
 pub mod assignment;
 pub mod bootstrap;
+pub mod changelog;
 pub mod external;
 pub mod health;
 pub mod library;
