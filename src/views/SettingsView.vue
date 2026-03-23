@@ -7,7 +7,9 @@ import { useLibraryStore } from "@/stores/libraryStore";
 import { useAppStore } from "@/stores/appStore";
 import type { SkillsRepoStatus, RepoState } from "@/types";
 import { SButton, SBadge } from "@stuntrocket/ui";
+import { useTheme } from "@/composables/useTheme";
 
+const { theme, toggle: toggleTheme } = useTheme();
 const preferencesStore = usePreferencesStore();
 const libraryStore = useLibraryStore();
 const appStore = useAppStore();
@@ -212,6 +214,27 @@ onMounted(async () => {
 <template>
   <div class="settings-view">
     <h1 class="page-title">Settings</h1>
+
+    <!-- Appearance -->
+    <section class="settings-section">
+      <h2 class="section-title">Appearance</h2>
+      <div class="settings-group">
+        <div class="setting-row">
+          <div class="setting-label">
+            <span class="label-text">Dark mode</span>
+            <span class="label-description">Switch between dark and light themes</span>
+          </div>
+          <label class="toggle">
+            <input
+              type="checkbox"
+              :checked="theme === 'dark'"
+              @change="toggleTheme"
+            />
+            <span class="toggle-track" />
+          </label>
+        </div>
+      </div>
+    </section>
 
     <!-- General -->
     <section class="settings-section">
