@@ -1,5 +1,17 @@
 # Kit Development Log
 
+## Cycle: 2026-03-24 22:00
+- App: Kit
+- Items completed:
+  - [UX/UI] Add skill activation toggle to temporarily disable skills without unlinking (P2/S) — `toggle_skill_activation` command flips disabled state in state.json `disabled_skills` HashSet (keyed by "locationId:skillId"), removes/adds skill from manifest. New `disabled: bool` field on `SkillAssignment`. Frontend: toggle button on linked skill rows, disabled state shown with reduced opacity and "disabled" badge. SkillRow gains action buttons for toggle and diff.
+  - [Quality] Add skill body content validation for SKILL.md size and structure (P2/S) — `validate_skill_body()` in scanner.rs checks total file size (warning >30KB, error >50KB), empty body after frontmatter, and very short content (<50 chars). `get_skill_body_validation` command exposes via IPC. Results shown in SkillPeekPanel "Content quality" section with severity badges.
+  - [UX/UI] Add skill content diff viewer comparing current version against assignment-time snapshot (P2/S) — Content snapshots stored in state.json `skill_snapshots` HashMap during `apply_assignment`. `get_skill_content_diff` command returns assigned vs current content. SkillDiffModal component with side-by-side columns, triggered from "view changes" button on skill rows. Handles missing snapshots gracefully.
+- Items attempted but failed: none
+- Branch: feature/activation-toggle-validation-diff
+- Tests passing: yes (cargo clippy clean, vue-tsc clean)
+- Build status: compiles (cargo check, vue-tsc --noEmit)
+- Notes: Three P2/S quality items implemented. New files: commands/activation.rs (3 commands + manifest helpers), components/domain/SkillDiffModal.vue. Modified: state.rs (disabled_skills HashSet, skill_snapshots HashMap), domain.rs (disabled field, SkillContentDiff type), scanner.rs (validate_skill_body, extract_body), assignment.rs (snapshot recording, disabled enrichment), locations.rs (disabled enrichment), lib.rs (3 new commands), types/index.ts (disabled field, SkillContentDiff type), locationsStore.ts (toggleSkillActivation), SkillRow.vue (action buttons), SkillList.vue (event passthrough), SkillPeekPanel.vue (body validation section), LocationDetailView.vue (toggle handler, diff modal).
+
 ## Cycle: 2026-03-22
 - App: Kit
 - Items completed:

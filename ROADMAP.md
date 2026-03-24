@@ -257,7 +257,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-22
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-24
 - **Description:** The version tracking item records content hashes at assignment time and flags when a skill has changed, but users can only see that something changed — not what changed. When a skill is updated (new behaviour, revised instructions, different triggers), users need to review the actual content differences before deciding whether the change is safe for their project. A diff viewer showing the assignment-time content alongside the current content would close the gap between "this skill changed" and "here's exactly what changed", enabling informed decisions about whether to accept, re-assign, or investigate the update.
 - **Acceptance criteria:**
   - "View changes" action available on skill cards showing the "Updated since assignment" badge
@@ -313,6 +314,34 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
   - Escape closes any open panel or dialog
   - All shortcuts documented in a help overlay (Cmd+/)
   - No conflicts with system-level macOS shortcuts
+
+### [UX/UI] Add skill activation toggle to temporarily disable skills without unlinking
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** completed
+- **Completed:** 2026-03-24
+- **Description:** When debugging or experimenting with skill configurations, users need to temporarily disable a skill at a location without fully removing the symlink and manifest entry — allowing quick re-enabling without going through the assignment workflow again. The toggle removes the skill from the manifest (so Claude Code won't load it) while keeping the symlink intact, with state persisted in ~/.kit/state.json.
+- **Acceptance criteria:**
+  - Toggle button on each linked skill row in the location detail view
+  - Disabling removes the skill from the manifest but keeps the symlink
+  - Enabling restores the skill to the manifest
+  - Disabled skills shown with reduced opacity and "disabled" badge
+  - State persists across app restarts via state.json
+  - Toggle action returns updated LocationDetail for immediate UI refresh
+
+### [Quality] Add skill body content validation for SKILL.md size and structure quality
+- **Priority:** P2 (important)
+- **Size:** S (< 1hr)
+- **Added:** 2026-03-24
+- **Status:** completed
+- **Completed:** 2026-03-24
+- **Description:** The frontmatter validation (completed) catches YAML structure issues, but no validation exists for the body content of SKILL.md files. Oversized skills degrade Claude's context window efficiency, and skills with empty or very short bodies are unlikely to be useful. Body content validation checks total file size (warning > 30KB, error > 50KB), empty body detection, and very short content warnings, surfacing results in the skill peek panel.
+- **Acceptance criteria:**
+  - Body validated for total size, empty body, and very short content
+  - Validation results shown in the skill peek panel's content quality section
+  - Size thresholds: warning at 30KB, error at 50KB
+  - Results use the existing ValidationIssue type with appropriate severity levels
 
 ### [Feature] Add location skill comparison view showing assignment differences between locations
 - **Priority:** P2 (important)
