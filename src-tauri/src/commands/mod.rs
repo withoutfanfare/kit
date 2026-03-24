@@ -1,3 +1,4 @@
+pub mod activation;
 pub mod assignment;
 pub mod bootstrap;
 pub mod changelog;

@@ -178,7 +178,14 @@ pub fn get_location_detail(
         &library_sets,
     );
 
-    let assigned_ids: Vec<String> = scan.skills.iter().map(|s| s.skill_id.clone()).collect();
+    // Enrich disabled state from persisted state
+    let mut skills = scan.skills;
+    for skill in &mut skills {
+        let key = format!("{}:{}", id, skill.skill_id);
+        skill.disabled = guard.inner.disabled_skills.contains(&key);
+    }
+
+    let assigned_ids: Vec<String> = skills.iter().map(|s| s.skill_id.clone()).collect();
     let skill_recommendations = scanner::recommend_skills(
         &scan.detected_project_types,
         &library_skills,
@@ -192,7 +199,7 @@ pub fn get_location_detail(
         manifest_path: scan.manifest_path,
         notes: loc.notes,
         sets: scan.sets,
-        skills: scan.skills,
+        skills,
         issues: scan.issues,
         stats: scan.stats,
         detected_project_types: scan.detected_project_types,
@@ -229,7 +236,14 @@ pub fn sync_location(
         &library_sets,
     );
 
-    let assigned_ids: Vec<String> = scan.skills.iter().map(|s| s.skill_id.clone()).collect();
+    // Enrich disabled state from persisted state
+    let mut skills = scan.skills;
+    for skill in &mut skills {
+        let key = format!("{}:{}", id, skill.skill_id);
+        skill.disabled = guard.inner.disabled_skills.contains(&key);
+    }
+
+    let assigned_ids: Vec<String> = skills.iter().map(|s| s.skill_id.clone()).collect();
     let skill_recommendations = scanner::recommend_skills(
         &scan.detected_project_types,
         &library_skills,
@@ -243,7 +257,7 @@ pub fn sync_location(
         manifest_path: scan.manifest_path,
         notes: loc_snapshot.notes,
         sets: scan.sets,
-        skills: scan.skills,
+        skills,
         issues: scan.issues,
         stats: scan.stats,
         detected_project_types: scan.detected_project_types,

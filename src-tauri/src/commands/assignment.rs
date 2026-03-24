@@ -356,19 +356,24 @@ pub fn apply_assignment(
         loc_mut.last_synced_at = Some(chrono::Utc::now());
     }
 
-    // Record skill content hashes for version tracking
+    // Record skill content hashes and snapshots for version tracking
     if guard.inner.preferences.track_skill_versions {
         for sid in &expanded_skill_ids {
             let skill_path = library_root.join(sid);
             if let Some(hash) = scanner::hash_skill_content(&skill_path) {
                 let key = format!("{}:{}", location_id, sid);
                 guard.inner.skill_hashes.insert(
-                    key,
+                    key.clone(),
                     state::SkillHashRecord {
                         hash,
                         assigned_at: Some(chrono::Utc::now()),
                     },
                 );
+                // Store content snapshot for diff viewer
+                let skill_md = skill_path.join("SKILL.md");
+                if let Ok(content) = std::fs::read_to_string(&skill_md) {
+                    guard.inner.skill_snapshots.insert(key, content);
+                }
             }
         }
     }
@@ -385,7 +390,14 @@ pub fn apply_assignment(
         &library_sets,
     );
 
-    let assigned_ids: Vec<String> = scan.skills.iter().map(|s| s.skill_id.clone()).collect();
+    // Enrich disabled state from persisted state
+    let mut skills = scan.skills;
+    for skill in &mut skills {
+        let key = format!("{}:{}", location_id, skill.skill_id);
+        skill.disabled = guard.inner.disabled_skills.contains(&key);
+    }
+
+    let assigned_ids: Vec<String> = skills.iter().map(|s| s.skill_id.clone()).collect();
     let skill_recommendations = scanner::recommend_skills(
         &scan.detected_project_types,
         &library_skills,
@@ -399,7 +411,7 @@ pub fn apply_assignment(
         manifest_path: scan.manifest_path,
         notes: loc.notes,
         sets: scan.sets,
-        skills: scan.skills,
+        skills,
         issues: scan.issues,
         stats: scan.stats,
         detected_project_types: scan.detected_project_types,

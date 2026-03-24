@@ -128,6 +128,72 @@ pub fn validate_skill_md(content: &str) -> Vec<ValidationIssue> {
     issues
 }
 
+/// Validate the body content of a SKILL.md file (everything after the
+/// frontmatter). Returns issues related to size, structure, and quality.
+pub fn validate_skill_body(content: &str) -> Vec<ValidationIssue> {
+    let mut issues = Vec::new();
+    let total_bytes = content.len();
+
+    // Extract the body (everything after the closing ---)
+    let body = extract_body(content);
+
+    // Size checks on the full file
+    if total_bytes > 50_000 {
+        issues.push(ValidationIssue {
+            field: "body".to_string(),
+            message: format!("SKILL.md is very large ({:.1} KB)", total_bytes as f64 / 1024.0),
+            suggestion: "Consider splitting into multiple skills or trimming verbose sections".to_string(),
+            severity: ValidationSeverity::Error,
+        });
+    } else if total_bytes > 30_000 {
+        issues.push(ValidationIssue {
+            field: "body".to_string(),
+            message: format!("SKILL.md is large ({:.1} KB)", total_bytes as f64 / 1024.0),
+            suggestion: "Large skills may exceed context limits — consider trimming".to_string(),
+            severity: ValidationSeverity::Warning,
+        });
+    }
+
+    // Empty body check
+    let body_trimmed = body.trim();
+    if body_trimmed.is_empty() {
+        issues.push(ValidationIssue {
+            field: "body".to_string(),
+            message: "SKILL.md has no body content after the frontmatter".to_string(),
+            suggestion: "Add instructions, examples, or trigger descriptions".to_string(),
+            severity: ValidationSeverity::Warning,
+        });
+        return issues;
+    }
+
+    // Very short body
+    if body_trimmed.len() < 50 {
+        issues.push(ValidationIssue {
+            field: "body".to_string(),
+            message: "Body content is very short (under 50 characters)".to_string(),
+            suggestion: "Add more detail about when and how to use this skill".to_string(),
+            severity: ValidationSeverity::Warning,
+        });
+    }
+
+    issues
+}
+
+/// Extract the body content from a SKILL.md file (everything after the
+/// closing frontmatter delimiter).
+fn extract_body(content: &str) -> &str {
+    let trimmed = content.trim_start();
+    if !trimmed.starts_with("---") {
+        return content;
+    }
+    let after_first = &trimmed[3..];
+    if let Some(end) = after_first.find("---") {
+        &after_first[end + 3..]
+    } else {
+        content
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Library scanning
 // ---------------------------------------------------------------------------
@@ -420,6 +486,7 @@ pub fn scan_location(
                             declared_in_manifest: declared,
                             archived: false,
                             source: SkillSource::Library,
+                            disabled: false,
                         });
                         issues.push(LocationIssue {
                             kind: IssueKind::BrokenLink,
@@ -499,6 +566,7 @@ pub fn scan_location(
                             declared_in_manifest: declared,
                             archived,
                             source,
+                            disabled: false,
                         });
                     }
                 } else if path.is_dir() {
@@ -516,6 +584,7 @@ pub fn scan_location(
                         declared_in_manifest: declared,
                         archived: false,
                         source: SkillSource::Local,
+                        disabled: false,
                     });
                 }
             }
@@ -539,6 +608,7 @@ pub fn scan_location(
                     .map(|m| m.archived)
                     .unwrap_or(false),
                 source: SkillSource::Library,
+                disabled: false,
             });
             issues.push(LocationIssue {
                 kind: IssueKind::DeclaredMissing,

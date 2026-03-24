@@ -174,6 +174,10 @@ pub struct SkillAssignment {
     pub declared_in_manifest: bool,
     pub archived: bool,
     pub source: SkillSource,
+    /// Whether this skill is temporarily disabled at this location.
+    /// Disabled skills keep their symlink but are removed from the manifest.
+    #[serde(default)]
+    pub disabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -535,4 +539,17 @@ pub struct SetSkillEntry {
     pub name: String,
     pub archived: bool,
     pub missing: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Skill content diff types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillContentDiff {
+    pub skill_id: String,
+    pub assigned_content: Option<String>,
+    pub current_content: Option<String>,
+    pub has_changed: bool,
 }

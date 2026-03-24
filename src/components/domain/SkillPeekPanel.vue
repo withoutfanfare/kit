@@ -3,12 +3,15 @@ import { watch, ref, nextTick } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
+import type { ValidationIssue } from "@/types";
 import { SBadge, SButton } from "@stuntrocket/ui";
 
 const peekStore = useSkillPeekStore();
 const preferencesStore = usePreferencesStore();
 const panelRef = ref<HTMLElement | null>(null);
 const previousFocus = ref<HTMLElement | null>(null);
+const bodyIssues = ref<ValidationIssue[]>([]);
+const bodyValidationLoaded = ref(false);
 
 function handleBackdropClick(event: MouseEvent) {
   event.stopPropagation();
@@ -36,6 +39,19 @@ async function revealInFinder() {
   await invoke("reveal_in_finder", { path: peekStore.detail.path });
 }
 
+async function loadBodyValidation() {
+  if (!peekStore.detail?.path) return;
+  bodyValidationLoaded.value = false;
+  try {
+    bodyIssues.value = await invoke<ValidationIssue[]>("get_skill_body_validation", {
+      skillPath: peekStore.detail.path,
+    });
+  } catch {
+    bodyIssues.value = [];
+  }
+  bodyValidationLoaded.value = true;
+}
+
 watch(
   () => peekStore.isOpen,
   async (open) => {
@@ -48,6 +64,17 @@ watch(
       document.removeEventListener("keydown", handleKeydown);
       previousFocus.value?.focus();
       previousFocus.value = null;
+      bodyIssues.value = [];
+      bodyValidationLoaded.value = false;
+    }
+  }
+);
+
+watch(
+  () => peekStore.detail,
+  (detail) => {
+    if (detail) {
+      loadBodyValidation();
     }
   }
 );
@@ -133,6 +160,23 @@ watch(
             <div class="peek-section">
               <span class="section-label">Usage (30 days)</span>
               <span class="usage-count">{{ peekStore.detail.usage.useCount30d }} uses</span>
+            </div>
+
+            <div v-if="bodyValidationLoaded && bodyIssues.length > 0" class="peek-section">
+              <span class="section-label">Content quality</span>
+              <div class="validation-list">
+                <div
+                  v-for="(issue, idx) in bodyIssues"
+                  :key="idx"
+                  class="validation-item"
+                  :class="issue.severity"
+                >
+                  <SBadge :variant="issue.severity === 'error' ? 'error' : 'warning'" compact>
+                    {{ issue.severity }}
+                  </SBadge>
+                  <span class="validation-msg">{{ issue.message }}</span>
+                </div>
+              </div>
             </div>
 
             <div class="peek-actions">
@@ -290,6 +334,24 @@ watch(
 .usage-count {
   font-size: var(--text-sm);
   color: var(--text-primary);
+}
+
+.validation-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.validation-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.validation-msg {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.4;
 }
 
 .peek-actions {

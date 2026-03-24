@@ -77,6 +77,7 @@ export type SkillAssignment = {
   declaredInManifest: boolean;
   archived: boolean;
   source: "library" | "local";
+  disabled: boolean;
 };
 
 export type LocationIssue = {
@@ -256,6 +257,14 @@ export type ChangelogEntry = {
   modifiedAt: string;
   sizeBytes: number;
   assignedLocationCount: number;
+};
+
+// Skill content diff
+export type SkillContentDiff = {
+  skillId: SkillId;
+  assignedContent: string | null;
+  currentContent: string | null;
+  hasChanged: boolean;
 };
 
 // Watcher status

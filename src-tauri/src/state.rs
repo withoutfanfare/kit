@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -28,6 +28,15 @@ pub struct PersistedState {
     /// "locationId:skillId".
     #[serde(default)]
     pub skill_hashes: HashMap<String, SkillHashRecord>,
+    /// Skills temporarily disabled at specific locations, keyed by
+    /// "locationId:skillId". Disabled skills keep their symlink but are
+    /// removed from the manifest so Claude won't load them.
+    #[serde(default)]
+    pub disabled_skills: HashSet<String>,
+    /// Snapshots of SKILL.md content captured at assignment time, keyed by
+    /// "locationId:skillId". Used by the diff viewer to show what changed.
+    #[serde(default)]
+    pub skill_snapshots: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -62,6 +71,8 @@ impl Default for PersistedState {
             usage: HashMap::new(),
             last_repo_check_at: None,
             skill_hashes: HashMap::new(),
+            disabled_skills: HashSet::new(),
+            skill_snapshots: HashMap::new(),
         }
     }
 }

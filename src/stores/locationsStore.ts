@@ -102,6 +102,14 @@ export const useLocationsStore = defineStore("locations", () => {
     }
   }
 
+  async function toggleSkillActivation(locationId: LocationId, skillId: string) {
+    const detail = await invoke<LocationDetail>("toggle_skill_activation", {
+      locationId,
+      skillId,
+    });
+    detailCache.value[locationId] = detail;
+  }
+
   function selectLocation(id: LocationId | null) {
     selectedLocationId.value = id;
     if (id && !detailCache.value[id]) {
@@ -122,6 +130,7 @@ export const useLocationsStore = defineStore("locations", () => {
     updateLocation,
     removeLocation,
     syncLocation,
+    toggleSkillActivation,
     selectLocation,
   };
 });

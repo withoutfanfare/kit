@@ -3,7 +3,10 @@ import { watch, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useSkillPeekStore } from "@/stores/skillPeekStore";
+import { useAppStore } from "@/stores/appStore";
+import { ref } from "vue";
 import LocationHeader from "@/components/domain/LocationHeader.vue";
+import SkillDiffModal from "@/components/domain/SkillDiffModal.vue";
 import LocationOverviewCard from "@/components/domain/LocationOverviewCard.vue";
 import SetList from "@/components/domain/SetList.vue";
 import SkillList from "@/components/domain/SkillList.vue";
@@ -14,8 +17,24 @@ const route = useRoute();
 const router = useRouter();
 const locationsStore = useLocationsStore();
 const skillPeekStore = useSkillPeekStore();
+const appStore = useAppStore();
 
 const locationId = computed(() => route.params.locationId as string);
+
+const diffSkillId = ref<string | null>(null);
+const diffSkillName = ref("");
+const isDiffOpen = ref(false);
+
+function openDiff(skillId: string) {
+  const skill = detail.value?.skills.find((s) => s.skillId === skillId);
+  diffSkillId.value = skillId;
+  diffSkillName.value = skill?.name ?? skillId;
+  isDiffOpen.value = true;
+}
+
+function closeDiff() {
+  isDiffOpen.value = false;
+}
 
 const detail = computed(() => locationsStore.selectedDetail);
 
@@ -73,6 +92,18 @@ function navigateToHealth() {
 function peekSkill(skillId: string) {
   const skill = detail.value?.skills.find((s) => s.skillId === skillId);
   skillPeekStore.peek(skillId, skill?.path);
+}
+
+async function handleToggleActivation(skillId: string) {
+  if (!detail.value) return;
+  try {
+    await locationsStore.toggleSkillActivation(detail.value.id, skillId);
+    const skill = detail.value?.skills.find((s) => s.skillId === skillId);
+    const action = skill?.disabled ? "enabled" : "disabled";
+    appStore.toast(`Skill ${action}`, "success");
+  } catch {
+    appStore.toast("Failed to toggle skill", "error");
+  }
 }
 
 function loadDetail() {
@@ -161,6 +192,8 @@ watch(locationId, loadDetail);
         title="Linked Skills"
         show-link-state
         @select-skill="peekSkill"
+        @toggle-activation="handleToggleActivation"
+        @view-diff="openDiff"
       />
 
       <SkillList
@@ -189,6 +222,14 @@ watch(locationId, loadDetail);
   <div v-else-if="locationsStore.isLoadingDetail" class="loading-state">
     <span class="loading-text">Loading...</span>
   </div>
+  <SkillDiffModal
+    v-if="detail && diffSkillId"
+    :location-id="detail.id"
+    :skill-id="diffSkillId"
+    :skill-name="diffSkillName"
+    :open="isDiffOpen"
+    @close="closeDiff"
+  />
 </template>
 
 <style scoped>

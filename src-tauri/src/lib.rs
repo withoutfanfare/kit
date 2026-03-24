@@ -6,6 +6,7 @@ pub mod state;
 pub mod tray;
 pub mod watcher;
 
+use commands::activation::{get_skill_body_validation, get_skill_content_diff, toggle_skill_activation};
 use commands::assignment::{apply_assignment, bulk_assign_skills, preview_assignment};
 use commands::bootstrap::{get_app_bootstrap, get_app_data_path, update_preferences};
 use commands::changelog::get_skill_changelog;
@@ -89,6 +90,10 @@ pub fn run() {
             start_library_watcher,
             stop_library_watcher,
             get_watcher_status,
+            // Activation / validation / diff
+            toggle_skill_activation,
+            get_skill_body_validation,
+            get_skill_content_diff,
         ])
         .setup(|app| {
             tray::setup_tray(app.handle())?;

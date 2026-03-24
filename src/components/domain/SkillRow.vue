@@ -8,6 +8,8 @@ defineProps<{
 
 defineEmits<{
   select: [];
+  toggleActivation: [];
+  viewDiff: [];
 }>();
 
 function dotVariant(linkState: string): string {
@@ -31,13 +33,30 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
 </script>
 
 <template>
-  <div class="skill-row" :class="{ archived: skill.archived }" @click="$emit('select')">
+  <div class="skill-row" :class="{ archived: skill.archived, disabled: skill.disabled }" @click="$emit('select')">
     <span class="status-dot" :class="dotVariant(skill.linkState)" />
     <span class="skill-name">{{ skill.name }}</span>
-    <SBadge v-if="skill.archived" variant="count">archived</SBadge>
+    <SBadge v-if="skill.disabled" variant="count">disabled</SBadge>
+    <SBadge v-else-if="skill.archived" variant="count">archived</SBadge>
     <SBadge :variant="sourceBadgeVariant(skill.source)">
       {{ skill.source }}
     </SBadge>
+    <button
+      v-if="skill.linkState === 'linked'"
+      class="action-btn"
+      title="View content changes"
+      @click.stop="$emit('viewDiff')"
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    </button>
+    <button
+      v-if="skill.linkState === 'linked'"
+      class="action-btn"
+      :title="skill.disabled ? 'Enable skill' : 'Disable skill'"
+      @click.stop="$emit('toggleActivation')"
+    >
+      {{ skill.disabled ? '&#9654;' : '&#10074;&#10074;' }}
+    </button>
   </div>
 </template>
 
@@ -57,7 +76,8 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
   background: var(--surface-hover);
 }
 
-.skill-row.archived {
+.skill-row.archived,
+.skill-row.disabled {
   opacity: 0.6;
 }
 
@@ -91,5 +111,27 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.action-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 </style>

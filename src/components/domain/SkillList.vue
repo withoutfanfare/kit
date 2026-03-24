@@ -10,6 +10,8 @@ defineProps<{
 
 defineEmits<{
   selectSkill: [skillId: string];
+  toggleActivation: [skillId: string];
+  viewDiff: [skillId: string];
 }>();
 </script>
 
@@ -25,6 +27,8 @@ defineEmits<{
         :key="skill.skillId"
         :skill="skill"
         @select="$emit('selectSkill', skill.skillId)"
+        @toggle-activation="$emit('toggleActivation', skill.skillId)"
+        @view-diff="$emit('viewDiff', skill.skillId)"
       />
       <div v-if="skills.length === 0" class="list-empty">
         <span class="list-empty-text">No skills</span>
