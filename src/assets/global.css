@@ -1,8 +1,7 @@
 @import "tailwindcss";
 @import "@stuntrocket/ui/tokens.css";
-@import "@stuntrocket/ui/base.css";
-@import "@stuntrocket/ui/scrollbar.css";
 @source "../";
+@source "../../node_modules/@stuntrocket/ui/dist";
 
 /* ═══════════════════════════════════════════════════
    Kit Accent Override — Slate Blue

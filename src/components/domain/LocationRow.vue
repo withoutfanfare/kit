@@ -32,8 +32,7 @@ function truncatePath(path: string, maxLen = 32): string {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  height: var(--list-row-height);
-  padding: 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   cursor: default;
   transition: background var(--duration-fast) var(--ease-default);
