@@ -347,7 +347,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P2 (important)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-22
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-28
 - **Description:** When standardising Claude Code skill configurations across projects — ensuring all Laravel projects have the same debugging and testing skills, or verifying that a new project has the same loadout as an established reference project — users must manually switch between locations and visually compare their assigned skills. A side-by-side comparison of two selected locations showing skills unique to each, skills shared by both, and version differences (using the existing content hash tracking, completed) would make loadout standardisation a one-screen operation rather than a tedious back-and-forth mental comparison.
 - **Acceptance criteria:**
   - "Compare locations" action available from the locations view (select two locations)
@@ -379,7 +380,8 @@ These items implement the @stuntrocket/ui design system to achieve premium visua
 - **Priority:** P1 (critical)
 - **Size:** M (1-3hrs)
 - **Added:** 2026-03-19
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-28
 - **Description:** Kit uses Vue 3 + Tailwind with design tokens in assets/tokens.css supporting light/dark via prefers-color-scheme. Adopting the @stuntrocket/ui design system requires installing @stuntrocket/ui from the local Verdaccio registry, replacing the current token system with @stuntrocket/ui shared tokens, and switching from prefers-color-scheme to class-based dark mode (.dark on html). Kit's macOS-native aesthetic (system-ui font, small text) needs to shift to Poppins with the @stuntrocket/ui type scale.
 - **Acceptance criteria:**
   - .npmrc configured with @stuntrocket:registry=http://localhost:4873

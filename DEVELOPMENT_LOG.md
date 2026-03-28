@@ -1,5 +1,16 @@
 # Kit Development Log
 
+## Cycle: 2026-03-28 19:20
+- App: Kit
+- Items completed:
+  - [Foundation] Integrate @stuntrocket/ui shared component library and design tokens (P1/M) — already implemented in prior cycles (tokens.css imported, class-based dark mode with useTheme composable, Poppins font loaded, accent overrides applied, @stuntrocket/ui components in use across all views). Status updated to completed.
+  - [Feature] Add location skill comparison view showing assignment differences between locations (P2/S) — Rust `compare_locations` command scans both locations, computes set intersection/difference on skill IDs, checks assignment-time content hashes for version differences. Returns `LocationComparison` with `onlyInA`, `onlyInB`, and `shared` (with `versionDiffers` flag). Frontend: CompareLocationsView with dual location dropdowns, swap button, three-column results (unique to A, shared, unique to B), quick-assign arrows opening the assignment sheet, and copy-as-Markdown export. New /compare route and sidebar nav entry.
+- Items attempted but failed: none
+- Branch: feature/location-comparison-view
+- Tests passing: yes (cargo clippy clean, vue-tsc clean)
+- Build status: compiles (cargo check, vue-tsc --noEmit)
+- Notes: New files: commands/comparison.rs, views/CompareLocationsView.vue. Modified: domain.rs (LocationComparison, ComparisonSide, ComparedSkill, SharedSkill types), commands/mod.rs (comparison module), lib.rs (compare_locations command), types/index.ts (TS mirror types), router.ts (/compare route), SidebarNav.vue (Compare nav item with icon).
+
 ## Cycle: 2026-03-24 22:00
 - App: Kit
 - Items completed:

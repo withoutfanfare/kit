@@ -553,3 +553,45 @@ pub struct SkillContentDiff {
     pub current_content: Option<String>,
     pub has_changed: bool,
 }
+
+// ---------------------------------------------------------------------------
+// Location comparison types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocationComparison {
+    pub location_a: ComparisonSide,
+    pub location_b: ComparisonSide,
+    pub only_in_a: Vec<ComparedSkill>,
+    pub only_in_b: Vec<ComparedSkill>,
+    pub shared: Vec<SharedSkill>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComparisonSide {
+    pub id: String,
+    pub label: String,
+    pub path: String,
+    pub total_skills: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComparedSkill {
+    pub skill_id: String,
+    pub name: String,
+    pub link_state: LinkState,
+    pub source: SkillSource,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SharedSkill {
+    pub skill_id: String,
+    pub name: String,
+    pub link_state_a: LinkState,
+    pub link_state_b: LinkState,
+    pub version_differs: bool,
+}

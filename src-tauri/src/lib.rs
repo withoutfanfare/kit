@@ -9,6 +9,7 @@ pub mod watcher;
 use commands::activation::{get_skill_body_validation, get_skill_content_diff, toggle_skill_activation};
 use commands::assignment::{apply_assignment, bulk_assign_skills, preview_assignment};
 use commands::bootstrap::{get_app_bootstrap, get_app_data_path, update_preferences};
+use commands::comparison::compare_locations;
 use commands::changelog::get_skill_changelog;
 use commands::external::{open_path_in_editor, open_with_default_app, resolve_skill_path, reveal_in_finder};
 use commands::health::{fix_broken_links, get_skill_versions, read_skill_content, run_health_check};
@@ -94,6 +95,8 @@ pub fn run() {
             toggle_skill_activation,
             get_skill_body_validation,
             get_skill_content_diff,
+            // Comparison
+            compare_locations,
         ])
         .setup(|app| {
             tray::setup_tray(app.handle())?;

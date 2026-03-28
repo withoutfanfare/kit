@@ -267,6 +267,37 @@ export type SkillContentDiff = {
   hasChanged: boolean;
 };
 
+// Location comparison types
+export type ComparisonSide = {
+  id: LocationId;
+  label: string;
+  path: string;
+  totalSkills: number;
+};
+
+export type ComparedSkill = {
+  skillId: SkillId;
+  name: string;
+  linkState: LinkState;
+  source: "library" | "local";
+};
+
+export type SharedSkill = {
+  skillId: SkillId;
+  name: string;
+  linkStateA: LinkState;
+  linkStateB: LinkState;
+  versionDiffers: boolean;
+};
+
+export type LocationComparison = {
+  locationA: ComparisonSide;
+  locationB: ComparisonSide;
+  onlyInA: ComparedSkill[];
+  onlyInB: ComparedSkill[];
+  shared: SharedSkill[];
+};
+
 // Watcher status
 export type WatcherStatus = "active" | "paused" | "error" | "stopped";
 
