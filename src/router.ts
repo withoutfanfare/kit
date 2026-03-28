@@ -47,6 +47,11 @@ const router = createRouter({
       ],
     },
     {
+      path: "/compare",
+      name: "compare",
+      component: () => import("@/views/CompareLocationsView.vue"),
+    },
+    {
       path: "/changelog",
       name: "changelog",
       component: () => import("@/views/ChangelogView.vue"),
