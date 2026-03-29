@@ -555,6 +555,62 @@ pub struct SkillContentDiff {
 }
 
 // ---------------------------------------------------------------------------
+// Library backup types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupManifest {
+    pub version: u32,
+    pub created_at: DateTime<Utc>,
+    pub library_root: String,
+    pub skill_count: usize,
+    pub set_count: usize,
+    pub checksums: std::collections::HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupResult {
+    pub path: String,
+    pub skill_count: usize,
+    pub set_count: usize,
+    pub size_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RestorePreview {
+    pub skill_count: usize,
+    pub set_count: usize,
+    pub has_state: bool,
+    pub conflicts: Vec<RestoreConflict>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RestoreConflict {
+    pub name: String,
+    pub kind: RestoreConflictKind,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RestoreConflictKind {
+    SkillExists,
+    SetExists,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RestoreResult {
+    pub skills_restored: usize,
+    pub sets_restored: usize,
+    pub skills_skipped: usize,
+    pub sets_skipped: usize,
+}
+
+// ---------------------------------------------------------------------------
 // Location comparison types
 // ---------------------------------------------------------------------------
 
