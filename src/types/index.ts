@@ -298,6 +298,35 @@ export type LocationComparison = {
   shared: SharedSkill[];
 };
 
+// Library backup types
+export type BackupResult = {
+  path: string;
+  skillCount: number;
+  setCount: number;
+  sizeBytes: number;
+};
+
+export type RestoreConflictKind = "skill_exists" | "set_exists";
+
+export type RestoreConflict = {
+  name: string;
+  kind: RestoreConflictKind;
+};
+
+export type RestorePreview = {
+  skillCount: number;
+  setCount: number;
+  hasState: boolean;
+  conflicts: RestoreConflict[];
+};
+
+export type RestoreResult = {
+  skillsRestored: number;
+  setsRestored: number;
+  skillsSkipped: number;
+  setsSkipped: number;
+};
+
 // Watcher status
 export type WatcherStatus = "active" | "paused" | "error" | "stopped";
 

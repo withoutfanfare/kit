@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useAppStore } from "@/stores/appStore";
-import type { SkillsRepoStatus, RepoState } from "@/types";
+import type { SkillsRepoStatus, RepoState, BackupResult, RestorePreview, RestoreResult } from "@/types";
 import { SButton, SBadge } from "@stuntrocket/ui";
 import { useTheme } from "@/composables/useTheme";
 
@@ -189,6 +189,94 @@ async function testEditor() {
   } finally {
     isTestingEditor.value = false;
   }
+}
+
+// Backup / Restore
+const isBackingUp = ref(false);
+const lastBackupResult = ref<BackupResult | null>(null);
+const isRestoring = ref(false);
+const restorePreview = ref<RestorePreview | null>(null);
+const restorePendingPath = ref<string | null>(null);
+const overwriteOnRestore = ref(false);
+const restoreStateData = ref(true);
+
+async function backupLibrary() {
+  const selected = await save({
+    title: "Save Library Backup",
+    defaultPath: `kit-library-backup-${new Date().toISOString().slice(0, 10)}.zip`,
+    filters: [{ name: "Zip Archive", extensions: ["zip"] }],
+  });
+  if (!selected) return;
+
+  // save() returns the full file path — we need the directory for the backend
+  const outputDir = selected.replace(/\/[^/]+$/, "");
+
+  isBackingUp.value = true;
+  lastBackupResult.value = null;
+  try {
+    const result = await invoke<BackupResult>("backup_library", { outputPath: outputDir });
+    lastBackupResult.value = result;
+    appStore.toast(`Backup created — ${result.skillCount} skills, ${result.setCount} sets`, "success");
+  } catch (err) {
+    appStore.toast(err instanceof Error ? err.message : "Backup failed", "error");
+  } finally {
+    isBackingUp.value = false;
+  }
+}
+
+async function selectRestoreFile() {
+  const selected = await open({
+    title: "Select Library Backup",
+    multiple: false,
+    filters: [{ name: "Zip Archive", extensions: ["zip"] }],
+  });
+  if (!selected || typeof selected !== "string") return;
+
+  restorePendingPath.value = selected;
+  restorePreview.value = null;
+  try {
+    restorePreview.value = await invoke<RestorePreview>("preview_restore", { backupPath: selected });
+  } catch (err) {
+    appStore.toast(err instanceof Error ? err.message : "Failed to read backup", "error");
+    restorePendingPath.value = null;
+  }
+}
+
+async function confirmRestore() {
+  if (!restorePendingPath.value) return;
+  isRestoring.value = true;
+  try {
+    const result = await invoke<RestoreResult>("restore_library", {
+      backupPath: restorePendingPath.value,
+      overwriteExisting: overwriteOnRestore.value,
+      restoreState: restoreStateData.value,
+    });
+    const parts: string[] = [];
+    if (result.skillsRestored > 0) parts.push(`${result.skillsRestored} skills restored`);
+    if (result.setsRestored > 0) parts.push(`${result.setsRestored} sets restored`);
+    if (result.skillsSkipped > 0) parts.push(`${result.skillsSkipped} skills skipped`);
+    if (result.setsSkipped > 0) parts.push(`${result.setsSkipped} sets skipped`);
+    appStore.toast(parts.join(", ") || "Nothing to restore", "success");
+    restorePreview.value = null;
+    restorePendingPath.value = null;
+    overwriteOnRestore.value = false;
+  } catch (err) {
+    appStore.toast(err instanceof Error ? err.message : "Restore failed", "error");
+  } finally {
+    isRestoring.value = false;
+  }
+}
+
+function cancelRestore() {
+  restorePreview.value = null;
+  restorePendingPath.value = null;
+  overwriteOnRestore.value = false;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 // Advanced
@@ -379,6 +467,78 @@ onMounted(async () => {
             <span class="count-item">{{ setCount }} sets</span>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Library Backup -->
+    <section class="settings-section">
+      <h2 class="section-title">Library Backup</h2>
+      <div class="settings-group">
+        <div class="setting-row">
+          <div class="setting-label">
+            <span class="label-text">Backup</span>
+            <span class="label-description">Export all skills, sets, and state to a portable archive</span>
+          </div>
+          <SButton variant="secondary" size="sm" :loading="isBackingUp" @click="backupLibrary">
+            Create Backup
+          </SButton>
+        </div>
+        <div v-if="lastBackupResult" class="setting-row">
+          <span class="backup-success">
+            Saved {{ lastBackupResult.skillCount }} skills, {{ lastBackupResult.setCount }} sets
+            ({{ formatBytes(lastBackupResult.sizeBytes) }})
+          </span>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label">
+            <span class="label-text">Restore</span>
+            <span class="label-description">Import a backup archive to restore skills and sets</span>
+          </div>
+          <SButton variant="secondary" size="sm" @click="selectRestoreFile">
+            Select Backup
+          </SButton>
+        </div>
+
+        <!-- Restore preview -->
+        <template v-if="restorePreview">
+          <div class="setting-row restore-preview">
+            <div class="setting-label">
+              <span class="label-text">Preview</span>
+              <span class="label-description">
+                {{ restorePreview.skillCount }} skills, {{ restorePreview.setCount }} sets
+                <template v-if="restorePreview.hasState">, includes usage data</template>
+              </span>
+              <span v-if="restorePreview.conflicts.length > 0" class="label-description warning-text">
+                {{ restorePreview.conflicts.length }} conflict{{ restorePreview.conflicts.length === 1 ? '' : 's' }} detected
+              </span>
+            </div>
+          </div>
+          <div v-if="restorePreview.conflicts.length > 0" class="setting-row">
+            <div class="setting-label">
+              <label class="toggle-label">
+                <input type="checkbox" v-model="overwriteOnRestore" />
+                <span class="label-text">Overwrite existing items</span>
+              </label>
+            </div>
+          </div>
+          <div v-if="restorePreview.hasState" class="setting-row">
+            <div class="setting-label">
+              <label class="toggle-label">
+                <input type="checkbox" v-model="restoreStateData" />
+                <span class="label-text">Restore usage data</span>
+              </label>
+            </div>
+          </div>
+          <div class="setting-row repo-actions-row">
+            <div class="repo-actions">
+              <SButton variant="primary" size="sm" :loading="isRestoring" @click="confirmRestore">
+                Restore
+              </SButton>
+              <SButton variant="secondary" size="sm" @click="cancelRestore">Cancel</SButton>
+            </div>
+          </div>
+        </template>
       </div>
     </section>
 
@@ -731,5 +891,28 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+/* Backup */
+.backup-success {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--success);
+}
+
+.restore-preview {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+  accent-color: var(--accent);
 }
 </style>

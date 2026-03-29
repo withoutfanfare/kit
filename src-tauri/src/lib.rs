@@ -8,6 +8,7 @@ pub mod watcher;
 
 use commands::activation::{get_skill_body_validation, get_skill_content_diff, toggle_skill_activation};
 use commands::assignment::{apply_assignment, bulk_assign_skills, preview_assignment};
+use commands::backup::{backup_library, preview_restore, restore_library};
 use commands::bootstrap::{get_app_bootstrap, get_app_data_path, update_preferences};
 use commands::comparison::compare_locations;
 use commands::changelog::get_skill_changelog;
@@ -97,6 +98,10 @@ pub fn run() {
             get_skill_content_diff,
             // Comparison
             compare_locations,
+            // Library backup / restore
+            backup_library,
+            preview_restore,
+            restore_library,
         ])
         .setup(|app| {
             tray::setup_tray(app.handle())?;
