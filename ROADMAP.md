@@ -362,7 +362,8 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 - **Priority:** P3 (nice-to-have)
 - **Size:** S (< 1hr)
 - **Added:** 2026-03-23
-- **Status:** pending
+- **Status:** completed
+- **Completed:** 2026-03-29
 - **Description:** Kit's skill library and configuration are filesystem-based — skill folders with SKILL.md files, set definition JSON files, and state.json tracking usage counters and preferences. If a developer replaces their machine, reformats their disk, or wants to replicate their skill setup on a second workstation, there is no structured backup or migration path. The export/import feature (completed) handles individual sets and skill bundles, but does not capture the full library state (directory structure, state.json, all set definitions, preferences). A one-click backup producing a single portable archive — and a restore that reconstructs the complete library — would make Kit's skill ecosystem durable and portable across machines.
 - **Acceptance criteria:**
   - "Backup library" action in settings produces a single .zip archive containing: all skill folders with SKILL.md files, all set definitions (*.set.json), state.json (usage counters, preferences), and library root path metadata

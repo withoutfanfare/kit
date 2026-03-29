@@ -1,5 +1,15 @@
 # Kit Development Log
 
+## Cycle: 2026-03-29 10:00
+- App: Kit
+- Items completed:
+  - [Distribution] Add one-click skill library backup and restore for machine migration and disaster recovery (P3/S) — `backup_library` command archives all skills, set definitions, and state.json into a portable .zip with a manifest containing checksums. `preview_restore` scans the archive for conflicts against the current library. `restore_library` extracts skills and sets with overwrite/skip control, and optionally merges usage data from backed-up state.json. Frontend: "Library Backup" section in Settings view with Create Backup (save dialog), Select Backup (open dialog with preview), conflict display, overwrite/state-restore toggles, and confirm/cancel actions.
+- Items attempted but failed: none
+- Branch: feature/library-backup-restore
+- Tests passing: yes (29/29 cargo test, cargo clippy clean, vue-tsc clean)
+- Build status: compiles (cargo check, vue-tsc --noEmit)
+- Notes: New files: commands/backup.rs (3 commands). Modified: domain.rs (BackupManifest, BackupResult, RestorePreview, RestoreConflict, RestoreConflictKind, RestoreResult types), commands/mod.rs (backup module), lib.rs (3 new commands), types/index.ts (TS mirror types), SettingsView.vue (Library Backup section with backup/restore UI).
+
 ## Cycle: 2026-03-28 19:20
 - App: Kit
 - Items completed:
