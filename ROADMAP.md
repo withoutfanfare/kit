@@ -398,6 +398,7 @@ These items implement the @stuntrocket/ui design system to achieve premium visua
 - **Size:** XL (8hrs+)
 - **Added:** 2026-03-19
 - **Status:** pending
+- **Note:** Skipped: too large for autonomous cycle, needs Danny's input.
 - **Description:** Replace all locally-defined UI components in src/components/base/ with @stuntrocket/ui equivalents. The master-detail layout pattern, skill library view, location panels, set management views, and assignment workflow all need to be rebuilt with shared components. Kit's nested route structure should be preserved while the visual layer is replaced.
 - **Acceptance criteria:**
   - All src/components/base/ generic UI primitives replaced with @stuntrocket/ui imports
