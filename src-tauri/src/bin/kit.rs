@@ -60,7 +60,282 @@ fn main() -> Result<()> {
     }
 }
 
-// Function stubs — body added in Task 2
-fn cmd_apply(_set: &str, _project: &Path, _sets_dir: Option<&Path>, _library: Option<&Path>, _json: bool) -> Result<()> { bail!("not implemented") }
-fn cmd_list(_project: &Path, _json: bool) -> Result<()> { bail!("not implemented") }
-fn cmd_sets(_sets_dir: Option<&Path>, _json: bool) -> Result<()> { bail!("not implemented") }
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+fn expand_tilde(p: &Path) -> PathBuf {
+    if let Some(rest) = p.to_str().and_then(|s| s.strip_prefix("~/")) {
+        if let Some(home) = dirs_home() {
+            return home.join(rest);
+        }
+    }
+    p.to_path_buf()
+}
+
+fn dirs_home() -> Option<PathBuf> {
+    env::var_os("HOME").map(PathBuf::from)
+}
+
+fn default_sets_dir() -> PathBuf {
+    if let Ok(v) = env::var("KIT_SETS_DIR") {
+        return expand_tilde(Path::new(&v));
+    }
+    dirs_home()
+        .map(|h| h.join("Teams/_shared/bin/sets"))
+        .unwrap_or_else(|| PathBuf::from("./sets"))
+}
+
+fn default_library() -> PathBuf {
+    if let Ok(v) = env::var("KIT_LIBRARY") {
+        return expand_tilde(Path::new(&v));
+    }
+    dirs_home()
+        .map(|h| h.join("Ai/Assets/Claude/Skills"))
+        .unwrap_or_else(|| PathBuf::from("./skills"))
+}
+
+fn resolve_project(project: &Path) -> Result<PathBuf> {
+    let p = expand_tilde(project);
+    fs::canonicalize(&p)
+        .with_context(|| format!("Project path not found: {}", p.display()))
+}
+
+fn read_set_file(sets_dir: &Path, set_name: &str) -> Result<Vec<String>> {
+    let path = sets_dir.join(format!("{set_name}.txt"));
+    let body = fs::read_to_string(&path)
+        .with_context(|| format!("Set not found: {}", path.display()))?;
+    let skills: Vec<String> = body
+        .lines()
+        .map(|l| l.split('#').next().unwrap_or("").trim().to_string())
+        .filter(|l| !l.is_empty())
+        .collect();
+    Ok(skills)
+}
+
+// ---------------------------------------------------------------------------
+// apply
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+struct ApplyReport {
+    set: String,
+    project: String,
+    applied: Vec<String>,
+    missing: Vec<String>,
+}
+
+fn cmd_apply(
+    set: &str,
+    project: &Path,
+    sets_dir: Option<&Path>,
+    library: Option<&Path>,
+    json: bool,
+) -> Result<()> {
+    let project = resolve_project(project)?;
+    let sets_dir = sets_dir.map(PathBuf::from).unwrap_or_else(default_sets_dir);
+    let library = library.map(PathBuf::from).unwrap_or_else(default_library);
+
+    let skills = read_set_file(&sets_dir, set)?;
+
+    let skills_dir = project.join(".claude/skills");
+    fs::create_dir_all(&skills_dir)
+        .with_context(|| format!("Cannot create {}", skills_dir.display()))?;
+
+    let mut applied = Vec::new();
+    let mut missing = Vec::new();
+
+    for skill in &skills {
+        let src = library.join(skill);
+        let dst = skills_dir.join(skill);
+
+        if !src.is_dir() {
+            missing.push(skill.clone());
+            if !json {
+                eprintln!("  ! missing skill: {} ({})", skill, src.display());
+            }
+            continue;
+        }
+
+        // Idempotent replace: remove any existing entry (symlink, file, or dir)
+        // before creating a fresh symlink.
+        if dst.exists() || fs::symlink_metadata(&dst).is_ok() {
+            if let Ok(meta) = fs::symlink_metadata(&dst) {
+                if meta.file_type().is_symlink() {
+                    fs::remove_file(&dst).ok();
+                } else if meta.is_file() {
+                    fs::remove_file(&dst).ok();
+                } else if meta.is_dir() {
+                    fs::remove_dir_all(&dst).ok();
+                }
+            }
+        }
+        unix_fs::symlink(&src, &dst)
+            .with_context(|| format!("Failed to symlink {} -> {}", dst.display(), src.display()))?;
+        applied.push(skill.clone());
+        if !json {
+            println!("  + {skill}");
+        }
+    }
+
+    if json {
+        let report = ApplyReport {
+            set: set.to_string(),
+            project: project.display().to_string(),
+            applied,
+            missing: missing.clone(),
+        };
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!(
+            "Applied set '{}' to {}: {} symlinked, {} missing.",
+            set,
+            project.display(),
+            applied.len(),
+            missing.len()
+        );
+    }
+
+    if !missing.is_empty() {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// list
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+struct ListEntry {
+    name: String,
+    target: Option<String>,
+    is_symlink: bool,
+}
+
+#[derive(Serialize)]
+struct ListReport {
+    project: String,
+    team_badge: Option<String>,
+    skills: Vec<ListEntry>,
+}
+
+fn cmd_list(project: &Path, json: bool) -> Result<()> {
+    let project = resolve_project(project)?;
+    let badge_path = project.join(".claude/team.md");
+    let badge = if badge_path.exists() {
+        Some(fs::read_to_string(&badge_path)?)
+    } else {
+        None
+    };
+
+    let skills_dir = project.join(".claude/skills");
+    let mut entries: Vec<ListEntry> = Vec::new();
+    if skills_dir.is_dir() {
+        let mut items: Vec<_> = fs::read_dir(&skills_dir)?
+            .filter_map(|e| e.ok())
+            .collect();
+        items.sort_by_key(|e| e.file_name());
+        for entry in items {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            let is_symlink = fs::symlink_metadata(&path)?.file_type().is_symlink();
+            let target = if is_symlink {
+                Some(fs::read_link(&path)?.display().to_string())
+            } else {
+                None
+            };
+            entries.push(ListEntry { name, target, is_symlink });
+        }
+    }
+
+    if json {
+        let report = ListReport {
+            project: project.display().to_string(),
+            team_badge: badge,
+            skills: entries,
+        };
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!("Project: {}", project.display());
+        println!();
+        match &badge {
+            Some(b) => {
+                println!("Team badge:");
+                for line in b.lines() {
+                    println!("  {line}");
+                }
+            }
+            None => println!("Team badge: (none — not registered)"),
+        }
+        println!();
+        if entries.is_empty() {
+            println!("Active skills: (none)");
+        } else {
+            println!("Active skills:");
+            for e in &entries {
+                match &e.target {
+                    Some(t) => println!("  - {} -> {}", e.name, t),
+                    None => println!("  - {} (not a symlink)", e.name),
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// sets
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+struct SetEntry {
+    name: String,
+    skill_count: usize,
+    path: String,
+}
+
+fn cmd_sets(sets_dir: Option<&Path>, json: bool) -> Result<()> {
+    let sets_dir = sets_dir.map(PathBuf::from).unwrap_or_else(default_sets_dir);
+    if !sets_dir.is_dir() {
+        bail!("Sets directory does not exist: {}", sets_dir.display());
+    }
+
+    let mut entries: Vec<SetEntry> = Vec::new();
+    for dirent in fs::read_dir(&sets_dir)? {
+        let dirent = dirent?;
+        let path = dirent.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("txt") {
+            continue;
+        }
+        let name = path.file_stem().unwrap().to_string_lossy().to_string();
+        let body = fs::read_to_string(&path)?;
+        let skill_count = body
+            .lines()
+            .filter_map(|l| {
+                let s = l.split('#').next().unwrap_or("").trim();
+                if s.is_empty() { None } else { Some(s) }
+            })
+            .count();
+        entries.push(SetEntry {
+            name,
+            skill_count,
+            path: path.display().to_string(),
+        });
+    }
+    entries.sort_by(|a, b| a.name.cmp(&b.name));
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&entries)?);
+    } else {
+        println!("Sets directory: {}", sets_dir.display());
+        if entries.is_empty() {
+            println!("No sets found.");
+        } else {
+            for e in &entries {
+                println!("  - {} ({} skills) [{}]", e.name, e.skill_count, e.path);
+            }
+        }
+    }
+    Ok(())
+}
