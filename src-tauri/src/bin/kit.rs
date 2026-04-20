@@ -82,17 +82,37 @@ fn default_sets_dir() -> PathBuf {
         return expand_tilde(Path::new(&v));
     }
     dirs_home()
-        .map(|h| h.join("Teams/_shared/bin/sets"))
+        .map(|h| h.join(".kit/sets"))
         .unwrap_or_else(|| PathBuf::from("./sets"))
 }
 
 fn default_library() -> PathBuf {
+    // 1. Explicit env var override
     if let Ok(v) = env::var("KIT_LIBRARY") {
         return expand_tilde(Path::new(&v));
     }
+    // 2. Kit GUI's configured library root (~/.kit/state.json)
+    if let Some(from_state) = read_kit_library_root() {
+        return from_state;
+    }
+    // 3. Claude Code convention
     dirs_home()
-        .map(|h| h.join("Ai/Assets/Claude/Skills"))
+        .map(|h| h.join(".claude/skills"))
         .unwrap_or_else(|| PathBuf::from("./skills"))
+}
+
+/// Read `preferences.libraryRoot` from `~/.kit/state.json` if present.
+/// Ignores everything else — we only care about one field and accept
+/// Kit's JSON schema evolving freely.
+fn read_kit_library_root() -> Option<PathBuf> {
+    let state_path = dirs_home()?.join(".kit/state.json");
+    let content = fs::read_to_string(&state_path).ok()?;
+    let parsed: serde_json::Value = serde_json::from_str(&content).ok()?;
+    let root = parsed.get("preferences")?.get("libraryRoot")?.as_str()?;
+    if root.is_empty() {
+        return None;
+    }
+    Some(expand_tilde(Path::new(root)))
 }
 
 fn resolve_project(project: &Path) -> Result<PathBuf> {
@@ -298,7 +318,11 @@ struct SetEntry {
 fn cmd_sets(sets_dir: Option<&Path>, json: bool) -> Result<()> {
     let sets_dir = sets_dir.map(PathBuf::from).unwrap_or_else(default_sets_dir);
     if !sets_dir.is_dir() {
-        bail!("Sets directory does not exist: {}", sets_dir.display());
+        bail!(
+            "Sets directory does not exist: {}\n\nTo get started:\n  mkdir -p {}\n\nOr point Kit at an existing sets directory:\n  export KIT_SETS_DIR=/path/to/sets   # persistent\n  kit sets --sets-dir /path/to/sets   # one-off",
+            sets_dir.display(),
+            sets_dir.display()
+        );
     }
 
     let mut entries: Vec<SetEntry> = Vec::new();
