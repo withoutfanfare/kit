@@ -47,6 +47,25 @@ enum Command {
         #[arg(long)]
         sets_dir: Option<PathBuf>,
     },
+    /// Symlink one or more individual skills into a project.
+    Link {
+        /// Skill names to link (space-separated).
+        skills: Vec<String>,
+        /// Project path.
+        #[arg(long)]
+        project: PathBuf,
+        /// Override skills library root.
+        #[arg(long)]
+        library: Option<PathBuf>,
+    },
+    /// Remove one or more skill symlinks from a project.
+    Unlink {
+        /// Skill names to unlink (space-separated).
+        skills: Vec<String>,
+        /// Project path.
+        #[arg(long)]
+        project: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
@@ -57,6 +76,10 @@ fn main() -> Result<()> {
         }
         Command::List { project } => cmd_list(&project, cli.json),
         Command::Sets { sets_dir } => cmd_sets(sets_dir.as_deref(), cli.json),
+        Command::Link { skills, project, library } => {
+            cmd_link(&skills, &project, library.as_deref(), cli.json)
+        }
+        Command::Unlink { skills, project } => cmd_unlink(&skills, &project, cli.json),
     }
 }
 
@@ -360,6 +383,165 @@ fn cmd_sets(sets_dir: Option<&Path>, json: bool) -> Result<()> {
                 println!("  - {} ({} skills) [{}]", e.name, e.skill_count, e.path);
             }
         }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// link
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+struct LinkReport {
+    project: String,
+    added: Vec<String>,
+    missing: Vec<String>,
+}
+
+fn cmd_link(skills: &[String], project: &Path, library: Option<&Path>, json: bool) -> Result<()> {
+    if skills.is_empty() {
+        bail!("At least one skill name is required. Usage: kit link <skill> [<skill> ...] --project <path>");
+    }
+    let project = resolve_project(project)?;
+    let library = library.map(PathBuf::from).unwrap_or_else(default_library);
+
+    let skills_dir = project.join(".claude/skills");
+    fs::create_dir_all(&skills_dir)
+        .with_context(|| format!("Cannot create {}", skills_dir.display()))?;
+
+    let mut added = Vec::new();
+    let mut missing = Vec::new();
+
+    for skill in skills {
+        let src = library.join(skill);
+        let dst = skills_dir.join(skill);
+
+        if !src.is_dir() {
+            missing.push(skill.clone());
+            if !json {
+                eprintln!("  ! not in library: {} ({})", skill, src.display());
+            }
+            continue;
+        }
+
+        // Idempotent replace: wipe anything already at dst.
+        if let Ok(meta) = fs::symlink_metadata(&dst) {
+            if meta.file_type().is_symlink() || meta.is_file() {
+                fs::remove_file(&dst).ok();
+            } else if meta.is_dir() {
+                fs::remove_dir_all(&dst).ok();
+            }
+        }
+        unix_fs::symlink(&src, &dst)
+            .with_context(|| format!("Failed to symlink {} -> {}", dst.display(), src.display()))?;
+        added.push(skill.clone());
+        if !json {
+            println!("  + {skill}");
+        }
+    }
+
+    if json {
+        let report = LinkReport {
+            project: project.display().to_string(),
+            added,
+            missing: missing.clone(),
+        };
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!(
+            "Added {} skill(s) to {}.",
+            added.len(),
+            project.display()
+        );
+        if !missing.is_empty() {
+            println!("Missing from library: {}", missing.join(", "));
+        }
+    }
+
+    if !missing.is_empty() {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// unlink
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+struct UnlinkReport {
+    project: String,
+    removed: Vec<String>,
+    not_found: Vec<String>,
+    refused: Vec<String>,
+}
+
+fn cmd_unlink(skills: &[String], project: &Path, json: bool) -> Result<()> {
+    if skills.is_empty() {
+        bail!("At least one skill name is required. Usage: kit unlink <skill> [<skill> ...] --project <path>");
+    }
+    let project = resolve_project(project)?;
+
+    let skills_dir = project.join(".claude/skills");
+    let mut removed = Vec::new();
+    let mut not_found = Vec::new();
+    let mut refused = Vec::new();
+
+    for skill in skills {
+        let dst = skills_dir.join(skill);
+        match fs::symlink_metadata(&dst) {
+            Ok(meta) => {
+                if meta.file_type().is_symlink() {
+                    fs::remove_file(&dst)
+                        .with_context(|| format!("Failed to remove {}", dst.display()))?;
+                    removed.push(skill.clone());
+                    if !json {
+                        println!("  - {skill}");
+                    }
+                } else {
+                    refused.push(skill.clone());
+                    if !json {
+                        eprintln!(
+                            "  ! refusing to delete non-symlink: {} ({})",
+                            skill,
+                            dst.display()
+                        );
+                    }
+                }
+            }
+            Err(_) => {
+                not_found.push(skill.clone());
+                if !json {
+                    eprintln!("  ! not linked in this project: {}", skill);
+                }
+            }
+        }
+    }
+
+    if json {
+        let report = UnlinkReport {
+            project: project.display().to_string(),
+            removed,
+            not_found: not_found.clone(),
+            refused: refused.clone(),
+        };
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!(
+            "Removed {} skill(s) from {}.",
+            removed.len(),
+            project.display()
+        );
+        if !not_found.is_empty() {
+            println!("Not linked: {}", not_found.join(", "));
+        }
+        if !refused.is_empty() {
+            println!("Refused (not a symlink): {}", refused.join(", "));
+        }
+    }
+
+    if !refused.is_empty() || !not_found.is_empty() {
+        std::process::exit(1);
     }
     Ok(())
 }
