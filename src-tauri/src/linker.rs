@@ -79,22 +79,12 @@ pub fn remove_skill_link(link_path: &Path) -> Result<(), String> {
 }
 
 /// Ensure the skills directory exists for a location, creating it if needed.
-/// Returns the path to the skills directory (preferring `.claude/skills/`).
+/// Reuses the scanner's discovery rules so new links land in the same
+/// directory the scanner reads from; only defaults to `.claude/skills/`
+/// when no skills directory exists yet.
 pub fn ensure_skills_dir(location_path: &Path) -> Result<std::path::PathBuf, String> {
-    // Prefer .claude/skills/ if .claude/ already exists
-    let claude_dir = location_path.join(".claude");
-    let skills_dir = if claude_dir.is_dir() {
-        claude_dir.join("skills")
-    } else {
-        // Check if skills/ already exists
-        let plain = location_path.join("skills");
-        if plain.is_dir() {
-            plain
-        } else {
-            // Default to .claude/skills/
-            claude_dir.join("skills")
-        }
-    };
+    let skills_dir = crate::scanner::find_skills_dir(location_path)
+        .unwrap_or_else(|| location_path.join(".claude").join("skills"));
 
     fs::create_dir_all(&skills_dir).map_err(|e| {
         format!(
@@ -105,4 +95,37 @@ pub fn ensure_skills_dir(location_path: &Path) -> Result<std::path::PathBuf, Str
     })?;
 
     Ok(skills_dir)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A project with both `.claude/` and a top-level `skills/` dir must get
+    /// links in `skills/` — where the scanner reads from — not `.claude/skills/`.
+    #[test]
+    fn ensure_skills_dir_prefers_existing_plain_skills() {
+        let base = std::env::temp_dir().join(format!("kit-linker-test-a-{}", std::process::id()));
+        let loc = base.join("proj");
+        fs::create_dir_all(loc.join("skills")).unwrap();
+        fs::create_dir_all(loc.join(".claude")).unwrap();
+
+        let dir = ensure_skills_dir(&loc).unwrap();
+        assert_eq!(dir, loc.join("skills"));
+
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn ensure_skills_dir_defaults_to_claude_skills() {
+        let base = std::env::temp_dir().join(format!("kit-linker-test-b-{}", std::process::id()));
+        let loc = base.join("proj");
+        fs::create_dir_all(&loc).unwrap();
+
+        let dir = ensure_skills_dir(&loc).unwrap();
+        assert_eq!(dir, loc.join(".claude").join("skills"));
+        assert!(dir.is_dir());
+
+        fs::remove_dir_all(&base).ok();
+    }
 }

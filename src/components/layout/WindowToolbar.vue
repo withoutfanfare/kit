@@ -6,7 +6,7 @@ const appStore = useAppStore();
 </script>
 
 <template>
-  <STopbar traffic-light-padding="76px" class="window-toolbar">
+  <STopbar traffic-light-padding="76px">
     <template #left>
       <SSearchInput
         v-model="appStore.globalSearchQuery"
@@ -16,9 +16,3 @@ const appStore = useAppStore();
     </template>
   </STopbar>
 </template>
-
-<style scoped>
-.window-toolbar {
-  height: var(--toolbar-height);
-}
-</style>

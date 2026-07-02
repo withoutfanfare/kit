@@ -13,10 +13,12 @@ pub fn run_health_check(
 ) -> Result<HealthCheckResult, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    let locations = guard.locations().to_vec();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
-    let locations = guard.locations().to_vec();
 
     Ok(scanner::run_health_check(
         &locations,
@@ -33,13 +35,15 @@ pub fn fix_broken_links(
 ) -> Result<HealthCheckResult, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
-    let library_root = PathBuf::from(&prefs.library_root);
+    let locations = guard.locations().to_vec();
 
     let loc = guard
         .find_location(&location_id)
         .ok_or_else(|| AppError::new(format!("Location not found: {}", location_id)))?
         .clone();
+    drop(guard);
 
+    let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
     let location_path = PathBuf::from(&loc.path);
@@ -61,7 +65,6 @@ pub fn fix_broken_links(
     // Re-run the full health check
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
-    let locations = guard.locations().to_vec();
 
     Ok(scanner::run_health_check(
         &locations,
@@ -98,13 +101,15 @@ pub fn get_skill_versions(
 ) -> Result<Vec<SkillVersionInfo>, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
-    let library_root = PathBuf::from(&prefs.library_root);
+    let skill_hashes = guard.inner.skill_hashes.clone();
 
     let loc = guard
         .find_location(&location_id)
         .ok_or_else(|| AppError::new(format!("Location not found: {}", location_id)))?
         .clone();
+    drop(guard);
 
+    let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
     let location_path = PathBuf::from(&loc.path);
@@ -123,7 +128,7 @@ pub fn get_skill_versions(
         }
 
         let key = format!("{}:{}", location_id, skill.skill_id);
-        let recorded = guard.inner.skill_hashes.get(&key);
+        let recorded = skill_hashes.get(&key);
         let current_hash = scanner::hash_skill_content(&library_root.join(&skill.skill_id));
 
         let has_changed = match (recorded, &current_hash) {

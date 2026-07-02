@@ -1,18 +1,38 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
 import { useLocationsStore } from "@/stores/locationsStore";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import LocationList from "@/components/domain/LocationList.vue";
-import { SEmptyState } from "@stuntrocket/ui";
-import AssignmentSheet from "@/components/domain/AssignmentSheet.vue";
+import LocationInspector from "@/components/domain/LocationInspector.vue";
+import { pendingRemoval } from "@/composables/useRemoveLocation";
+import { useAppStore } from "@/stores/appStore";
+import { SConfirmDialog, SEmptyState } from "@stuntrocket/ui";
 
 const locationsStore = useLocationsStore();
+const appStore = useAppStore();
 const router = useRouter();
+const route = useRoute();
 const isDragging = ref(false);
+
+async function confirmRemoveLocation() {
+  const loc = pendingRemoval.value;
+  if (!loc) return;
+  pendingRemoval.value = null;
+  try {
+    await locationsStore.removeLocation(loc.id);
+    if (route.params.locationId === loc.id) {
+      locationsStore.selectLocation(null);
+      router.push("/locations");
+    }
+    appStore.toast("Location removed", "success");
+  } catch {
+    appStore.toast("Failed to remove location", "error");
+  }
+}
 
 async function addLocation() {
   const selected = await open({
@@ -39,6 +59,12 @@ async function addLocationByPath(path: string) {
   }
 }
 
+async function addLocationsByPaths(paths: string[]) {
+  for (const path of paths) {
+    await addLocationByPath(path);
+  }
+}
+
 function onDragOver(e: DragEvent) {
   e.preventDefault();
   if (e.dataTransfer) {
@@ -62,16 +88,17 @@ function onDrop(e: DragEvent) {
 
   if (!e.dataTransfer) return;
 
-  // Handle file:// URIs from Finder
+  // Handle file:// URIs from Finder — a multi-folder drop yields one URI per line
   const uriList = e.dataTransfer.getData("text/uri-list");
   if (uriList) {
-    for (const line of uriList.split("\n")) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith("file://")) {
-        const path = decodeURIComponent(trimmed.replace("file://", ""));
-        addLocationByPath(path);
-        return;
-      }
+    const paths = uriList
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("file://"))
+      .map((line) => decodeURIComponent(line.replace("file://", "")));
+    if (paths.length > 0) {
+      addLocationsByPaths(paths);
+      return;
     }
   }
 
@@ -101,10 +128,7 @@ onMounted(async () => {
       isDragging.value = true;
     } else if (event.payload.type === "drop") {
       isDragging.value = false;
-      const paths = event.payload.paths;
-      if (paths.length > 0) {
-        addLocationByPath(paths[0]);
-      }
+      addLocationsByPaths(event.payload.paths);
     } else if (event.payload.type === "leave") {
       isDragging.value = false;
     }
@@ -131,12 +155,12 @@ onUnmounted(() => {
         <span class="drop-label">Drop a project folder to add it</span>
       </div>
     </div>
-    <SplitPaneLayout>
+    <SplitPaneLayout :show-inspector="!!($route.params.locationId && locationsStore.selectedDetail)">
       <template #sidebar>
         <LocationList />
       </template>
       <template #main>
-        <router-view v-if="locationsStore.selectedLocationId" />
+        <router-view v-if="$route.params.locationId" />
         <SEmptyState
           v-else-if="locationsStore.locationList.length === 0"
           title="Add your first project"
@@ -150,8 +174,24 @@ onUnmounted(() => {
           description="Choose a project from the sidebar, or drag a folder here to add it."
         />
       </template>
+      <template #inspector>
+        <LocationInspector
+          v-if="locationsStore.selectedDetail"
+          :detail="locationsStore.selectedDetail"
+        />
+      </template>
     </SplitPaneLayout>
-    <AssignmentSheet />
+
+    <SConfirmDialog
+      :open="!!pendingRemoval"
+      title="Remove location?"
+      :message="pendingRemoval ? `Kit will forget '${pendingRemoval.label}'. No files or symlinks in the project are touched.` : ''"
+      confirm-label="Remove"
+      danger
+      @confirm="confirmRemoveLocation"
+      @cancel="pendingRemoval = null"
+      @close="pendingRemoval = null"
+    />
   </div>
 </template>
 

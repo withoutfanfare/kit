@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/json-schema/master/tauri/2/tauri.conf.json",
   "productName": "Kit",
+  "mainBinaryName": "kit-app",
   "version": "1.0.0",
   "identifier": "com.kit.app",
   "build": {

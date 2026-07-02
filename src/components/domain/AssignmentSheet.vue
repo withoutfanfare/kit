@@ -100,6 +100,10 @@ watch(
     if (isOpen) {
       searchQuery.value = "";
       libraryStore.fetchItems();
+      const id = assignmentStore.locationId;
+      if (id && !locationsStore.detailCache[id]) {
+        locationsStore.fetchDetail(id);
+      }
     }
   }
 );

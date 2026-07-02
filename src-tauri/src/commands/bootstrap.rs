@@ -10,13 +10,15 @@ use crate::state::SharedState;
 pub fn get_app_bootstrap(state: State<'_, SharedState>) -> Result<AppBootstrap, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    let saved_locations = guard.locations().to_vec();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
 
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
 
-    let locations: Vec<SavedLocationSummary> = guard
-        .locations()
+    let locations: Vec<SavedLocationSummary> = saved_locations
         .iter()
         .map(|loc| {
             scanner::build_location_summary(loc, &library_root, &library_skills, &library_sets)

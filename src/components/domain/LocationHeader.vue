@@ -5,6 +5,7 @@ import { useLocationsStore } from "@/stores/locationsStore";
 import { useAssignmentStore } from "@/stores/assignmentStore";
 import { useAppStore } from "@/stores/appStore";
 import { invoke } from "@tauri-apps/api/core";
+import { requestRemoveLocation } from "@/composables/useRemoveLocation";
 import { SButton, SInlineTextField } from "@stuntrocket/ui";
 
 const props = defineProps<{
@@ -108,6 +109,12 @@ function addSkills() {
           <path d="M6 9l2-2 2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <span>Reveal</span>
+      </button>
+      <button class="action-button" @click="requestRemoveLocation(detail)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M3 4.5h10M6.5 4.5V3.5a1 1 0 011-1h1a1 1 0 011 1v1M4.5 4.5l.5 8a1 1 0 001 .95h4a1 1 0 001-.95l.5-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Remove</span>
       </button>
     </div>
   </div>

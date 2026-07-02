@@ -21,9 +21,11 @@ function resultFor(id: string) {
 <template>
   <SModal
     :open="bulkStore.isOpen"
-    title="Assign to multiple locations"
     @close="bulkStore.close()"
   >
+    <template #header>
+      <h2 class="modal-title">Assign to multiple locations</h2>
+    </template>
     <div class="bulk-modal">
       <div class="skill-summary">
         <span class="label">Skills to assign:</span>
@@ -88,6 +90,13 @@ function resultFor(id: string) {
 </template>
 
 <style scoped>
+.modal-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
 .bulk-modal {
   display: flex;
   flex-direction: column;

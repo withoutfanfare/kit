@@ -8,7 +8,7 @@ use crate::scanner;
 use crate::state::{self, SharedState};
 
 /// Reject skill IDs that contain path traversal characters.
-fn validate_skill_ids(ids: &[String]) -> Result<(), AppError> {
+pub(crate) fn validate_skill_ids(ids: &[String]) -> Result<(), AppError> {
     for sid in ids {
         if sid.contains('/') || sid.contains('\\') || sid.contains("..") {
             return Err(AppError::new(format!("Invalid skill ID: {}", sid)));
@@ -31,12 +31,14 @@ pub fn preview_assignment(
 
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
-    let library_root = PathBuf::from(&prefs.library_root);
 
     let loc = guard
         .find_location(&location_id)
-        .ok_or_else(|| AppError::new(format!("Location not found: {}", location_id)))?;
+        .ok_or_else(|| AppError::new(format!("Location not found: {}", location_id)))?
+        .clone();
+    drop(guard);
 
+    let library_root = PathBuf::from(&prefs.library_root);
     let location_path = PathBuf::from(&loc.path);
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
@@ -235,15 +237,16 @@ pub fn apply_assignment(
     validate_skill_ids(&skill_ids_to_add)?;
     validate_skill_ids(&skill_ids_to_remove)?;
 
-    let mut guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
+    let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
-    let library_root = PathBuf::from(&prefs.library_root);
 
     let loc = guard
         .find_location(&location_id)
         .ok_or_else(|| AppError::new(format!("Location not found: {}", location_id)))?
         .clone();
+    drop(guard);
 
+    let library_root = PathBuf::from(&prefs.library_root);
     let location_path = PathBuf::from(&loc.path);
 
     // Gather all sets (global + project)
@@ -351,34 +354,42 @@ pub fn apply_assignment(
         )?;
     }
 
-    // Update last synced
-    if let Some(loc_mut) = guard.find_location_mut(&location_id) {
-        loc_mut.last_synced_at = Some(chrono::Utc::now());
-    }
-
-    // Record skill content hashes and snapshots for version tracking
-    if guard.inner.preferences.track_skill_versions {
+    // Compute content hashes and snapshots for version tracking before
+    // re-acquiring the lock (file reads stay outside the critical section)
+    let mut version_records: Vec<(String, state::SkillHashRecord, Option<String>)> = Vec::new();
+    if prefs.track_skill_versions {
         for sid in &expanded_skill_ids {
             let skill_path = library_root.join(sid);
             if let Some(hash) = scanner::hash_skill_content(&skill_path) {
                 let key = format!("{}:{}", location_id, sid);
-                guard.inner.skill_hashes.insert(
-                    key.clone(),
+                // Content snapshot for the diff viewer
+                let snapshot = std::fs::read_to_string(skill_path.join("SKILL.md")).ok();
+                version_records.push((
+                    key,
                     state::SkillHashRecord {
                         hash,
                         assigned_at: Some(chrono::Utc::now()),
                     },
-                );
-                // Store content snapshot for diff viewer
-                let skill_md = skill_path.join("SKILL.md");
-                if let Ok(content) = std::fs::read_to_string(&skill_md) {
-                    guard.inner.skill_snapshots.insert(key, content);
-                }
+                    snapshot,
+                ));
             }
         }
     }
 
+    // Re-acquire the lock only to mutate and save state
+    let mut guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
+    if let Some(loc_mut) = guard.find_location_mut(&location_id) {
+        loc_mut.last_synced_at = Some(chrono::Utc::now());
+    }
+    for (key, record, snapshot) in version_records {
+        if let Some(content) = snapshot {
+            guard.inner.skill_snapshots.insert(key.clone(), content);
+        }
+        guard.inner.skill_hashes.insert(key, record);
+    }
     guard.save().map_err(AppError::new)?;
+    let disabled_skills = guard.inner.disabled_skills.clone();
+    drop(guard);
 
     // Re-scan to build updated detail
     let library_skills = scanner::scan_library_skills(&library_root);
@@ -394,7 +405,7 @@ pub fn apply_assignment(
     let mut skills = scan.skills;
     for skill in &mut skills {
         let key = format!("{}:{}", location_id, skill.skill_id);
-        skill.disabled = guard.inner.disabled_skills.contains(&key);
+        skill.disabled = disabled_skills.contains(&key);
     }
 
     let assigned_ids: Vec<String> = skills.iter().map(|s| s.skill_id.clone()).collect();
@@ -439,13 +450,30 @@ pub fn bulk_assign_skills(
 ) -> Result<Vec<BulkAssignResult>, AppError> {
     validate_skill_ids(&skill_ids)?;
 
-    let mut results: Vec<BulkAssignResult> = Vec::new();
-    let mut guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
+    let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    let locations = guard.locations().to_vec();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
 
+    // Hash each skill once up front — content is identical for every location
+    let mut hash_by_skill: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
+    if prefs.track_skill_versions {
+        for sid in &skill_ids {
+            if let Some(hash) = scanner::hash_skill_content(&library_root.join(sid)) {
+                hash_by_skill.insert(sid.clone(), hash);
+            }
+        }
+    }
+
+    let mut results: Vec<BulkAssignResult> = Vec::new();
+    let mut pending_hashes: Vec<(String, state::SkillHashRecord)> = Vec::new();
+    let mut synced_loc_ids: Vec<String> = Vec::new();
+
     for loc_id in &location_ids {
-        let loc = match guard.find_location(loc_id) {
+        let loc = match locations.iter().find(|l| l.id == *loc_id) {
             Some(l) => l.clone(),
             None => {
                 results.push(BulkAssignResult {
@@ -518,26 +546,22 @@ pub fn bulk_assign_skills(
         }
 
         // Record version hashes
-        if guard.inner.preferences.track_skill_versions {
+        if prefs.track_skill_versions {
             for sid in &skill_ids {
-                let skill_path = library_root.join(sid);
-                if let Some(hash) = scanner::hash_skill_content(&skill_path) {
+                if let Some(hash) = hash_by_skill.get(sid) {
                     let key = format!("{}:{}", loc_id, sid);
-                    guard.inner.skill_hashes.insert(
+                    pending_hashes.push((
                         key,
                         state::SkillHashRecord {
-                            hash,
+                            hash: hash.clone(),
                             assigned_at: Some(chrono::Utc::now()),
                         },
-                    );
+                    ));
                 }
             }
         }
 
-        // Update last synced
-        if let Some(loc_mut) = guard.find_location_mut(loc_id) {
-            loc_mut.last_synced_at = Some(chrono::Utc::now());
-        }
+        synced_loc_ids.push(loc_id.clone());
 
         results.push(BulkAssignResult {
             location_id: loc_id.clone(),
@@ -547,6 +571,16 @@ pub fn bulk_assign_skills(
         });
     }
 
+    // Re-acquire the lock only to mutate and save state
+    let mut guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
+    for (key, record) in pending_hashes {
+        guard.inner.skill_hashes.insert(key, record);
+    }
+    for loc_id in &synced_loc_ids {
+        if let Some(loc_mut) = guard.find_location_mut(loc_id) {
+            loc_mut.last_synced_at = Some(chrono::Utc::now());
+        }
+    }
     guard.save().map_err(AppError::new)?;
 
     Ok(results)

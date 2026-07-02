@@ -84,7 +84,7 @@ onMounted(() => {
             @click="navigateToSkill(item.id)"
           >
             <span class="item-name">{{ item.name }}</span>
-            <span class="item-date">{{ formatDate(item.lastUsedAt) }}</span>
+            <span class="item-date">{{ item.lastUsedAt ? formatDate(item.lastUsedAt) : "—" }}</span>
           </div>
           <div v-if="usageStore.summary.recentlyUsed.length === 0" class="list-empty">
             No recent activity

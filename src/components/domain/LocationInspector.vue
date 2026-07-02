@@ -6,6 +6,7 @@ import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useAppStore } from "@/stores/appStore";
 import { invoke } from "@tauri-apps/api/core";
 import InspectorPanel from "@/components/layout/InspectorPanel.vue";
+import { requestRemoveLocation } from "@/composables/useRemoveLocation";
 import { SButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
@@ -43,13 +44,8 @@ async function syncLocation() {
   }
 }
 
-async function removeLocation() {
-  try {
-    await locationsStore.removeLocation(props.detail.id);
-    appStore.toast("Location removed", "success");
-  } catch {
-    appStore.toast("Failed to remove location", "error");
-  }
+function removeLocation() {
+  requestRemoveLocation(props.detail);
 }
 
 async function openManifest() {

@@ -74,6 +74,8 @@ pub fn preview_import_bundle(
 ) -> Result<ImportPreview, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
 

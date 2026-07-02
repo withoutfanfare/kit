@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { watch, computed, onMounted } from "vue";
+import { ref, watch, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import { useAppStore } from "@/stores/appStore";
-import { ref } from "vue";
 import LocationHeader from "@/components/domain/LocationHeader.vue";
 import SkillDiffModal from "@/components/domain/SkillDiffModal.vue";
 import LocationOverviewCard from "@/components/domain/LocationOverviewCard.vue";
@@ -97,10 +96,10 @@ function peekSkill(skillId: string) {
 async function handleToggleActivation(skillId: string) {
   if (!detail.value) return;
   try {
+    // Read the current state before the toggle refreshes the cached detail
+    const wasDisabled = detail.value.skills.find((s) => s.skillId === skillId)?.disabled;
     await locationsStore.toggleSkillActivation(detail.value.id, skillId);
-    const skill = detail.value?.skills.find((s) => s.skillId === skillId);
-    const action = skill?.disabled ? "enabled" : "disabled";
-    appStore.toast(`Skill ${action}`, "success");
+    appStore.toast(`Skill ${wasDisabled ? "enabled" : "disabled"}`, "success");
   } catch {
     appStore.toast("Failed to toggle skill", "error");
   }
@@ -218,18 +217,18 @@ watch(locationId, loadDetail);
         <p class="hint-desc">Use 'Add Skills' to link skills from your library to this project.</p>
       </div>
     </div>
+    <SkillDiffModal
+      v-if="diffSkillId"
+      :location-id="detail.id"
+      :skill-id="diffSkillId"
+      :skill-name="diffSkillName"
+      :open="isDiffOpen"
+      @close="closeDiff"
+    />
   </div>
   <div v-else-if="locationsStore.isLoadingDetail" class="loading-state">
     <span class="loading-text">Loading...</span>
   </div>
-  <SkillDiffModal
-    v-if="detail && diffSkillId"
-    :location-id="detail.id"
-    :skill-id="diffSkillId"
-    :skill-name="diffSkillName"
-    :open="isDiffOpen"
-    @close="closeDiff"
-  />
 </template>
 
 <style scoped>

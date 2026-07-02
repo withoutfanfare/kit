@@ -13,13 +13,17 @@ pub fn update_manifest_entry(
     action: String, // "add" or "remove"
     state: State<'_, SharedState>,
 ) -> Result<LocationDetail, AppError> {
+    crate::commands::assignment::validate_skill_ids(std::slice::from_ref(&skill_id))?;
+
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    let disabled_skills = guard.inner.disabled_skills.clone();
 
     let loc = guard
         .find_location(&location_id)
         .ok_or_else(|| AppError::new(format!("Location not found: {}", location_id)))?
         .clone();
+    drop(guard);
 
     let location_path = PathBuf::from(&loc.path);
     let manifest_path = location_path.join(".claude").join("settings.json");
@@ -79,7 +83,14 @@ pub fn update_manifest_entry(
         &library_sets,
     );
 
-    let assigned_ids: Vec<String> = scan.skills.iter().map(|s| s.skill_id.clone()).collect();
+    // Enrich disabled state from persisted state
+    let mut skills = scan.skills;
+    for skill in &mut skills {
+        let key = format!("{}:{}", loc.id, skill.skill_id);
+        skill.disabled = disabled_skills.contains(&key);
+    }
+
+    let assigned_ids: Vec<String> = skills.iter().map(|s| s.skill_id.clone()).collect();
     let skill_recommendations = scanner::recommend_skills(
         &scan.detected_project_types,
         &library_skills,
@@ -93,7 +104,7 @@ pub fn update_manifest_entry(
         manifest_path: scan.manifest_path,
         notes: loc.notes,
         sets: scan.sets,
-        skills: scan.skills,
+        skills,
         issues: scan.issues,
         stats: scan.stats,
         detected_project_types: scan.detected_project_types,

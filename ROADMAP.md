@@ -33,6 +33,31 @@ Desktop skill loadout manager for Claude Code — organise, assign, and manage s
 
 ## Pending
 
+### [Feature] Wire up skill usage tracking so Most used / Least used sort works
+- **Priority:** P3 (nice-to-have)
+- **Size:** M (1-3hrs)
+- **Added:** 2026-04-17
+- **Status:** pending
+- **Description:** The backend plumbing for skill usage (`UsageRecord { last_used_at, use_count_30d }` in `~/.kit/state.json`) exists and is surfaced in the UI via `useCount30d` on `LibraryListItem`, but nothing actually writes to `state.inner.usage` during normal app use — only `commands/backup.rs:300` populates it during restore. As a result, every skill reports `useCount30d: 0` and the "Most used" / "Least used" sort options on the Skills page are no-ops. The sort UI was hidden in 2026-04-17 until this is wired up. A writer needs to record usage events (e.g. when a skill is assigned, opened, or invoked) with a 30-day rolling window decay.
+- **Acceptance criteria:**
+  - A Tauri command (or internal hook) records a usage event for a skill and increments `use_count_30d` + updates `last_used_at`
+  - Events older than 30 days are pruned on write or on load so the counter reflects a true rolling window
+  - Frontend invokes the recorder at meaningful interaction points (at minimum: skill assignment; ideally also preview/peek)
+  - Restore the Most used / Least used options to the sort segmented control in `SkillsView.vue` and confirm they reorder the list
+  - `~/.kit/state.json` survives schema change (existing `usage: {}` state loads without error)
+
+### [Quality] Fix SNoticeBanner rendering under fixed STopbar in AppShell
+- **Priority:** P3 (nice-to-have)
+- **Size:** S (< 1hr)
+- **Added:** 2026-04-17
+- **Status:** pending
+- **Description:** In `src/components/layout/AppShell.vue`, the "repository is behind" `SNoticeBanner` renders in the flex-column flow between `WindowToolbar` and `.app-body`. Because `STopbar` (inside `WindowToolbar`) is `position: fixed` with `h-[52px]`, the banner sits at `y=0` and is overlaid by the toolbar — the top portion of the warning is hidden behind the translucent topbar backdrop. The main content area already compensates via `padding-top: var(--toolbar-height)` on `.app-content`, and `SSidebar` self-compensates with its built-in `pt-[52px]`, but the banner does not. A naive fix (adding padding to a wrapper) would double-pad the sidebar.
+- **Acceptance criteria:**
+  - When `repoStatus.state === 'behind'`, the `SNoticeBanner` is fully visible below the topbar on all viewport sizes
+  - No double-padding on `SidebarNav` (respect `SSidebar`'s own `pt-[52px]`)
+  - Main `.app-content` remains correctly offset whether the banner is visible or hidden
+  - Works in both light and dark modes
+
 ### [Feature] Add skill dependency resolution and conflict detection
 - **Priority:** P3 (nice-to-have)
 - **Size:** L (3-8hrs)
@@ -398,6 +423,7 @@ These items implement the @stuntrocket/ui design system to achieve premium visua
 - **Size:** XL (8hrs+)
 - **Added:** 2026-03-19
 - **Status:** pending
+- **Note:** Skipped: too large for autonomous cycle, needs Danny's input.
 - **Description:** Replace all locally-defined UI components in src/components/base/ with @stuntrocket/ui equivalents. The master-detail layout pattern, skill library view, location panels, set management views, and assignment workflow all need to be rebuilt with shared components. Kit's nested route structure should be preserved while the visual layer is replaced.
 - **Acceptance criteria:**
   - All src/components/base/ generic UI primitives replaced with @stuntrocket/ui imports

@@ -47,6 +47,8 @@ export const useLibraryStore = defineStore("library", () => {
       result = [...result].sort((a, b) => b.useCount30d - a.useCount30d);
     } else if (sortBy.value === "least_used") {
       result = [...result].sort((a, b) => a.useCount30d - b.useCount30d);
+    } else {
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name));
     }
     return result;
   });
@@ -62,6 +64,15 @@ export const useLibraryStore = defineStore("library", () => {
     try {
       items.value = await invoke<LibraryListItem[]>("list_library_items");
       useSkillPeekStore().clearCache();
+      // Cached details may now be stale (e.g. linkedLocations after an
+      // assignment) — keep the selected skill visible while it refreshes,
+      // drop the rest
+      const selected = selectedSkillId.value;
+      const current = selected ? skillDetailCache.value[selected] : undefined;
+      skillDetailCache.value = selected && current ? { [selected]: current } : {};
+      if (selected) {
+        fetchSkillDetail(selected);
+      }
     } finally {
       isLoading.value = false;
     }

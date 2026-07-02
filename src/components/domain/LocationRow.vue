@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import type { SavedLocationSummary } from "@/types";
-import { SBadge } from "@stuntrocket/ui";
+import { requestRemoveLocation } from "@/composables/useRemoveLocation";
+import { SBadge, SRowActionMenu } from "@stuntrocket/ui";
 
-defineProps<{
+const props = defineProps<{
   location: SavedLocationSummary;
   selected: boolean;
 }>();
+
+function onRowAction(action: string) {
+  if (action === "remove") {
+    requestRemoveLocation(props.location);
+  }
+}
 
 function truncatePath(path: string, maxLen = 32): string {
   if (path.length <= maxLen) return path;
@@ -24,6 +31,13 @@ function truncatePath(path: string, maxLen = 32): string {
     <SBadge v-if="location.issueCount > 0" variant="warning">
       {{ location.issueCount }}
     </SBadge>
+    <SRowActionMenu
+      class="row-menu"
+      :actions="[{ label: 'Remove…', value: 'remove', danger: true }]"
+      align="right"
+      @click.stop
+      @select="onRowAction"
+    />
   </div>
 </template>
 
@@ -74,5 +88,15 @@ function truncatePath(path: string, maxLen = 32): string {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.row-menu {
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.location-row:hover .row-menu,
+.location-row:focus-within .row-menu {
+  opacity: 1;
 }
 </style>
