@@ -30,9 +30,11 @@ function close() {
 <template>
   <SModal
     :open="showShortcutHelp"
-    title="Keyboard shortcuts"
     @close="close"
   >
+    <template #header>
+      <h2 class="modal-title">Keyboard shortcuts</h2>
+    </template>
     <div class="shortcut-groups">
       <div v-for="group in shortcuts" :key="group.group" class="shortcut-group">
         <h3 class="group-title">{{ group.group }}</h3>
@@ -50,6 +52,13 @@ function close() {
 </template>
 
 <style scoped>
+.modal-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
 .shortcut-groups {
   display: flex;
   flex-direction: column;

@@ -10,6 +10,7 @@ import { SNoticeBanner } from "@stuntrocket/ui";
 import OnboardingView from "@/views/OnboardingView.vue";
 import SkillPeekPanel from "@/components/domain/SkillPeekPanel.vue";
 import BulkAssignModal from "@/components/domain/BulkAssignModal.vue";
+import AssignmentSheet from "@/components/domain/AssignmentSheet.vue";
 import { useAppStore } from "@/stores/appStore";
 import { useWatcherStore } from "@/stores/watcherStore";
 import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
@@ -82,11 +83,7 @@ watch(
     <div class="app-body">
       <SidebarNav />
       <main class="app-content">
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
+        <router-view />
       </main>
     </div>
     </template>
@@ -96,6 +93,9 @@ watch(
 
     <!-- Bulk assign modal -->
     <BulkAssignModal />
+
+    <!-- Assignment sheet -->
+    <AssignmentSheet />
 
     <!-- Keyboard shortcut help overlay -->
     <ShortcutHelpOverlay />
@@ -154,6 +154,8 @@ watch(
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* STopbar (@stuntrocket/ui) is position:fixed; SSidebar self-compensates, so we match on the main side. */
+  padding-top: var(--toolbar-height);
 }
 
 .global-error {

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::PathBuf;
 use tauri::State;
 
@@ -12,14 +13,17 @@ pub fn list_library_items(
 ) -> Result<Vec<LibraryListItem>, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    let locations = guard.locations().to_vec();
+    let usage_map = guard.inner.usage.clone();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
 
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
 
     // Scan each location once and cache results
-    let location_scans: Vec<scanner::LocationScanResult> = guard
-        .locations()
+    let location_scans: Vec<scanner::LocationScanResult> = locations
         .iter()
         .map(|loc| {
             let loc_path = PathBuf::from(&loc.path);
@@ -27,20 +31,32 @@ pub fn list_library_items(
         })
         .collect();
 
+    // One set of linked skill IDs per location so counting below is O(1) per lookup
+    let linked_per_location: Vec<HashSet<&str>> = location_scans
+        .iter()
+        .map(|scan| {
+            scan.skills
+                .iter()
+                .filter(|s| s.link_state == LinkState::Linked)
+                .map(|s| s.skill_id.as_str())
+                .collect()
+        })
+        .collect();
+    let library_skill_ids: HashSet<&str> = library_skills
+        .iter()
+        .map(|s| s.folder_name.as_str())
+        .collect();
+
     let mut items: Vec<LibraryListItem> = Vec::new();
 
     // Add skills — look up linked count from cached scans, plus usage data
     for skill in &library_skills {
-        let linked_count = location_scans
+        let linked_count = linked_per_location
             .iter()
-            .filter(|scan| {
-                scan.skills
-                    .iter()
-                    .any(|s| s.skill_id == skill.folder_name && s.link_state == LinkState::Linked)
-            })
+            .filter(|linked| linked.contains(skill.folder_name.as_str()))
             .count();
 
-        let usage = scanner::skill_usage(&skill.folder_name, &guard.inner.usage);
+        let usage = scanner::skill_usage(&skill.folder_name, &usage_map);
 
         items.push(LibraryListItem {
             id: skill.folder_name.clone(),
@@ -60,22 +76,16 @@ pub fn list_library_items(
 
     // Add sets — check if any set skill is linked at each location
     for (set_id, set_def) in &library_sets {
-        let linked_count = location_scans
+        let linked_count = linked_per_location
             .iter()
-            .filter(|scan| {
-                set_def.skills.iter().any(|sid| {
-                    scan.skills
-                        .iter()
-                        .any(|s| s.skill_id == *sid && s.link_state == LinkState::Linked)
-                })
-            })
+            .filter(|linked| set_def.skills.iter().any(|sid| linked.contains(sid.as_str())))
             .count();
 
         // Count skills referenced by this set that don't exist in the library
         let broken_skill_count = set_def
             .skills
             .iter()
-            .filter(|sid| !library_skills.iter().any(|s| s.folder_name == **sid))
+            .filter(|sid| !library_skill_ids.contains(sid.as_str()))
             .count();
 
         items.push(LibraryListItem {
@@ -105,6 +115,10 @@ pub fn get_skill_detail(
 ) -> Result<SkillDetail, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    let locations = guard.locations().to_vec();
+    let usage_map = guard.inner.usage.clone();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
 
     let library_skills = scanner::scan_library_skills(&library_root);
@@ -114,7 +128,7 @@ pub fn get_skill_detail(
     if let Some(skill) = library_skills.iter().find(|s| s.folder_name == skill_id) {
         let linked_locations = scanner::locations_linking_skill(
             &skill_id,
-            guard.locations(),
+            &locations,
             &library_root,
             &library_skills,
             &library_sets,
@@ -129,7 +143,7 @@ pub fn get_skill_detail(
             })
             .collect();
 
-        let usage = scanner::skill_usage(&skill_id, &guard.inner.usage);
+        let usage = scanner::skill_usage(&skill_id, &usage_map);
 
         return Ok(SkillDetail {
             id: skill.folder_name.clone(),
@@ -194,6 +208,10 @@ fn set_skill_archived(
 ) -> Result<SkillDetail, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    let locations = guard.locations().to_vec();
+    let usage_map = guard.inner.usage.clone();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
 
     let skill_dir = library_root.join(skill_id);
@@ -224,7 +242,7 @@ fn set_skill_archived(
 
     let linked_locations = scanner::locations_linking_skill(
         skill_id,
-        guard.locations(),
+        &locations,
         &library_root,
         &library_skills,
         &library_sets,
@@ -239,7 +257,7 @@ fn set_skill_archived(
         })
         .collect();
 
-    let usage = scanner::skill_usage(skill_id, &guard.inner.usage);
+    let usage = scanner::skill_usage(skill_id, &usage_map);
 
     Ok(SkillDetail {
         id: skill.folder_name.clone(),
@@ -267,8 +285,8 @@ fn set_frontmatter_archived(content: &str, archived: bool) -> String {
     let leading = &content[..leading_len];
 
     let after_first = &trimmed[3..];
-    let end_idx = match after_first.find("---") {
-        Some(i) => i,
+    let end_idx = match scanner::find_closing_fence(after_first) {
+        Some((fence_start, _)) => fence_start,
         None => return content.to_string(),
     };
 
@@ -311,6 +329,15 @@ mod tests {
         let result = set_frontmatter_archived(content, true);
         assert!(result.contains("archived: true"));
         assert!(result.contains("name: Test"));
+    }
+
+    #[test]
+    fn set_archived_preserves_dashes_in_values() {
+        let content = "---\nname: Test\ndescription: before --- after\n---\nBody";
+        let result = set_frontmatter_archived(content, true);
+        assert!(result.contains("description: before --- after"));
+        assert!(result.contains("archived: true"));
+        assert!(result.contains("Body"));
     }
 
     #[test]

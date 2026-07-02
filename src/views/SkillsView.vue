@@ -20,12 +20,6 @@ const filterOptions = [
   { label: "Sets", value: "set" },
 ];
 
-const sortOptions = [
-  { label: "Name", value: "name" },
-  { label: "Most used", value: "most_used" },
-  { label: "Least used", value: "least_used" },
-];
-
 // Inline preview state
 const previewSkillId = ref<string | null>(null);
 const previewContent = ref<string | null>(null);
@@ -118,12 +112,6 @@ onMounted(() => {
             v-model="libraryStore.filterKind"
             :options="filterOptions"
           />
-          <div class="filter-row">
-            <SSegmentedControl
-              v-model="libraryStore.sortBy"
-              :options="sortOptions"
-            />
-          </div>
           <label v-if="libraryStore.unusedCount > 0" class="unused-filter">
             <input
               type="checkbox"
@@ -265,11 +253,6 @@ onMounted(() => {
   padding: var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
-}
-
-.filter-row {
-  display: flex;
-  gap: var(--space-2);
 }
 
 .unused-filter {

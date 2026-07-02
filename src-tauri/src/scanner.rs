@@ -9,6 +9,22 @@ use crate::state::UsageRecord;
 // SKILL.md frontmatter parsing
 // ---------------------------------------------------------------------------
 
+/// Locate the closing `---` fence in the text following the opening fence.
+/// The fence must sit on its own line (a bare `---` substring inside a YAML
+/// value is not a fence). Returns byte offsets into the input: the start of
+/// the fence line (where the YAML block ends) and the start of the body
+/// (just past the fence line).
+pub fn find_closing_fence(after_first: &str) -> Option<(usize, usize)> {
+    let mut offset = 0;
+    for line in after_first.split_inclusive('\n') {
+        if line.trim() == "---" {
+            return Some((offset, offset + line.len()));
+        }
+        offset += line.len();
+    }
+    None
+}
+
 /// Parse YAML frontmatter from a SKILL.md file.
 /// Expects the file to start with `---`, then YAML, then `---`.
 pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
@@ -17,7 +33,7 @@ pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
         return None;
     }
     let after_first = &trimmed[3..];
-    let end = after_first.find("---")?;
+    let (end, _) = find_closing_fence(after_first)?;
     let yaml_block = &after_first[..end];
 
     // Minimal hand-parser for YAML key: value lines so we avoid pulling in a
@@ -28,8 +44,23 @@ pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
     let mut archived = false;
     let mut tags: Vec<String> = Vec::new();
 
+    let mut in_tags_list = false;
+
     for line in yaml_block.lines() {
         let line = line.trim();
+
+        // Continuation lines of a `tags:` dash list
+        if in_tags_list {
+            if let Some(rest) = line.strip_prefix('-') {
+                let item = rest.trim().trim_matches('"').trim_matches('\'');
+                if !item.is_empty() {
+                    tags.push(item.to_string());
+                }
+                continue;
+            }
+            in_tags_list = false;
+        }
+
         if let Some((key, val)) = line.split_once(':') {
             let key = key.trim();
             let val = val.trim().trim_matches('"').trim_matches('\'');
@@ -39,11 +70,17 @@ pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
                 "version" => version = Some(val.to_string()),
                 "archived" => archived = val == "true",
                 "tags" => {
-                    tags = val
-                        .split(',')
-                        .map(|t| t.trim().to_string())
-                        .filter(|t| !t.is_empty())
-                        .collect();
+                    if val.is_empty() {
+                        // Block-style list: items follow on `- item` lines
+                        tags.clear();
+                        in_tags_list = true;
+                    } else {
+                        tags = val
+                            .split(',')
+                            .map(|t| t.trim().to_string())
+                            .filter(|t| !t.is_empty())
+                            .collect();
+                    }
                 }
                 _ => {}
             }
@@ -85,7 +122,7 @@ pub fn validate_skill_md(content: &str) -> Vec<ValidationIssue> {
     }
 
     let after_first = &trimmed[3..];
-    if !after_first.contains("---") {
+    if find_closing_fence(after_first).is_none() {
         issues.push(ValidationIssue {
             field: "frontmatter".to_string(),
             message: "Unclosed frontmatter block — missing closing ---".to_string(),
@@ -187,8 +224,8 @@ fn extract_body(content: &str) -> &str {
         return content;
     }
     let after_first = &trimmed[3..];
-    if let Some(end) = after_first.find("---") {
-        &after_first[end + 3..]
+    if let Some((_, body_start)) = find_closing_fence(after_first) {
+        &after_first[body_start..]
     } else {
         content
     }
@@ -437,6 +474,9 @@ pub fn scan_location(
         })
         .collect();
 
+    // Canonicalised once — reused for every symlink target comparison below
+    let canonical_library_root = fs::canonicalize(library_root).ok();
+
     let skills_dir = find_skills_dir(location_path);
     let manifest_path = find_manifest_path(location_path);
     let manifest_skills = manifest_path
@@ -519,8 +559,9 @@ pub fn scan_location(
                                 // Check by canonical path set (handles symlinked library entries)
                                 canonical_lib_paths.contains_key(&canon_str)
                                     // Also check starts_with using Path method (component-aware)
-                                    || fs::canonicalize(library_root)
-                                        .map(|lr| canon.starts_with(&lr))
+                                    || canonical_library_root
+                                        .as_ref()
+                                        .map(|lr| canon.starts_with(lr))
                                         .unwrap_or(false)
                             })
                             .unwrap_or(false);
@@ -744,16 +785,11 @@ pub fn count_broken_links_for_locations(
         .sum()
 }
 
-/// Build a SavedLocationSummary for a given SavedLocation by scanning the
-/// filesystem.
-pub fn build_location_summary(
+/// Build a SavedLocationSummary from an existing scan result.
+fn summary_from_scan(
     loc: &crate::domain::SavedLocation,
-    library_root: &Path,
-    library_skills: &[SkillMeta],
-    library_sets: &[(String, SetDefinition)],
+    result: &LocationScanResult,
 ) -> SavedLocationSummary {
-    let loc_path = PathBuf::from(&loc.path);
-    let result = scan_location(&loc_path, library_root, library_skills, library_sets);
     SavedLocationSummary {
         id: loc.id.clone(),
         label: loc.label.clone(),
@@ -769,7 +805,21 @@ pub fn build_location_summary(
     }
 }
 
+/// Build a SavedLocationSummary for a given SavedLocation by scanning the
+/// filesystem.
+pub fn build_location_summary(
+    loc: &crate::domain::SavedLocation,
+    library_root: &Path,
+    library_skills: &[SkillMeta],
+    library_sets: &[(String, SetDefinition)],
+) -> SavedLocationSummary {
+    let loc_path = PathBuf::from(&loc.path);
+    let result = scan_location(&loc_path, library_root, library_skills, library_sets);
+    summary_from_scan(loc, &result)
+}
+
 /// Determine which locations link to a given skill (by folder name).
+/// Each location is scanned exactly once; the summary is built from that scan.
 pub fn locations_linking_skill(
     skill_folder: &str,
     locations: &[crate::domain::SavedLocation],
@@ -787,12 +837,7 @@ pub fn locations_linking_skill(
                 .iter()
                 .any(|s| s.skill_id == skill_folder && s.link_state == LinkState::Linked);
             if links {
-                Some(build_location_summary(
-                    loc,
-                    library_root,
-                    library_skills,
-                    library_sets,
-                ))
+                Some(summary_from_scan(loc, &result))
             } else {
                 None
             }
@@ -1103,6 +1148,41 @@ mod tests {
     }
 
     #[test]
+    fn parse_skill_md_dashes_in_value() {
+        let content = "---\nname: My Skill\ndescription: before --- after\n---\nBody";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.name, "My Skill");
+        assert_eq!(fm.description.as_deref(), Some("before --- after"));
+    }
+
+    #[test]
+    fn parse_skill_md_fence_requires_own_line() {
+        // `---` only ever appears inside a value, never on its own line
+        let content = "---\nname: X\ndescription: a --- b\n";
+        assert!(parse_skill_md(content).is_none());
+    }
+
+    #[test]
+    fn extract_body_skips_fence_line() {
+        let content = "---\nname: X\n---\nBody text";
+        assert_eq!(extract_body(content), "Body text");
+    }
+
+    #[test]
+    fn extract_body_with_dashes_in_value() {
+        let content = "---\nname: X\ndescription: a --- b\n---\nBody";
+        assert_eq!(extract_body(content), "Body");
+    }
+
+    #[test]
+    fn validate_skill_md_inline_dashes_not_a_fence() {
+        // No closing fence on its own line — must report unclosed frontmatter
+        let content = "---\nname: X\ndescription: a --- b\n";
+        let issues = validate_skill_md(content);
+        assert!(issues.iter().any(|i| i.field == "frontmatter"));
+    }
+
+    #[test]
     fn parse_skill_md_leading_whitespace() {
         let content = "  \n---\nname: Indented\n---\n";
         let fm = parse_skill_md(content).unwrap();
@@ -1142,6 +1222,28 @@ mod tests {
         let content = "---\nname: No Tags\n---\n";
         let fm = parse_skill_md(content).unwrap();
         assert!(fm.tags.is_empty());
+    }
+
+    #[test]
+    fn parse_skill_md_dash_list_tags() {
+        let content = "---\nname: Tagged Skill\ntags:\n  - rust\n  - tauri\n  - vue\n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.tags, vec!["rust", "tauri", "vue"]);
+    }
+
+    #[test]
+    fn parse_skill_md_dash_list_tags_followed_by_key() {
+        let content = "---\nname: Tagged Skill\ntags:\n  - rust\nversion: 1.0\n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.tags, vec!["rust"]);
+        assert_eq!(fm.version.as_deref(), Some("1.0"));
+    }
+
+    #[test]
+    fn parse_skill_md_dash_list_quoted_items() {
+        let content = "---\nname: Tagged Skill\ntags:\n  - \"rust\"\n  - 'vue'\n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.tags, vec!["rust", "vue"]);
     }
 
     #[test]

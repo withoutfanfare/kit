@@ -15,9 +15,11 @@ pub fn get_skill_changelog(
 ) -> Result<Vec<ChangelogEntry>, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    let locations = guard.locations().to_vec();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
-    let locations = guard.locations().to_vec();
 
     let cutoff = days.map(|d| {
         chrono::Utc::now() - chrono::Duration::days(d as i64)

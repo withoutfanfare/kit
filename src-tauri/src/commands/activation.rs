@@ -40,6 +40,8 @@ pub fn toggle_skill_activation(
     }
 
     guard.save().map_err(AppError::new)?;
+    let disabled_skills = guard.inner.disabled_skills.clone();
+    drop(guard);
 
     // Re-scan to build updated detail
     let library_skills = scanner::scan_library_skills(&library_root);
@@ -55,7 +57,7 @@ pub fn toggle_skill_activation(
     let mut skills = scan.skills;
     for skill in &mut skills {
         let sk = format!("{}:{}", location_id, skill.skill_id);
-        skill.disabled = guard.inner.disabled_skills.contains(&sk);
+        skill.disabled = disabled_skills.contains(&sk);
     }
 
     let assigned_ids: Vec<String> = skills.iter().map(|s| s.skill_id.clone()).collect();

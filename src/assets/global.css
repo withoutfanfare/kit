@@ -13,7 +13,7 @@
   --color-accent-subtle: rgba(91, 122, 148, 0.10);
 
   /* Kit-specific layout tokens */
-  --toolbar-height: 44px;
+  --toolbar-height: 52px;
   --titlebar-height: 28px;
 
   /* Scrollbar — slate-blue tinted */

@@ -10,6 +10,9 @@ use crate::state::SharedState;
 pub fn get_usage_summary(state: State<'_, SharedState>) -> Result<UsageSummary, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    let usage_map = guard.inner.usage.clone();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
 
@@ -22,7 +25,7 @@ pub fn get_usage_summary(state: State<'_, SharedState>) -> Result<UsageSummary, 
             continue;
         }
 
-        let usage = scanner::skill_usage(&skill.folder_name, &guard.inner.usage);
+        let usage = scanner::skill_usage(&skill.folder_name, &usage_map);
 
         if usage.use_count_30d > 0 {
             most_used.push(UsageEntry {

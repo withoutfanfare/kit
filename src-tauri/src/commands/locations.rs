@@ -10,12 +10,14 @@ use crate::state::SharedState;
 pub fn list_locations(state: State<'_, SharedState>) -> Result<Vec<SavedLocationSummary>, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
+    let locations = guard.locations().to_vec();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
 
-    let summaries: Vec<SavedLocationSummary> = guard
-        .locations()
+    let summaries: Vec<SavedLocationSummary> = locations
         .iter()
         .map(|loc| {
             scanner::build_location_summary(loc, &library_root, &library_skills, &library_sets)
@@ -74,6 +76,8 @@ pub fn add_location(
     guard.save().map_err(AppError::new)?;
 
     let prefs = guard.preferences().clone();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
@@ -110,6 +114,8 @@ pub fn update_location(
     guard.save().map_err(AppError::new)?;
 
     let prefs = guard.preferences().clone();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
@@ -138,12 +144,14 @@ pub fn remove_location(
     guard.save().map_err(AppError::new)?;
 
     let prefs = guard.preferences().clone();
+    let locations = guard.locations().to_vec();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
 
-    let summaries: Vec<SavedLocationSummary> = guard
-        .locations()
+    let summaries: Vec<SavedLocationSummary> = locations
         .iter()
         .map(|loc| {
             scanner::build_location_summary(loc, &library_root, &library_skills, &library_sets)
@@ -166,6 +174,9 @@ pub fn get_location_detail(
         .clone();
 
     let prefs = guard.preferences().clone();
+    let disabled_skills = guard.inner.disabled_skills.clone();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
@@ -182,7 +193,7 @@ pub fn get_location_detail(
     let mut skills = scan.skills;
     for skill in &mut skills {
         let key = format!("{}:{}", id, skill.skill_id);
-        skill.disabled = guard.inner.disabled_skills.contains(&key);
+        skill.disabled = disabled_skills.contains(&key);
     }
 
     let assigned_ids: Vec<String> = skills.iter().map(|s| s.skill_id.clone()).collect();
@@ -224,6 +235,9 @@ pub fn sync_location(
     guard.save().map_err(AppError::new)?;
 
     let prefs = guard.preferences().clone();
+    let disabled_skills = guard.inner.disabled_skills.clone();
+    drop(guard);
+
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
@@ -240,7 +254,7 @@ pub fn sync_location(
     let mut skills = scan.skills;
     for skill in &mut skills {
         let key = format!("{}:{}", id, skill.skill_id);
-        skill.disabled = guard.inner.disabled_skills.contains(&key);
+        skill.disabled = disabled_skills.contains(&key);
     }
 
     let assigned_ids: Vec<String> = skills.iter().map(|s| s.skill_id.clone()).collect();

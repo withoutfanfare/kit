@@ -88,21 +88,75 @@ fn build_skill_entries(
         .collect()
 }
 
-/// Count how many saved locations have this set assigned in their manifest.
-fn count_assigned_locations(
-    set_id: &str,
+/// Build summaries for all global and project sets. Each location's manifest
+/// is read once up front, not once per set.
+fn build_set_summaries(
+    library_root: &Path,
     locations: &[SavedLocation],
-) -> usize {
-    locations
+) -> Vec<SetSummary> {
+    let manifest_sets: Vec<Vec<String>> = locations
         .iter()
-        .filter(|loc| {
+        .map(|loc| {
             let manifest_path = PathBuf::from(&loc.path)
                 .join(".claude")
                 .join("settings.json");
-            let manifest_sets = scanner::read_manifest_sets(&manifest_path);
-            manifest_sets.contains(&set_id.to_string())
+            scanner::read_manifest_sets(&manifest_path)
         })
-        .count()
+        .collect();
+    let assigned_count = |set_id: &str| {
+        manifest_sets
+            .iter()
+            .filter(|sets| sets.iter().any(|s| s == set_id))
+            .count()
+    };
+
+    let mut summaries: Vec<SetSummary> = Vec::new();
+
+    // Global sets from <libraryRoot>/sets/
+    let global_sets = scanner::scan_library_sets(library_root);
+    for (set_id, set_def) in &global_sets {
+        let set_path = library_root
+            .join("sets")
+            .join(format!("{}.set.json", set_id))
+            .to_string_lossy()
+            .to_string();
+        summaries.push(SetSummary {
+            id: set_id.clone(),
+            name: set_def.name.clone(),
+            description: set_def.description.clone(),
+            scope: SetScope::Global,
+            owner_location_id: None,
+            skill_count: set_def.skills.len(),
+            assigned_location_count: assigned_count(set_id),
+            path: set_path,
+        });
+    }
+
+    // Project sets from each location's .claude/sets/
+    for loc in locations {
+        let loc_path = PathBuf::from(&loc.path);
+        let project_sets = scanner::scan_project_sets(&loc_path);
+        for (set_id, set_def) in &project_sets {
+            let set_path = loc_path
+                .join(".claude")
+                .join("sets")
+                .join(format!("{}.set.json", set_id))
+                .to_string_lossy()
+                .to_string();
+            summaries.push(SetSummary {
+                id: set_id.clone(),
+                name: set_def.name.clone(),
+                description: set_def.description.clone(),
+                scope: SetScope::Project,
+                owner_location_id: Some(loc.id.clone()),
+                skill_count: set_def.skills.len(),
+                assigned_location_count: assigned_count(set_id),
+                path: set_path,
+            });
+        }
+    }
+
+    summaries
 }
 
 /// Build the list of locations that have this set assigned.
@@ -138,56 +192,11 @@ pub fn list_sets(
 ) -> Result<Vec<SetSummary>, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
-    let library_root = PathBuf::from(&prefs.library_root);
     let locations = guard.locations().to_vec();
+    drop(guard);
 
-    let mut summaries: Vec<SetSummary> = Vec::new();
-
-    // Global sets from <libraryRoot>/sets/
-    let global_sets = scanner::scan_library_sets(&library_root);
-    for (set_id, set_def) in &global_sets {
-        let set_path = library_root
-            .join("sets")
-            .join(format!("{}.set.json", set_id))
-            .to_string_lossy()
-            .to_string();
-        summaries.push(SetSummary {
-            id: set_id.clone(),
-            name: set_def.name.clone(),
-            description: set_def.description.clone(),
-            scope: SetScope::Global,
-            owner_location_id: None,
-            skill_count: set_def.skills.len(),
-            assigned_location_count: count_assigned_locations(set_id, &locations),
-            path: set_path,
-        });
-    }
-
-    // Project sets from each location's .claude/sets/
-    for loc in &locations {
-        let loc_path = PathBuf::from(&loc.path);
-        let project_sets = scanner::scan_project_sets(&loc_path);
-        for (set_id, set_def) in &project_sets {
-            let set_path = loc_path
-                .join(".claude")
-                .join("sets")
-                .join(format!("{}.set.json", set_id))
-                .to_string_lossy()
-                .to_string();
-            summaries.push(SetSummary {
-                id: set_id.clone(),
-                name: set_def.name.clone(),
-                description: set_def.description.clone(),
-                scope: SetScope::Project,
-                owner_location_id: Some(loc.id.clone()),
-                skill_count: set_def.skills.len(),
-                assigned_location_count: count_assigned_locations(set_id, &locations),
-                path: set_path,
-            });
-        }
-    }
-
-    Ok(summaries)
+    let library_root = PathBuf::from(&prefs.library_root);
+    Ok(build_set_summaries(&library_root, &locations))
 }
 
 #[tauri::command]
@@ -202,6 +211,8 @@ pub fn create_set(
     let prefs = guard.preferences().clone();
     let library_root = PathBuf::from(&prefs.library_root);
     let locations = guard.locations().to_vec();
+    drop(guard);
+
     let parsed_scope = parse_scope(&scope)?;
 
     let set_id = to_kebab_case(&name);
@@ -267,6 +278,8 @@ pub fn get_set_detail(
     let prefs = guard.preferences().clone();
     let library_root = PathBuf::from(&prefs.library_root);
     let locations = guard.locations().to_vec();
+    drop(guard);
+
     let parsed_scope = parse_scope(&scope)?;
 
     let set_path = resolve_set_path(
@@ -321,6 +334,8 @@ pub fn update_set(
     let prefs = guard.preferences().clone();
     let library_root = PathBuf::from(&prefs.library_root);
     let locations = guard.locations().to_vec();
+    drop(guard);
+
     let parsed_scope = parse_scope(&scope)?;
 
     let set_path = resolve_set_path(
@@ -386,6 +401,8 @@ pub fn add_skill_to_set(
     let prefs = guard.preferences().clone();
     let library_root = PathBuf::from(&prefs.library_root);
     let locations = guard.locations().to_vec();
+    drop(guard);
+
     let parsed_scope = parse_scope(&scope)?;
 
     let set_path = resolve_set_path(
@@ -445,6 +462,8 @@ pub fn remove_skill_from_set(
     let prefs = guard.preferences().clone();
     let library_root = PathBuf::from(&prefs.library_root);
     let locations = guard.locations().to_vec();
+    drop(guard);
+
     let parsed_scope = parse_scope(&scope)?;
 
     let set_path = resolve_set_path(
@@ -501,6 +520,8 @@ pub fn delete_set(
     let prefs = guard.preferences().clone();
     let library_root = PathBuf::from(&prefs.library_root);
     let locations = guard.locations().to_vec();
+    drop(guard);
+
     let parsed_scope = parse_scope(&scope)?;
 
     let set_path = resolve_set_path(
@@ -557,60 +578,8 @@ pub fn delete_set(
         )));
     }
 
-    // Drop the guard and re-acquire to call list_sets logic
-    drop(guard);
-
     // Rebuild the full list
-    let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
-    let prefs = guard.preferences().clone();
-    let library_root = PathBuf::from(&prefs.library_root);
-    let locations = guard.locations().to_vec();
-
-    let mut summaries: Vec<SetSummary> = Vec::new();
-
-    let global_sets = scanner::scan_library_sets(&library_root);
-    for (sid, sdef) in &global_sets {
-        let sp = library_root
-            .join("sets")
-            .join(format!("{}.set.json", sid))
-            .to_string_lossy()
-            .to_string();
-        summaries.push(SetSummary {
-            id: sid.clone(),
-            name: sdef.name.clone(),
-            description: sdef.description.clone(),
-            scope: SetScope::Global,
-            owner_location_id: None,
-            skill_count: sdef.skills.len(),
-            assigned_location_count: count_assigned_locations(sid, &locations),
-            path: sp,
-        });
-    }
-
-    for loc in &locations {
-        let loc_path = PathBuf::from(&loc.path);
-        let project_sets = scanner::scan_project_sets(&loc_path);
-        for (sid, sdef) in &project_sets {
-            let sp = loc_path
-                .join(".claude")
-                .join("sets")
-                .join(format!("{}.set.json", sid))
-                .to_string_lossy()
-                .to_string();
-            summaries.push(SetSummary {
-                id: sid.clone(),
-                name: sdef.name.clone(),
-                description: sdef.description.clone(),
-                scope: SetScope::Project,
-                owner_location_id: Some(loc.id.clone()),
-                skill_count: sdef.skills.len(),
-                assigned_location_count: count_assigned_locations(sid, &locations),
-                path: sp,
-            });
-        }
-    }
-
-    Ok(summaries)
+    Ok(build_set_summaries(&library_root, &locations))
 }
 
 #[cfg(test)]

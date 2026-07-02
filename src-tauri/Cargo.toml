@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "Skill loadout manager for Claude Code"
 authors = ["Danny Harding"]
 edition = "2021"
+default-run = "kit-app"
 
 [lib]
 name = "kit_lib"
@@ -11,6 +12,10 @@ crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+
+[[bin]]
+name = "kit-app"
+path = "src/main.rs"
 
 [[bin]]
 name = "kit"

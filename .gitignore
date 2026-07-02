@@ -31,3 +31,10 @@ npm-debug.log*
 # Package lock (keep package-lock.json, ignore others)
 yarn.lock
 pnpm-lock.yaml
+
+# Local code review artifacts
+code-review/
+
+CLAUDE.md
+
+.claude/

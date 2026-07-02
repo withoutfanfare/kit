@@ -165,7 +165,7 @@ export type SetDetail = {
 
 export type UsageSummary = {
   mostUsed: Array<{ id: SkillId; name: string; count: number }>;
-  recentlyUsed: Array<{ id: SkillId; name: string; lastUsedAt: string }>;
+  recentlyUsed: Array<{ id: SkillId; name: string; lastUsedAt: string | null }>;
   unused: Array<{ id: SkillId; name: string }>;
   suggestions: string[];
 };
