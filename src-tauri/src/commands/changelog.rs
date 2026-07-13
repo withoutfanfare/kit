@@ -30,20 +30,7 @@ pub fn get_skill_changelog(
             &library_skills,
             &library_sets,
         );
-
-        for assignment in scan
-            .skills
-            .iter()
-            .filter(|assignment| assignment.link_state == LinkState::Linked)
-        {
-            assigned_locations
-                .entry(assignment.skill_id.clone())
-                .or_default()
-                .push(ChangelogAssignedLocation {
-                    id: location.id.clone(),
-                    label: location.label.clone(),
-                });
-        }
+        record_linked_locations(&mut assigned_locations, location, &scan.skills);
     }
 
     let cutoff = days.map(|d| chrono::Utc::now() - chrono::Duration::days(d as i64));
@@ -85,4 +72,78 @@ pub fn get_skill_changelog(
     entries.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
 
     Ok(entries)
+}
+
+fn record_linked_locations(
+    assigned_locations: &mut HashMap<String, Vec<ChangelogAssignedLocation>>,
+    location: &SavedLocation,
+    assignments: &[SkillAssignment],
+) {
+    for assignment in assignments
+        .iter()
+        .filter(|assignment| assignment.link_state == LinkState::Linked)
+    {
+        assigned_locations
+            .entry(assignment.skill_id.clone())
+            .or_default()
+            .push(ChangelogAssignedLocation {
+                id: location.id.clone(),
+                label: location.label.clone(),
+            });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assignment(skill_id: &str, link_state: LinkState) -> SkillAssignment {
+        SkillAssignment {
+            skill_id: skill_id.to_string(),
+            name: skill_id.to_string(),
+            path: String::new(),
+            link_state,
+            declared_in_manifest: false,
+            archived: false,
+            source: SkillSource::Library,
+            disabled: false,
+        }
+    }
+
+    #[test]
+    fn assigned_locations_include_only_linked_skills_with_saved_location_identity() {
+        let alpha = SavedLocation {
+            id: "alpha-id".to_string(),
+            label: "Alpha".to_string(),
+            path: String::new(),
+            notes: None,
+            last_synced_at: None,
+        };
+        let beta = SavedLocation {
+            id: "beta-id".to_string(),
+            label: "Beta".to_string(),
+            path: String::new(),
+            notes: None,
+            last_synced_at: None,
+        };
+        let alpha_assignments = vec![
+            assignment("linked", LinkState::Linked),
+            assignment("local", LinkState::LocalOnly),
+            assignment("broken", LinkState::BrokenLink),
+            assignment("declared", LinkState::DeclaredOnly),
+        ];
+        let beta_assignments = vec![assignment("linked", LinkState::Linked)];
+        let mut result = HashMap::new();
+
+        record_linked_locations(&mut result, &alpha, &alpha_assignments);
+        record_linked_locations(&mut result, &beta, &beta_assignments);
+
+        let linked = &result["linked"];
+        assert_eq!(linked.len(), 2);
+        assert_eq!((&linked[0].id, &linked[0].label), (&alpha.id, &alpha.label));
+        assert_eq!((&linked[1].id, &linked[1].label), (&beta.id, &beta.label));
+        for excluded in ["local", "broken", "declared"] {
+            assert!(!result.contains_key(excluded));
+        }
+    }
 }
