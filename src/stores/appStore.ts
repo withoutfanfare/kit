@@ -20,6 +20,7 @@ export const useAppStore = defineStore("app", () => {
   const isBootstrapped = ref(false);
   const isLoading = ref(false);
   const globalSearchQuery = ref("");
+  const isGlobalSearchOpen = ref(false);
   const globalError = ref<string | null>(null);
   const needsSetup = ref(false);
   const toasts = ref<Toast[]>([]);
@@ -36,7 +37,7 @@ export const useAppStore = defineStore("app", () => {
     toasts.value = toasts.value.filter((t) => t.id !== id);
   }
 
-  async function bootstrap() {
+  async function bootstrap(): Promise<boolean> {
     isLoading.value = true;
     try {
       const data = await invoke<AppBootstrap>("get_app_bootstrap");
@@ -56,9 +57,11 @@ export const useAppStore = defineStore("app", () => {
 
       needsSetup.value = !data.libraryRoot;
       isBootstrapped.value = true;
+      return true;
     } catch (err) {
       globalError.value =
         err instanceof Error ? err.message : "Failed to load app data";
+      return false;
     } finally {
       isLoading.value = false;
     }
@@ -68,15 +71,26 @@ export const useAppStore = defineStore("app", () => {
     globalError.value = null;
   }
 
+  function openGlobalSearch() {
+    isGlobalSearchOpen.value = true;
+  }
+
+  function closeGlobalSearch() {
+    isGlobalSearchOpen.value = false;
+  }
+
   return {
     isBootstrapped,
     isLoading,
     globalSearchQuery,
+    isGlobalSearchOpen,
     globalError,
     needsSetup,
     toasts,
     bootstrap,
     clearError,
+    openGlobalSearch,
+    closeGlobalSearch,
     toast,
     dismissToast,
   };

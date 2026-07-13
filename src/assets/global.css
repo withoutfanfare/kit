@@ -156,3 +156,9 @@ body,
   transform: translateY(4px) scale(0.99);
   opacity: 0;
 }
+
+@media (max-width: 1120px) {
+  :root {
+    --sidebar-width: 64px;
+  }
+}

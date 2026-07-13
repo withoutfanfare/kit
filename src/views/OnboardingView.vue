@@ -14,22 +14,41 @@ const appStore = useAppStore();
 const preferencesStore = usePreferencesStore();
 const locationsStore = useLocationsStore();
 
-type OnboardingStep = "welcome" | "validated";
+type OnboardingStep = "library" | "project" | "scan" | "review";
 
-const step = ref<OnboardingStep>("welcome");
+const step = ref<OnboardingStep>("library");
 const selectedPath = ref<string | null>(null);
+const persistedLibraryPath = ref<string | null>(null);
 const validation = ref<SkillsRepoValidation | null>(null);
 const isValidating = ref(false);
 const validationError = ref<string | null>(null);
 const editorDraft = ref(preferencesStore.editorCommand ?? "");
-const addedProjectPath = ref<string | null>(null);
-const isAddingProject = ref(false);
+const projectPath = ref<string | null>(null);
+const addedLocationId = ref<string | null>(null);
+const scanError = ref<string | null>(null);
 const isCompleting = ref(false);
 
 const isValid = computed(() => validation.value?.valid === true);
-const hasIssues = computed(
-  () => validation.value && validation.value.issues.length > 0
+const reviewDetail = computed(() =>
+  addedLocationId.value
+    ? locationsStore.detailCache[addedLocationId.value] ?? null
+    : null
 );
+const reviewSkillCount = computed(() => reviewDetail.value?.skills.length ?? 0);
+const reviewIssueCount = computed(() => reviewDetail.value?.issues.length ?? 0);
+
+function editorCommand() {
+  return editorDraft.value.trim();
+}
+
+async function persistLibrary() {
+  if (!selectedPath.value) return;
+  await preferencesStore.update({
+    libraryRoot: selectedPath.value,
+    editorCommand: editorCommand(),
+  });
+  persistedLibraryPath.value = selectedPath.value;
+}
 
 async function chooseRepository() {
   const selected = await open({
@@ -39,20 +58,41 @@ async function chooseRepository() {
   });
   if (selected && typeof selected === "string") {
     selectedPath.value = selected;
+    persistedLibraryPath.value = null;
+    validation.value = null;
     isValidating.value = true;
     validationError.value = null;
     try {
-      validation.value = await invoke<SkillsRepoValidation>(
+      const result = await invoke<SkillsRepoValidation>(
         "validate_skills_repository",
         { path: selected }
       );
-      step.value = "validated";
+      validation.value = result;
+      if (result.valid) {
+        await persistLibrary();
+        step.value = "project";
+      }
     } catch (err) {
       validationError.value =
         err instanceof Error ? err.message : "Failed to validate repository";
     } finally {
       isValidating.value = false;
     }
+  }
+}
+
+async function continueFromLibrary() {
+  if (!isValid.value || !selectedPath.value) return;
+  try {
+    if (persistedLibraryPath.value === selectedPath.value) {
+      await preferencesStore.update({ editorCommand: editorCommand() });
+    } else {
+      await persistLibrary();
+    }
+    step.value = "project";
+  } catch (err) {
+    validationError.value =
+      err instanceof Error ? err.message : "Failed to save repository settings";
   }
 }
 
@@ -63,33 +103,52 @@ async function addFirstProject() {
     title: "Add a Project Location",
   });
   if (selected && typeof selected === "string") {
-    isAddingProject.value = true;
-    try {
-      await locationsStore.addLocation(selected);
-      addedProjectPath.value = selected;
-    } catch (err) {
-      appStore.toast(
-        err instanceof Error ? err.message : "Failed to add project",
-        "error"
-      );
-    } finally {
-      isAddingProject.value = false;
+    if (selected !== projectPath.value) {
+      addedLocationId.value = null;
     }
+    projectPath.value = selected;
+    await scanProject();
+  }
+}
+
+async function scanProject() {
+  if (!projectPath.value) return;
+  const previousLocationId = locationsStore.selectedLocationId;
+  step.value = "scan";
+  scanError.value = null;
+  try {
+    if (addedLocationId.value) {
+      await locationsStore.fetchDetail(addedLocationId.value);
+    } else {
+      await locationsStore.addLocation(projectPath.value);
+      addedLocationId.value = locationsStore.selectedLocationId;
+    }
+    step.value = "review";
+  } catch (err) {
+    if (
+      !addedLocationId.value &&
+      locationsStore.selectedLocationId !== previousLocationId
+    ) {
+      addedLocationId.value = locationsStore.selectedLocationId;
+    }
+    scanError.value =
+      err instanceof Error ? err.message : "Failed to scan project";
   }
 }
 
 async function completeSetup() {
-  if (!selectedPath.value) return;
+  if (!addedLocationId.value) return;
   isCompleting.value = true;
   try {
-    await preferencesStore.update({ libraryRoot: selectedPath.value });
-    const trimmedEditor = editorDraft.value.trim();
-    if (trimmedEditor) {
-      await preferencesStore.update({ editorCommand: trimmedEditor });
-    }
+    const locationId = addedLocationId.value;
+    const bootstrapped = await appStore.bootstrap();
+    if (!bootstrapped) return;
     appStore.needsSetup = false;
-    await appStore.bootstrap();
-    router.push("/locations");
+    await router.push(
+      reviewIssueCount.value > 0
+        ? { path: "/health", query: { locationId } }
+        : `/locations/${locationId}`
+    );
   } catch (err) {
     appStore.toast(
       err instanceof Error ? err.message : "Failed to complete setup",
@@ -104,29 +163,17 @@ async function completeSetup() {
 <template>
   <div class="onboarding-backdrop">
     <div class="onboarding-card">
-      <!-- Step: Welcome -->
-      <template v-if="step === 'welcome'">
+      <template v-if="step === 'library'">
         <h1 class="onboarding-title">Welcome to Kit</h1>
         <p class="onboarding-description">
-          Kit helps you manage Claude Code skills across your projects.
+          Choose the skills repository Kit should use across your projects.
         </p>
 
         <div v-if="validationError" class="validation-error">
           {{ validationError }}
         </div>
 
-        <SButton
-          variant="primary"
-          :loading="isValidating"
-          @click="chooseRepository"
-        >Choose Skills Repository</SButton>
-      </template>
-
-      <!-- Step: Validated -->
-      <template v-if="step === 'validated' && validation">
-        <h1 class="onboarding-title">Repository Selected</h1>
-
-        <div class="validation-results">
+        <div v-if="validation" class="validation-results">
           <div class="validation-row">
             <span class="validation-label">Path</span>
             <span class="validation-value mono">{{ validation.path }}</span>
@@ -162,11 +209,11 @@ async function completeSetup() {
           </div>
         </div>
 
-        <div v-if="isValid && !hasIssues" class="validation-message success">
+        <div v-if="isValid" class="validation-message success">
           This looks like a valid skills repository.
         </div>
 
-        <div v-if="hasIssues" class="validation-issues">
+        <div v-if="validation?.issues.length" class="validation-issues">
           <div
             v-for="(issue, i) in validation.issues"
             :key="i"
@@ -176,7 +223,6 @@ async function completeSetup() {
           </div>
         </div>
 
-        <!-- Optional: Editor command -->
         <div class="optional-section">
           <label class="optional-label" for="editor-command">
             Editor command
@@ -191,30 +237,74 @@ async function completeSetup() {
           />
         </div>
 
-        <!-- Optional: Add first project -->
-        <div class="optional-section">
-          <div v-if="addedProjectPath" class="added-project">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="added-project-icon">
-              <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.5"/>
-              <path d="M4.5 7l2 2 3-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            </svg>
-            <span class="added-project-path">{{ addedProjectPath }}</span>
-          </div>
+        <div class="onboarding-actions">
           <SButton
-            v-else
+            v-if="isValid"
             variant="secondary"
-            :loading="isAddingProject"
+            :disabled="isValidating"
+            @click="chooseRepository"
+          >Choose Another Repository</SButton>
+          <SButton
+            variant="primary"
+            :loading="isValidating"
+            @click="isValid ? continueFromLibrary() : chooseRepository()"
+          >{{ isValid ? "Continue" : "Choose Skills Repository" }}</SButton>
+        </div>
+      </template>
+
+      <template v-else-if="step === 'project'">
+        <h1 class="onboarding-title">Add your first project</h1>
+        <p class="onboarding-description">
+          Kit will scan this location using the saved skills repository.
+        </p>
+        <div class="onboarding-actions">
+          <SButton variant="secondary" @click="step = 'library'">Back</SButton>
+          <SButton
+            variant="primary"
             @click="addFirstProject"
           >Add First Project</SButton>
         </div>
+      </template>
 
+      <template v-else-if="step === 'scan'">
+        <h1 class="onboarding-title">
+          {{ scanError ? "Scan paused" : "Scanning project" }}
+        </h1>
+        <p class="onboarding-description mono-path">{{ projectPath }}</p>
+        <div v-if="scanError" class="validation-error">{{ scanError }}</div>
         <div class="onboarding-actions">
-          <SButton variant="secondary" @click="step = 'welcome'">Back</SButton>
+          <SButton
+            v-if="scanError"
+            variant="secondary"
+            @click="step = 'project'"
+          >Back</SButton>
+          <SButton
+            variant="primary"
+            :loading="!scanError"
+            :disabled="!scanError"
+            @click="scanProject"
+          >{{ scanError ? "Retry Scan" : "Scanning" }}</SButton>
+        </div>
+      </template>
+
+      <template v-else-if="step === 'review'">
+        <h1 class="onboarding-title">Project ready</h1>
+        <p class="onboarding-description">
+          Found {{ reviewSkillCount }}
+          {{ reviewSkillCount === 1 ? "skill" : "skills" }} and
+          {{ reviewIssueCount }}
+          {{ reviewIssueCount === 1 ? "issue" : "issues" }}.
+        </p>
+        <div class="onboarding-actions">
           <SButton
             variant="primary"
             :loading="isCompleting"
             @click="completeSetup"
-          >Open Kit</SButton>
+          >{{
+            reviewIssueCount > 0
+              ? `Resolve ${reviewIssueCount} ${reviewIssueCount === 1 ? "issue" : "issues"}`
+              : "Open location"
+          }}</SButton>
         </div>
       </template>
     </div>
@@ -404,20 +494,11 @@ async function completeSetup() {
   box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
-/* Added project feedback */
-.added-project {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--success);
-}
-
-.added-project-path {
+.mono-path {
   font-family: ui-monospace, "SF Mono", Monaco, "Cascadia Code", monospace;
   font-size: var(--text-xs);
-  color: var(--text-secondary);
+  direction: rtl;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

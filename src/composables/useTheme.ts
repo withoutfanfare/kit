@@ -1,51 +1,66 @@
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
-type Theme = "dark" | "light";
+export type ThemePreference = "system" | "light" | "dark";
+type ResolvedTheme = "light" | "dark";
 
 const STORAGE_KEY = "kit.theme";
+const systemTheme =
+  typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : null;
+const systemThemeIsDark = ref(systemTheme?.matches ?? false);
 
-const theme = ref<Theme>(loadTheme());
+const theme = ref<ThemePreference>(loadTheme());
+const resolvedTheme = computed<ResolvedTheme>(() =>
+  theme.value === "system"
+    ? systemThemeIsDark.value ? "dark" : "light"
+    : theme.value
+);
 
-function loadTheme(): Theme {
+function loadTheme(): ThemePreference {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === "light" || stored === "dark") return stored;
   } catch {
     // localStorage may be unavailable in some contexts
   }
-  return "dark";
+  return "system";
 }
 
-function applyTheme(value: Theme) {
+function applyTheme(value: ResolvedTheme) {
+  if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("dark", value === "dark");
   document.documentElement.classList.toggle("light", value === "light");
 }
 
-// Apply on load
-applyTheme(theme.value);
-
-// Persist and apply on change
-watch(theme, (value) => {
-  applyTheme(value);
-  try {
-    localStorage.setItem(STORAGE_KEY, value);
-  } catch {
-    // Ignore storage errors
-  }
+systemTheme?.addEventListener("change", (event) => {
+  systemThemeIsDark.value = event.matches;
 });
 
-export function useTheme() {
-  function toggle() {
-    theme.value = theme.value === "dark" ? "light" : "dark";
-  }
+applyTheme(resolvedTheme.value);
 
-  function setTheme(value: Theme) {
+watch(
+  theme,
+  (value) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, value);
+    } catch {
+      // Ignore storage errors
+    }
+  },
+  { immediate: true }
+);
+
+watch(resolvedTheme, applyTheme);
+
+export function useTheme() {
+  function setTheme(value: ThemePreference) {
     theme.value = value;
   }
 
   return {
     theme,
-    toggle,
+    resolvedTheme,
     setTheme,
   };
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useRoute, useRouter } from "vue-router";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -17,6 +17,18 @@ const appStore = useAppStore();
 const router = useRouter();
 const route = useRoute();
 const isDragging = ref(false);
+const compactPane = computed(() =>
+  route.params.locationId
+    ? "detail"
+    : locationsStore.locationList.length > 0
+      ? "list"
+      : "main"
+);
+
+function showLocationList() {
+  locationsStore.selectLocation(null);
+  router.push("/locations");
+}
 
 async function confirmRemoveLocation() {
   const loc = pendingRemoval.value;
@@ -155,23 +167,28 @@ onUnmounted(() => {
         <span class="drop-label">Drop a project folder to add it</span>
       </div>
     </div>
-    <SplitPaneLayout :show-inspector="!!($route.params.locationId && locationsStore.selectedDetail)">
+    <SplitPaneLayout
+      :show-inspector="!!(route.params.locationId && locationsStore.selectedDetail)"
+      :compact-pane="compactPane"
+      back-label="Locations"
+      @back="showLocationList"
+    >
       <template #sidebar>
         <LocationList />
       </template>
       <template #main>
-        <router-view v-if="$route.params.locationId" />
+        <router-view v-if="route.params.locationId" />
         <SEmptyState
           v-else-if="locationsStore.locationList.length === 0"
-          title="Add your first project"
-          description="Drag a project folder here, or click the button below."
+          title="No projects yet"
+          description="Kit will scan the location for skills and issues."
           action-label="Add Location"
           @action="addLocation"
         />
         <SEmptyState
           v-else
           title="Select a location"
-          description="Choose a project from the sidebar, or drag a folder here to add it."
+          description="Review its skills, sets and health."
         />
       </template>
       <template #inspector>

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useSetsStore } from "@/stores/setsStore";
 import { useLocationsStore } from "@/stores/locationsStore";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import SetRow from "@/components/domain/SetRow.vue";
 import SetInspector from "@/components/domain/SetInspector.vue";
+import LibraryTabs from "@/components/domain/LibraryTabs.vue";
 import { SSearchInput, SSegmentedControl, SButton, SEmptyState } from "@stuntrocket/ui";
 import type { SetScope, SetSummary } from "@/types";
 import { setKeyFromSummary } from "@/utils/setKey";
@@ -13,6 +14,7 @@ import { setKeyFromSummary } from "@/utils/setKey";
 const setsStore = useSetsStore();
 const locationsStore = useLocationsStore();
 const router = useRouter();
+const route = useRoute();
 
 const scopeOptions = [
   { label: "All", value: "all" },
@@ -27,6 +29,18 @@ const newSetScope = ref<SetScope>("global");
 const newSetDescription = ref("");
 const newSetOwnerLocationId = ref<string | undefined>(undefined);
 const isCreating = ref(false);
+const compactPane = computed(() =>
+  route.params.setKey
+    ? "detail"
+    : setsStore.items.length > 0
+      ? "list"
+      : "main"
+);
+
+function showSetList() {
+  setsStore.selectSet(null);
+  router.push("/sets");
+}
 
 function selectSet(set: SetSummary) {
   const key = setKeyFromSummary(set);
@@ -69,13 +83,20 @@ onMounted(() => {
 </script>
 
 <template>
-  <SplitPaneLayout :show-inspector="!!setsStore.selectedDetail">
+  <SplitPaneLayout
+    :show-inspector="!!(route.params.setKey && setsStore.selectedDetail)"
+    :compact-pane="compactPane"
+    back-label="Sets"
+    @back="showSetList"
+  >
     <template #sidebar>
       <div class="sets-sidebar">
+        <LibraryTabs />
         <div class="sidebar-controls">
           <SSearchInput
             v-model="setsStore.searchQuery"
-            placeholder="Search sets..."
+            data-local-filter
+            placeholder="Filter sets"
             compact
           />
           <SSegmentedControl
@@ -98,7 +119,7 @@ onMounted(() => {
             <span class="list-empty-text">No sets found</span>
           </div>
         </div>
-        <div class="sidebar-footer">
+        <div v-if="setsStore.items.length > 0" class="sidebar-footer">
           <SButton variant="primary" @click="openNewSetDialog">New Set</SButton>
         </div>
       </div>
@@ -108,7 +129,7 @@ onMounted(() => {
       <SEmptyState
         v-else-if="setsStore.items.length === 0 && !setsStore.isLoading"
         title="No sets yet"
-        description="Create a set to group related skills together and assign them to locations."
+        description="Sets group related skills for assignment to projects."
         action-label="Create Set"
         @action="openNewSetDialog"
       />

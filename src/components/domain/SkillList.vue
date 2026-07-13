@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SkillAssignment } from "@/types";
 import SkillRow from "@/components/domain/SkillRow.vue";
+import SkillStatusLegend from "@/components/domain/SkillStatusLegend.vue";
 
 defineProps<{
   skills: SkillAssignment[];
@@ -21,6 +22,7 @@ defineEmits<{
       <span class="section-title">{{ title }}</span>
       <span class="section-count">{{ skills.length }}</span>
     </div>
+    <SkillStatusLegend v-if="showLinkState" class="status-legend" />
     <div class="section-group">
       <SkillRow
         v-for="skill in skills"
@@ -69,6 +71,10 @@ defineEmits<{
   border-radius: var(--radius-md);
   background: var(--surface-panel);
   overflow: hidden;
+}
+
+.status-legend {
+  padding: 0 var(--space-3) var(--space-2);
 }
 
 .section-group > :deep(*:not(:first-child)) {

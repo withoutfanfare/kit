@@ -4,9 +4,11 @@ import type { LocationDetail } from "@/types";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useAssignmentStore } from "@/stores/assignmentStore";
 import { useAppStore } from "@/stores/appStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
 import { invoke } from "@tauri-apps/api/core";
 import { requestRemoveLocation } from "@/composables/useRemoveLocation";
-import { SButton, SInlineTextField } from "@stuntrocket/ui";
+import { useRouter } from "vue-router";
+import { SButton, SDropdownMenu, SInlineTextField } from "@stuntrocket/ui";
 
 const props = defineProps<{
   detail: LocationDetail;
@@ -15,6 +17,8 @@ const props = defineProps<{
 const locationsStore = useLocationsStore();
 const assignmentStore = useAssignmentStore();
 const appStore = useAppStore();
+const preferencesStore = usePreferencesStore();
+const router = useRouter();
 
 type SyncState = "idle" | "syncing" | "done" | "failed";
 const syncState = ref<SyncState>("idle");
@@ -27,6 +31,14 @@ const syncLabel = computed(() => {
     default: return "Sync";
   }
 });
+
+const moreActions = computed(() => [
+  ...(props.detail.manifestPath
+    ? [{ label: "Open manifest", value: "manifest" }]
+    : []),
+  { label: "Compare with…", value: "compare" },
+  { label: "Remove location…", value: "remove", danger: true },
+]);
 
 async function updateLabel(label: string) {
   await locationsStore.updateLocation(props.detail.id, { label });
@@ -64,6 +76,24 @@ async function openInFinder() {
   }
 }
 
+async function openManifest() {
+  if (!props.detail.manifestPath) return;
+  await invoke("open_path_in_editor", {
+    path: props.detail.manifestPath,
+    editorCommand: preferencesStore.editorCommand ?? "code",
+  });
+}
+
+function handleMoreAction(action: string) {
+  if (action === "manifest") {
+    openManifest();
+  } else if (action === "compare") {
+    router.push({ path: "/compare", query: { locationA: props.detail.id } });
+  } else if (action === "remove") {
+    requestRemoveLocation(props.detail);
+  }
+}
+
 function addSkills() {
   assignmentStore.open(props.detail.id);
 }
@@ -80,7 +110,7 @@ function addSkills() {
       <span class="header-path">{{ detail.path }}</span>
     </div>
     <div class="header-actions">
-      <SButton @click="addSkills">Add Skills</SButton>
+      <SButton @click="addSkills">Add skills</SButton>
       <button
         class="sync-button"
         :class="syncState"
@@ -110,12 +140,25 @@ function addSkills() {
         </svg>
         <span>Reveal</span>
       </button>
-      <button class="action-button" @click="requestRemoveLocation(detail)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M3 4.5h10M6.5 4.5V3.5a1 1 0 011-1h1a1 1 0 011 1v1M4.5 4.5l.5 8a1 1 0 001 .95h4a1 1 0 001-.95l.5-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span>Remove</span>
-      </button>
+      <SDropdownMenu
+        :items="moreActions"
+        align="right"
+        @click.stop
+        @select="handleMoreAction"
+      >
+        <template #trigger="{ toggle, open }">
+          <button
+            type="button"
+            class="action-button"
+            :class="{ active: open }"
+            aria-haspopup="menu"
+            :aria-expanded="open"
+            @click.stop="toggle"
+          >
+            More
+          </button>
+        </template>
+      </SDropdownMenu>
     </div>
   </div>
 </template>
@@ -177,7 +220,8 @@ function addSkills() {
 }
 
 .sync-button:hover:not(:disabled),
-.action-button:hover {
+.action-button:hover,
+.action-button.active {
   background: var(--surface-hover);
   border-color: var(--border-strong);
 }
@@ -222,6 +266,16 @@ function addSkills() {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@container (max-width: 720px) {
+  .location-header {
+    flex-direction: column;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
   }
 }
 </style>

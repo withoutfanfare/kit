@@ -4,19 +4,24 @@ import { useRoute, useRouter } from "vue-router";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import { useAppStore } from "@/stores/appStore";
+import { useAssignmentStore } from "@/stores/assignmentStore";
+import { useDismissedRecommendations } from "@/composables/useDismissedRecommendations";
 import LocationHeader from "@/components/domain/LocationHeader.vue";
 import SkillDiffModal from "@/components/domain/SkillDiffModal.vue";
 import LocationOverviewCard from "@/components/domain/LocationOverviewCard.vue";
 import SetList from "@/components/domain/SetList.vue";
 import SkillList from "@/components/domain/SkillList.vue";
 import IssueList from "@/components/domain/IssueList.vue";
-import { SBadge } from "@stuntrocket/ui";
+import { SBadge, SButton } from "@stuntrocket/ui";
+import type { SkillId, SkillRecommendation } from "@/types";
 
 const route = useRoute();
 const router = useRouter();
 const locationsStore = useLocationsStore();
 const skillPeekStore = useSkillPeekStore();
 const appStore = useAppStore();
+const assignmentStore = useAssignmentStore();
+const { isDismissed, dismiss, restore, restoreAll } = useDismissedRecommendations();
 
 const locationId = computed(() => route.params.locationId as string);
 
@@ -36,6 +41,54 @@ function closeDiff() {
 }
 
 const detail = computed(() => locationsStore.selectedDetail);
+const selectedRecommendationIds = ref<Set<SkillId>>(new Set());
+
+const visibleRecommendations = computed(
+  () => detail.value?.skillRecommendations.filter(
+    (recommendation) => !isDismissed(detail.value!.id, recommendation.skillId)
+  ) ?? []
+);
+
+const dismissedRecommendations = computed(
+  () => detail.value?.skillRecommendations.filter(
+    (recommendation) => isDismissed(detail.value!.id, recommendation.skillId)
+  ) ?? []
+);
+
+const groupedRecommendations = computed(() => {
+  const groups = new Map<string, SkillRecommendation[]>();
+  for (const recommendation of visibleRecommendations.value) {
+    const group = groups.get(recommendation.projectType) ?? [];
+    group.push(recommendation);
+    groups.set(recommendation.projectType, group);
+  }
+  return [...groups].map(([projectType, recommendations]) => ({
+    projectType,
+    recommendations,
+  }));
+});
+
+function toggleRecommendation(skillId: SkillId) {
+  const next = new Set(selectedRecommendationIds.value);
+  next.has(skillId) ? next.delete(skillId) : next.add(skillId);
+  selectedRecommendationIds.value = next;
+}
+
+function selectAllRecommendations() {
+  selectedRecommendationIds.value = new Set(
+    visibleRecommendations.value.map((recommendation) => recommendation.skillId)
+  );
+}
+
+function addSelectedRecommendations() {
+  if (!detail.value || selectedRecommendationIds.value.size === 0) return;
+  assignmentStore.open(detail.value.id, [...selectedRecommendationIds.value]);
+}
+
+function dismissRecommendation(skillId: SkillId) {
+  if (!detail.value) return;
+  dismiss(detail.value.id, skillId);
+}
 
 const linkedSkills = computed(
   () => detail.value?.skills.filter((s) => s.linkState === "linked") ?? []
@@ -58,6 +111,11 @@ const healthLabel = computed(() => {
     case "warning": return "Warnings";
     default: return "Healthy";
   }
+});
+
+const healthActionLabel = computed(() => {
+  const count = detail.value?.issues.length ?? 0;
+  return `Resolve ${count} issue${count === 1 ? "" : "s"}`;
 });
 
 function healthBadgeVariant(status: string): "success" | "warning" | "error" | "default" {
@@ -115,6 +173,17 @@ function loadDetail() {
 onMounted(loadDetail);
 
 watch(locationId, loadDetail);
+
+watch(
+  () => visibleRecommendations.value.map((recommendation) => recommendation.skillId),
+  (visibleIds) => {
+    const visible = new Set(visibleIds);
+    selectedRecommendationIds.value = new Set(
+      [...selectedRecommendationIds.value].filter((id) => visible.has(id))
+    );
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -131,7 +200,18 @@ watch(locationId, loadDetail);
         <span class="stat-value">{{ detail.issues.length }}</span>
         <span class="stat-label">Issues</span>
       </div>
-      <div class="dashboard-stat clickable" @click="navigateToHealth">
+      <button
+        v-if="detail.issues.length > 0"
+        type="button"
+        class="dashboard-stat health-action"
+        @click="navigateToHealth"
+      >
+        <SBadge :variant="healthBadgeVariant(healthStatus)" compact>
+          {{ healthLabel }}
+        </SBadge>
+        <span class="stat-label">{{ healthActionLabel }}</span>
+      </button>
+      <div v-else class="dashboard-stat">
         <SBadge :variant="healthBadgeVariant(healthStatus)" compact>
           {{ healthLabel }}
         </SBadge>
@@ -155,24 +235,68 @@ watch(locationId, loadDetail);
 
     <div class="detail-content">
       <!-- Skill recommendations -->
-      <div v-if="detail.skillRecommendations.length > 0" class="recommendations-section">
+      <div
+        v-if="visibleRecommendations.length > 0 || dismissedRecommendations.length > 0"
+        class="recommendations-section"
+      >
         <div class="section-header-row">
           <span class="section-title">Recommended Skills</span>
-          <SBadge variant="count">{{ detail.skillRecommendations.length }}</SBadge>
+          <SBadge variant="count">{{ visibleRecommendations.length }}</SBadge>
+          <div v-if="visibleRecommendations.length > 0" class="recommendation-actions">
+            <SButton variant="secondary" size="sm" @click="selectAllRecommendations">
+              Select all
+            </SButton>
+            <SButton
+              size="sm"
+              :disabled="selectedRecommendationIds.size === 0"
+              @click="addSelectedRecommendations"
+            >
+              Add selected
+            </SButton>
+          </div>
         </div>
-        <div class="section-group">
-          <div
-            v-for="rec in detail.skillRecommendations"
-            :key="rec.skillId"
-            class="recommendation-row"
-            @click="peekSkill(rec.skillId)"
-          >
-            <div class="rec-content">
-              <span class="rec-name">{{ rec.skillName }}</span>
-              <span class="rec-reason">{{ rec.reason }}</span>
+        <div
+          v-for="group in groupedRecommendations"
+          :key="group.projectType"
+          class="recommendation-group"
+        >
+          <span class="recommendation-group-title">{{ group.projectType }}</span>
+          <div class="section-group">
+            <div
+              v-for="rec in group.recommendations"
+              :key="rec.skillId"
+              class="recommendation-row"
+            >
+              <input
+                type="checkbox"
+                :checked="selectedRecommendationIds.has(rec.skillId)"
+                :aria-label="`Select ${rec.skillName}`"
+                @change="toggleRecommendation(rec.skillId)"
+              />
+              <button type="button" class="rec-content" @click="peekSkill(rec.skillId)">
+                <span class="rec-name">{{ rec.skillName }}</span>
+                <span v-if="rec.reason" class="rec-reason">{{ rec.reason }}</span>
+              </button>
+              <SButton variant="secondary" size="sm" @click="dismissRecommendation(rec.skillId)">
+                Dismiss
+              </SButton>
             </div>
           </div>
         </div>
+        <details v-if="dismissedRecommendations.length > 0" class="dismissed-recommendations">
+          <summary>{{ dismissedRecommendations.length }} dismissed</summary>
+          <div class="dismissed-actions">
+            <div v-for="rec in dismissedRecommendations" :key="rec.skillId" class="dismissed-row">
+              <span>{{ rec.skillName }}</span>
+              <SButton variant="secondary" size="sm" @click="restore(detail.id, rec.skillId)">
+                Restore
+              </SButton>
+            </div>
+            <SButton variant="secondary" size="sm" @click="restoreAll(detail.id)">
+              Restore all
+            </SButton>
+          </div>
+        </details>
       </div>
 
       <LocationOverviewCard
@@ -188,7 +312,7 @@ watch(locationId, loadDetail);
 
       <SkillList
         :skills="linkedSkills"
-        title="Linked Skills"
+        title="Assigned Skills"
         show-link-state
         @select-skill="peekSkill"
         @toggle-activation="handleToggleActivation"
@@ -236,6 +360,7 @@ watch(locationId, loadDetail);
   display: flex;
   flex-direction: column;
   height: 100%;
+  container-type: inline-size;
 }
 
 .dashboard-header {
@@ -255,12 +380,22 @@ watch(locationId, loadDetail);
   gap: 2px;
 }
 
-.dashboard-stat.clickable {
+.health-action {
+  padding: 0;
+  font: inherit;
+  background: none;
+  border: 0;
   cursor: pointer;
 }
 
-.dashboard-stat.clickable:hover {
+.health-action:hover {
   opacity: 0.8;
+}
+
+.health-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .stat-value {
@@ -312,6 +447,25 @@ watch(locationId, loadDetail);
   padding: var(--space-1) var(--space-3);
 }
 
+.recommendation-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.recommendation-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.recommendation-group-title {
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
 .section-title {
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
@@ -331,7 +485,6 @@ watch(locationId, loadDetail);
   display: flex;
   align-items: center;
   padding: var(--space-2) var(--space-3);
-  cursor: pointer;
   transition: background var(--duration-fast) var(--ease-default);
 }
 
@@ -346,7 +499,13 @@ watch(locationId, loadDetail);
 .rec-content {
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 1px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
 }
 
 .rec-name {
@@ -358,6 +517,29 @@ watch(locationId, loadDetail);
 .rec-reason {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
+}
+
+.dismissed-recommendations {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.dismissed-recommendations summary {
+  cursor: pointer;
+}
+
+.dismissed-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.dismissed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: var(--space-3);
 }
 
 .loading-state {

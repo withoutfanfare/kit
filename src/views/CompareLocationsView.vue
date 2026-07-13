@@ -4,12 +4,19 @@ import { invoke } from "@tauri-apps/api/core";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useAppStore } from "@/stores/appStore";
 import { useAssignmentStore } from "@/stores/assignmentStore";
+import { useRoute } from "vue-router";
+import SkillStatusLegend from "@/components/domain/SkillStatusLegend.vue";
+import {
+  linkStateBadgeVariant,
+  linkStateLabels,
+} from "@/utils/statusLabels";
 import { SButton, SBadge, SEmptyState } from "@stuntrocket/ui";
 import type { LocationComparison, LocationId } from "@/types";
 
 const locationsStore = useLocationsStore();
 const appStore = useAppStore();
 const assignmentStore = useAssignmentStore();
+const route = useRoute();
 
 const locationAId = ref<LocationId | null>(null);
 const locationBId = ref<LocationId | null>(null);
@@ -103,28 +110,15 @@ function exportComparison() {
   );
 }
 
-function linkStateLabel(state: string): string {
-  switch (state) {
-    case "linked": return "Linked";
-    case "local_only": return "Local";
-    case "declared_only": return "Declared";
-    case "broken_link": return "Broken";
-    default: return state;
+onMounted(async () => {
+  await locationsStore.fetchList();
+  const requestedLocation = route.query.locationA;
+  if (
+    typeof requestedLocation === "string" &&
+    locationsStore.locationList.some((location) => location.id === requestedLocation)
+  ) {
+    locationAId.value = requestedLocation;
   }
-}
-
-function linkStateBadgeVariant(state: string): "success" | "warning" | "error" | "default" {
-  switch (state) {
-    case "linked": return "success";
-    case "local_only": return "default";
-    case "declared_only": return "warning";
-    case "broken_link": return "error";
-    default: return "default";
-  }
-}
-
-onMounted(() => {
-  locationsStore.fetchList();
 });
 </script>
 
@@ -162,6 +156,7 @@ onMounted(() => {
         :disabled="!locationAId || !locationBId"
         @click="swapLocations"
         title="Swap locations"
+        aria-label="Swap locations"
       >
         ⇄
       </SButton>
@@ -219,6 +214,8 @@ onMounted(() => {
         </div>
       </div>
 
+      <SkillStatusLegend />
+
       <!-- Three-column layout -->
       <div class="columns">
         <!-- Only in A -->
@@ -235,13 +232,14 @@ onMounted(() => {
               <div class="skill-info">
                 <span class="skill-name">{{ skill.name }}</span>
                 <SBadge :variant="linkStateBadgeVariant(skill.linkState)" size="sm">
-                  {{ linkStateLabel(skill.linkState) }}
+                  {{ linkStateLabels[skill.linkState] }}
                 </SBadge>
               </div>
               <SButton
                 variant="secondary"
                 size="sm"
-                title="Assign to other location"
+                :title="`Assign ${skill.name} to ${comparison.locationB.label}`"
+                :aria-label="`Assign ${skill.name} to ${comparison.locationB.label}`"
                 @click="quickAssign(skill.skillId, comparison!.locationB.id)"
               >
                 →
@@ -290,13 +288,14 @@ onMounted(() => {
               <div class="skill-info">
                 <span class="skill-name">{{ skill.name }}</span>
                 <SBadge :variant="linkStateBadgeVariant(skill.linkState)" size="sm">
-                  {{ linkStateLabel(skill.linkState) }}
+                  {{ linkStateLabels[skill.linkState] }}
                 </SBadge>
               </div>
               <SButton
                 variant="secondary"
                 size="sm"
-                title="Assign to other location"
+                :title="`Assign ${skill.name} to ${comparison.locationA.label}`"
+                :aria-label="`Assign ${skill.name} to ${comparison.locationA.label}`"
                 @click="quickAssign(skill.skillId, comparison!.locationA.id)"
               >
                 ←

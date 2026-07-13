@@ -3,6 +3,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useSetsStore } from "@/stores/setsStore";
+import { useAppStore } from "@/stores/appStore";
 import { setKeyFromSummary } from "@/utils/setKey";
 
 export const showShortcutHelp = ref(false);
@@ -24,9 +25,20 @@ export function useKeyboardShortcuts() {
   const libraryStore = useLibraryStore();
   const locationsStore = useLocationsStore();
   const setsStore = useSetsStore();
+  const appStore = useAppStore();
 
   function handleKeydown(e: KeyboardEvent) {
     const meta = e.metaKey || e.ctrlKey;
+
+    // Cmd/Ctrl+K — global search (works even in inputs)
+    if (meta && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      appStore.openGlobalSearch();
+      document
+        .querySelector<HTMLInputElement>("[data-global-search] input")
+        ?.focus();
+      return;
+    }
 
     // Cmd+/ — toggle shortcut help overlay (works even in inputs)
     if (meta && e.key === "/") {
@@ -59,34 +71,27 @@ export function useKeyboardShortcuts() {
       return;
     }
 
-    // Cmd+3 — Sets view
+    // Cmd+3 — Health view
     if (meta && e.key === "3") {
       e.preventDefault();
-      router.push("/sets");
+      router.push("/health");
       return;
     }
 
-    // Cmd+4 — Changelog view
+    // Cmd+4 — Recently modified view
     if (meta && e.key === "4") {
       e.preventDefault();
       router.push("/changelog");
       return;
     }
 
-    // Cmd+5 — Health view
-    if (meta && e.key === "5") {
-      e.preventDefault();
-      router.push("/health");
-      return;
-    }
-
-    // / — focus search input
+    // / — focus the local filter for the current view
     if (e.key === "/") {
       e.preventDefault();
-      const searchInput = document.querySelector<HTMLInputElement>(
-        'input[type="search"], input[placeholder*="Search"]'
-      );
-      searchInput?.focus();
+      const filters = Array.from(
+        document.querySelectorAll<HTMLInputElement>("[data-local-filter] input")
+      ).filter((input) => input.offsetParent !== null);
+      filters[filters.length - 1]?.focus();
       return;
     }
 

@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { onMounted, watch } from "vue";
 import { useChangelogStore } from "@/stores/changelogStore";
-import { useRouter } from "vue-router";
 import { SSearchInput, SSegmentedControl, SBadge, SEmptyState } from "@stuntrocket/ui";
 
 const store = useChangelogStore();
-const router = useRouter();
 
 const dayOptions = [
   { label: "All", value: "all" },
@@ -21,24 +19,10 @@ watch(dayFilter, (val) => {
   store.fetchEntries();
 });
 
-function goToSkill(skillId: string) {
-  router.push(`/skills/${skillId}`);
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
+function formatModifiedAt(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
   });
 }
 
@@ -46,18 +30,6 @@ function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function timeAgo(iso: string): string {
-  const now = Date.now();
-  const then = new Date(iso).getTime();
-  const diff = now - then;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 onMounted(() => {
@@ -69,7 +41,7 @@ onMounted(() => {
   <div class="changelog-view">
     <div class="changelog-header">
       <div class="header-title">
-        <h2>Changelog</h2>
+        <h2>Recently modified</h2>
         <span class="header-count">{{ store.filteredEntries.length }} skills</span>
       </div>
       <div class="header-controls">
@@ -82,36 +54,38 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-if="store.isLoading" class="changelog-loading">Loading...</div>
+    <div v-if="store.isLoading" class="changelog-loading">Loading modified skills…</div>
 
     <div v-else-if="store.filteredEntries.length === 0" class="changelog-empty">
       <SEmptyState
-        title="No recent changes"
-        description="Skills will appear here when they are modified."
+        title="No modified skills"
+        description="Modified skills will appear here."
       />
     </div>
 
     <div v-else class="changelog-list">
-      <div
+      <RouterLink
         v-for="entry in store.filteredEntries"
         :key="entry.skillId"
+        :to="`/skills/${entry.skillId}`"
         class="changelog-row"
-        @click="goToSkill(entry.skillId)"
       >
         <div class="row-left">
           <span class="row-name">{{ entry.name }}</span>
-          <span class="row-id">{{ entry.skillId }}</span>
+          <span class="row-summary">SKILL.md edited</span>
         </div>
         <div class="row-right">
-          <SBadge v-if="entry.assignedLocationCount > 0" variant="accent" compact>
-            {{ entry.assignedLocationCount }} location{{ entry.assignedLocationCount === 1 ? '' : 's' }}
+          <SBadge v-if="entry.assignedLocations.length > 0" variant="accent" compact>
+            {{ entry.assignedLocations.slice(0, 2).map((location) => location.label).join(", ") }}
+            <span v-if="entry.assignedLocations.length > 2">
+              +{{ entry.assignedLocations.length - 2 }} more
+            </span>
           </SBadge>
           <span class="row-size">{{ formatSize(entry.sizeBytes) }}</span>
-          <span class="row-time" :title="`${formatDate(entry.modifiedAt)} ${formatTime(entry.modifiedAt)}`">
-            {{ timeAgo(entry.modifiedAt) }}
-          </span>
+          <time class="row-time" :datetime="entry.modifiedAt">{{ formatModifiedAt(entry.modifiedAt) }}</time>
+          <span class="row-action">Open skill</span>
         </div>
-      </div>
+      </RouterLink>
     </div>
   </div>
 </template>
@@ -186,13 +160,18 @@ onMounted(() => {
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
-  cursor: default;
+  color: inherit;
+  text-decoration: none;
   transition: background var(--duration-fast) var(--ease-default);
-  user-select: none;
 }
 
 .changelog-row:hover {
   background: var(--surface-hover);
+}
+
+.changelog-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .row-left {
@@ -212,7 +191,7 @@ onMounted(() => {
   text-overflow: ellipsis;
 }
 
-.row-id {
+.row-summary {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   white-space: nowrap;
@@ -237,7 +216,14 @@ onMounted(() => {
 .row-time {
   font-size: var(--text-xs);
   color: var(--text-secondary);
-  min-width: 48px;
+  min-width: 116px;
   text-align: right;
+}
+
+.row-action {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--accent);
+  white-space: nowrap;
 }
 </style>

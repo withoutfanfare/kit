@@ -127,7 +127,8 @@ watch(
           <div class="library-search">
             <SSearchInput
               v-model="searchQuery"
-              placeholder="Search skills and sets..."
+              data-local-filter
+              placeholder="Filter skills and sets"
             />
           </div>
 

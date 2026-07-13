@@ -63,8 +63,8 @@ function handleBackdropClick(event: MouseEvent) {
         <div class="diff-modal" role="dialog" aria-modal="true" tabindex="-1">
           <div class="diff-header">
             <h3 class="diff-title">Changes: {{ skillName }}</h3>
-            <button class="close-btn" @click="$emit('close')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button type="button" class="close-btn" aria-label="Close skill changes" @click="$emit('close')">
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>

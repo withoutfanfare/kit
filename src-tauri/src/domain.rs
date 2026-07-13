@@ -371,8 +371,43 @@ pub struct HealthIssue {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct HealthLocationSummary {
+    pub location_id: String,
+    pub location_label: String,
+    pub error_count: usize,
+    pub warning_count: usize,
+    pub info_count: usize,
+    pub broken_link_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BrokenLinkRemovalPreview {
+    pub location_id: String,
+    pub location_label: String,
+    pub paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BrokenLinkRemovalFailure {
+    pub path: String,
+    pub error: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BrokenLinkRemovalResult {
+    pub removed_count: usize,
+    pub failures: Vec<BrokenLinkRemovalFailure>,
+    pub health: HealthCheckResult,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HealthCheckResult {
     pub issues: Vec<HealthIssue>,
+    pub locations: Vec<HealthLocationSummary>,
     pub location_count: usize,
     pub healthy_count: usize,
     pub warning_count: usize,
@@ -396,7 +431,8 @@ pub struct DetectedProjectType {
 pub struct SkillRecommendation {
     pub skill_id: String,
     pub skill_name: String,
-    pub reason: String,
+    pub project_type: String,
+    pub reason: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -454,7 +490,14 @@ pub struct ChangelogEntry {
     pub name: String,
     pub modified_at: DateTime<Utc>,
     pub size_bytes: u64,
-    pub assigned_location_count: usize,
+    pub assigned_locations: Vec<ChangelogAssignedLocation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangelogAssignedLocation {
+    pub id: String,
+    pub label: String,
 }
 
 // ---------------------------------------------------------------------------

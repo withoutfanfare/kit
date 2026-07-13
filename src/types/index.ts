@@ -40,7 +40,8 @@ export type DetectedProjectType = {
 export type SkillRecommendation = {
   skillId: SkillId;
   skillName: string;
-  reason: string;
+  projectType: string;
+  reason: string | null;
 };
 
 export type LocationDetail = {
@@ -217,8 +218,30 @@ export type HealthIssue = {
   kind: LocationIssue["kind"];
 };
 
+export type HealthLocationSummary = {
+  locationId: LocationId;
+  locationLabel: string;
+  errorCount: number;
+  warningCount: number;
+  infoCount: number;
+  brokenLinkCount: number;
+};
+
+export type BrokenLinkRemovalPreview = {
+  locationId: LocationId;
+  locationLabel: string;
+  paths: string[];
+};
+
+export type BrokenLinkRemovalResult = {
+  removedCount: number;
+  failures: Array<{ path: string; error: string }>;
+  health: HealthCheckResult;
+};
+
 export type HealthCheckResult = {
   issues: HealthIssue[];
+  locations: HealthLocationSummary[];
   locationCount: number;
   healthyCount: number;
   warningCount: number;
@@ -256,7 +279,10 @@ export type ChangelogEntry = {
   name: string;
   modifiedAt: string;
   sizeBytes: number;
-  assignedLocationCount: number;
+  assignedLocations: Array<{
+    id: LocationId;
+    label: string;
+  }>;
 };
 
 // Skill content diff

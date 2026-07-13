@@ -2,20 +2,13 @@
 import { computed } from "vue";
 import type { LocationDetail } from "@/types";
 import { useLocationsStore } from "@/stores/locationsStore";
-import { usePreferencesStore } from "@/stores/preferencesStore";
-import { useAppStore } from "@/stores/appStore";
-import { invoke } from "@tauri-apps/api/core";
 import InspectorPanel from "@/components/layout/InspectorPanel.vue";
-import { requestRemoveLocation } from "@/composables/useRemoveLocation";
-import { SButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
   detail: LocationDetail;
 }>();
 
 const locationsStore = useLocationsStore();
-const preferencesStore = usePreferencesStore();
-const appStore = useAppStore();
 
 const lastSyncedDisplay = computed(() => {
   const summary = locationsStore.locationList.find(
@@ -34,25 +27,6 @@ const lastSyncedDisplay = computed(() => {
 const manifestStatus = computed(() =>
   props.detail.manifestPath ? "Present" : "Not found"
 );
-
-async function syncLocation() {
-  try {
-    await locationsStore.syncLocation(props.detail.id);
-    appStore.toast("Location synced", "success");
-  } catch {
-    appStore.toast("Sync failed", "error");
-  }
-}
-
-function removeLocation() {
-  requestRemoveLocation(props.detail);
-}
-
-async function openManifest() {
-  if (props.detail.manifestPath) {
-    await invoke("open_path_in_editor", { path: props.detail.manifestPath, editorCommand: preferencesStore.editorCommand ?? "code" });
-  }
-}
 </script>
 
 <template>
@@ -72,18 +46,6 @@ async function openManifest() {
         <span class="field-label">Last synced</span>
         <span class="field-value">{{ lastSyncedDisplay }}</span>
       </div>
-    </div>
-    <div class="inspector-actions">
-      <SButton variant="secondary" @click="syncLocation">Sync</SButton>
-      <SButton
-        v-if="detail.manifestPath"
-        variant="secondary"
-        @click="openManifest"
-      >Open Manifest</SButton>
-      <SButton
-        variant="secondary"
-        @click="removeLocation"
-      >Remove Location</SButton>
     </div>
   </InspectorPanel>
 </template>
@@ -123,14 +85,4 @@ async function openManifest() {
   color: var(--text-tertiary);
 }
 
-.inspector-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.inspector-actions :deep(button) {
-  width: 100%;
-  justify-content: center;
-}
 </style>
