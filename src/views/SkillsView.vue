@@ -8,19 +8,13 @@ import { invoke } from "@tauri-apps/api/core";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import SkillInspector from "@/components/domain/SkillInspector.vue";
 import SkillStatusLegend from "@/components/domain/SkillStatusLegend.vue";
-import { SBadge, SSearchInput, SSegmentedControl, SEmptyState } from "@stuntrocket/ui";
+import { SBadge, SSearchInput, SEmptyState } from "@stuntrocket/ui";
 
 const libraryStore = useLibraryStore();
 const locationsStore = useLocationsStore();
 const appStore = useAppStore();
 const router = useRouter();
 const route = useRoute();
-
-const filterOptions = [
-  { label: "All", value: "all" },
-  { label: "Skills", value: "skill" },
-  { label: "Sets", value: "set" },
-];
 
 // Inline preview state
 const previewSkillId = ref<string | null>(null);
@@ -108,6 +102,7 @@ function isAssignedToActive(id: string): boolean {
 }
 
 onMounted(() => {
+  libraryStore.filterKind = "skill";
   libraryStore.fetchItems();
 });
 </script>
@@ -124,12 +119,9 @@ onMounted(() => {
         <div class="sidebar-controls">
           <SSearchInput
             v-model="libraryStore.searchQuery"
-            placeholder="Search library..."
+            data-local-filter
+            placeholder="Filter skills"
             compact
-          />
-          <SSegmentedControl
-            v-model="libraryStore.filterKind"
-            :options="filterOptions"
           />
           <div class="status-controls">
             <label v-if="libraryStore.unusedCount > 0" class="unused-filter">

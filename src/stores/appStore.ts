@@ -20,6 +20,7 @@ export const useAppStore = defineStore("app", () => {
   const isBootstrapped = ref(false);
   const isLoading = ref(false);
   const globalSearchQuery = ref("");
+  const isGlobalSearchOpen = ref(false);
   const globalError = ref<string | null>(null);
   const needsSetup = ref(false);
   const toasts = ref<Toast[]>([]);
@@ -68,15 +69,26 @@ export const useAppStore = defineStore("app", () => {
     globalError.value = null;
   }
 
+  function openGlobalSearch() {
+    isGlobalSearchOpen.value = true;
+  }
+
+  function closeGlobalSearch() {
+    isGlobalSearchOpen.value = false;
+  }
+
   return {
     isBootstrapped,
     isLoading,
     globalSearchQuery,
+    isGlobalSearchOpen,
     globalError,
     needsSetup,
     toasts,
     bootstrap,
     clearError,
+    openGlobalSearch,
+    closeGlobalSearch,
     toast,
     dismissToast,
   };

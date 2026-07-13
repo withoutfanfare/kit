@@ -93,7 +93,8 @@ onMounted(() => {
         <div class="sidebar-controls">
           <SSearchInput
             v-model="setsStore.searchQuery"
-            placeholder="Search sets..."
+            data-local-filter
+            placeholder="Filter sets"
             compact
           />
           <SSegmentedControl
