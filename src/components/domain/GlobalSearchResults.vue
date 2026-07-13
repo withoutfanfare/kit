@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { SSearchInput } from "@stuntrocket/ui";
 import { useAppStore } from "@/stores/appStore";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useLocationsStore } from "@/stores/locationsStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useSetsStore } from "@/stores/setsStore";
 import { setKeyFromSummary } from "@/utils/setKey";
 
@@ -26,6 +26,7 @@ const router = useRouter();
 const appStore = useAppStore();
 const libraryStore = useLibraryStore();
 const locationsStore = useLocationsStore();
+const preferencesStore = usePreferencesStore();
 const setsStore = useSetsStore();
 const root = ref<HTMLElement | null>(null);
 const selectedIndex = ref(0);
@@ -35,6 +36,11 @@ const query = computed(() => appStore.globalSearchQuery.trim().toLowerCase());
 
 function matches(fields: Array<string | null | undefined>): boolean {
   return !query.value || fields.some((field) => field?.toLowerCase().includes(query.value));
+}
+
+function skillPath(id: string): string {
+  const root = preferencesStore.libraryRoot.replace(/\/+$/, "");
+  return preferencesStore.libraryRoot ? `${root}/${id}` : id;
 }
 
 const groups = computed<ResultGroup[]>(() => [
@@ -55,14 +61,14 @@ const groups = computed<ResultGroup[]>(() => [
     label: "Skills",
     results: libraryStore.items
       .filter((item) => item.kind === "skill")
-      .filter((item) => matches([item.name, item.id, item.summary, ...item.tags]))
+      .filter((item) => matches([item.name, skillPath(item.id), item.summary, ...item.tags]))
       .slice(0, 6)
       .map((item) => ({
         key: `skill:${item.id}`,
         type: "skill",
         id: item.id,
         name: item.name,
-        detail: item.summary ?? item.id,
+        detail: item.summary ?? skillPath(item.id),
       })),
   },
   {
@@ -88,7 +94,9 @@ const visibleGroups = computed(() => groups.value.filter((group) => group.result
 const results = computed(() => visibleGroups.value.flatMap((group) => group.results));
 const isLoading = computed(() => libraryStore.isLoading || setsStore.isLoading);
 const activeOptionId = computed(() =>
-  results.value.length > 0 ? `global-search-option-${selectedIndex.value}` : undefined
+  appStore.isGlobalSearchOpen && results.value.length > 0
+    ? `global-search-option-${selectedIndex.value}`
+    : undefined
 );
 
 watch([query, () => results.value.length], () => {
@@ -106,6 +114,10 @@ function handleFocus() {
 function updateQuery(value: string) {
   appStore.globalSearchQuery = value;
   appStore.openGlobalSearch();
+}
+
+function handleInput(event: Event) {
+  updateQuery((event.target as HTMLInputElement).value);
 }
 
 function resultIndex(result: SearchResult): number {
@@ -168,19 +180,35 @@ onUnmounted(() => document.removeEventListener("pointerdown", handlePointerDown)
     ref="root"
     class="global-search"
     data-global-search
-    role="combobox"
-    aria-haspopup="listbox"
-    :aria-expanded="appStore.isGlobalSearchOpen"
-    aria-controls="global-search-results"
-    :aria-activedescendant="activeOptionId"
-    @focusin="handleFocus"
   >
-    <SSearchInput
-      :model-value="appStore.globalSearchQuery"
+    <svg
+      class="search-icon"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        fill-rule="evenodd"
+        d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z"
+        clip-rule="evenodd"
+      />
+    </svg>
+    <input
+      :value="appStore.globalSearchQuery"
+      type="search"
+      class="global-search-input"
       placeholder="Search skills, sets and locations"
-      :clearable="false"
-      compact
-      @update:model-value="updateQuery"
+      role="combobox"
+      aria-label="Search skills, sets and locations"
+      aria-haspopup="listbox"
+      aria-autocomplete="list"
+      :aria-expanded="appStore.isGlobalSearchOpen"
+      aria-controls="global-search-results"
+      :aria-activedescendant="activeOptionId"
+      autocomplete="off"
+      spellcheck="false"
+      @focus="handleFocus"
+      @input="handleInput"
       @keydown="handleKeydown"
     />
     <kbd class="shortcut-hint">⌘K</kbd>
@@ -229,6 +257,45 @@ onUnmounted(() => document.removeEventListener("pointerdown", handlePointerDown)
 .global-search {
   position: relative;
   width: 280px;
+}
+
+.search-icon {
+  position: absolute;
+  top: 6px;
+  left: var(--space-2);
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.global-search-input {
+  width: 100%;
+  height: 28px;
+  padding: 0 42px 0 28px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  outline: none;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  transition: border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
+}
+
+.global-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.global-search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.global-search-input::-webkit-search-cancel-button {
+  display: none;
 }
 
 .shortcut-hint {
