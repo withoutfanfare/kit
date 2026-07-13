@@ -278,7 +278,10 @@ export type ChangelogEntry = {
   name: string;
   modifiedAt: string;
   sizeBytes: number;
-  assignedLocationCount: number;
+  assignedLocations: Array<{
+    id: LocationId;
+    label: string;
+  }>;
 };
 
 // Skill content diff

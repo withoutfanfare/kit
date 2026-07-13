@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 use tauri::State;
 
 use crate::commands::AppError;
@@ -20,10 +20,33 @@ pub fn get_skill_changelog(
 
     let library_root = PathBuf::from(&prefs.library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
+    let library_sets = scanner::scan_library_sets(&library_root);
 
-    let cutoff = days.map(|d| {
-        chrono::Utc::now() - chrono::Duration::days(d as i64)
-    });
+    let mut assigned_locations: HashMap<String, Vec<ChangelogAssignedLocation>> = HashMap::new();
+    for location in &locations {
+        let scan = scanner::scan_location(
+            &PathBuf::from(&location.path),
+            &library_root,
+            &library_skills,
+            &library_sets,
+        );
+
+        for assignment in scan
+            .skills
+            .iter()
+            .filter(|assignment| assignment.link_state == LinkState::Linked)
+        {
+            assigned_locations
+                .entry(assignment.skill_id.clone())
+                .or_default()
+                .push(ChangelogAssignedLocation {
+                    id: location.id.clone(),
+                    label: location.label.clone(),
+                });
+        }
+    }
+
+    let cutoff = days.map(|d| chrono::Utc::now() - chrono::Duration::days(d as i64));
 
     let mut entries: Vec<ChangelogEntry> = Vec::new();
 
@@ -47,23 +70,14 @@ pub fn get_skill_changelog(
             }
         }
 
-        // Count how many saved locations have this skill linked
-        let assigned_count = locations
-            .iter()
-            .filter(|loc| {
-                let loc_path = PathBuf::from(&loc.path);
-                let skills_dir = loc_path.join(".claude").join("skills");
-                let link = skills_dir.join(&skill.folder_name);
-                link.is_symlink() || link.is_dir()
-            })
-            .count();
-
         entries.push(ChangelogEntry {
             skill_id: skill.folder_name.clone(),
             name: skill.name.clone(),
             modified_at: modified,
             size_bytes: metadata.len(),
-            assigned_location_count: assigned_count,
+            assigned_locations: assigned_locations
+                .remove(&skill.folder_name)
+                .unwrap_or_default(),
         });
     }
 

@@ -482,7 +482,14 @@ pub struct ChangelogEntry {
     pub name: String,
     pub modified_at: DateTime<Utc>,
     pub size_bytes: u64,
-    pub assigned_location_count: usize,
+    pub assigned_locations: Vec<ChangelogAssignedLocation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangelogAssignedLocation {
+    pub id: String,
+    pub label: String,
 }
 
 // ---------------------------------------------------------------------------

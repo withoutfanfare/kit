@@ -9,7 +9,7 @@ const navItems = [
   { label: "Skills", subtitle: "Skill library", to: "/skills", icon: "puzzle" },
   { label: "Sets", subtitle: "Skill groups", to: "/sets", icon: "set" },
   { label: "Compare", subtitle: "Diff locations", to: "/compare", icon: "compare" },
-  { label: "Changelog", subtitle: "Recent changes", to: "/changelog", icon: "chart" },
+  { label: "Recently modified", subtitle: "SKILL.md edits", to: "/changelog", icon: "chart" },
   { label: "Health", subtitle: "Issue scanner", to: "/health", icon: "health" },
 ];
 
