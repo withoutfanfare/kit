@@ -6,6 +6,7 @@ import { useRoute, useRouter } from "vue-router";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import SetRow from "@/components/domain/SetRow.vue";
 import SetInspector from "@/components/domain/SetInspector.vue";
+import LibraryTabs from "@/components/domain/LibraryTabs.vue";
 import { SSearchInput, SSegmentedControl, SButton, SEmptyState } from "@stuntrocket/ui";
 import type { SetScope, SetSummary } from "@/types";
 import { setKeyFromSummary } from "@/utils/setKey";
@@ -90,6 +91,7 @@ onMounted(() => {
   >
     <template #sidebar>
       <div class="sets-sidebar">
+        <LibraryTabs />
         <div class="sidebar-controls">
           <SSearchInput
             v-model="setsStore.searchQuery"

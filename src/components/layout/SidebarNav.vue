@@ -6,14 +6,15 @@ const route = useRoute();
 
 const navItems = [
   { label: "Locations", subtitle: "Your projects", to: "/locations", icon: "folder" },
-  { label: "Skills", subtitle: "Skill library", to: "/skills", icon: "puzzle" },
-  { label: "Sets", subtitle: "Skill groups", to: "/sets", icon: "set" },
-  { label: "Compare", subtitle: "Diff locations", to: "/compare", icon: "compare" },
-  { label: "Recently modified", subtitle: "SKILL.md edits", to: "/changelog", icon: "chart" },
+  { label: "Library", subtitle: "Skills and sets", to: "/skills", icon: "puzzle" },
   { label: "Health", subtitle: "Issue scanner", to: "/health", icon: "health" },
+  { label: "Recently modified", subtitle: "SKILL.md edits", to: "/changelog", icon: "chart" },
 ];
 
 function isActive(to: string): boolean {
+  if (to === "/skills") {
+    return route.path.startsWith("/skills") || route.path.startsWith("/sets");
+  }
   return route.path.startsWith(to);
 }
 </script>
@@ -35,14 +36,6 @@ function isActive(to: string): boolean {
             </svg>
             <svg v-else-if="item.icon === 'puzzle'" width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8.5 2.5a1.5 1.5 0 00-3 0V4H4a1 1 0 00-1 1v1.5h1.5a1.5 1.5 0 010 3H3V11a1 1 0 001 1h1.5v-1.5a1.5 1.5 0 013 0V12H10a1 1 0 001-1V9.5h-1.5a1.5 1.5 0 010-3H11V5a1 1 0 00-1-1H8.5V2.5z" fill="currentColor" opacity="0.7"/>
-            </svg>
-            <svg v-else-if="item.icon === 'set'" width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <rect x="1.5" y="3" width="10" height="7" rx="1.5" fill="currentColor" opacity="0.4"/>
-              <rect x="4.5" y="6" width="10" height="7" rx="1.5" fill="currentColor" opacity="0.7"/>
-            </svg>
-            <svg v-else-if="item.icon === 'compare'" width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M5 3v10M11 3v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
-              <path d="M2 6l3-3 3 3M14 10l-3 3-3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
             </svg>
             <svg v-else-if="item.icon === 'health'" width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8 14s-5.5-3.5-5.5-7.5C2.5 4 4 2.5 5.75 2.5 6.87 2.5 7.63 3.1 8 3.8c.37-.7 1.13-1.3 2.25-1.3C12 2.5 13.5 4 13.5 6.5 13.5 10.5 8 14 8 14z" fill="currentColor" opacity="0.5"/>

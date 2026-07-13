@@ -71,24 +71,17 @@ export function useKeyboardShortcuts() {
       return;
     }
 
-    // Cmd+3 — Sets view
+    // Cmd+3 — Health view
     if (meta && e.key === "3") {
       e.preventDefault();
-      router.push("/sets");
+      router.push("/health");
       return;
     }
 
-    // Cmd+4 — Changelog view
+    // Cmd+4 — Recently modified view
     if (meta && e.key === "4") {
       e.preventDefault();
       router.push("/changelog");
-      return;
-    }
-
-    // Cmd+5 — Health view
-    if (meta && e.key === "5") {
-      e.preventDefault();
-      router.push("/health");
       return;
     }
 

@@ -8,6 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import SkillInspector from "@/components/domain/SkillInspector.vue";
 import SkillStatusLegend from "@/components/domain/SkillStatusLegend.vue";
+import LibraryTabs from "@/components/domain/LibraryTabs.vue";
 import { SBadge, SSearchInput, SEmptyState } from "@stuntrocket/ui";
 
 const libraryStore = useLibraryStore();
@@ -116,6 +117,7 @@ onMounted(() => {
   >
     <template #sidebar>
       <div class="library-sidebar">
+        <LibraryTabs />
         <div class="sidebar-controls">
           <SSearchInput
             v-model="libraryStore.searchQuery"

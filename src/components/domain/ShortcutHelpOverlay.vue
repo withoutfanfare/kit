@@ -4,11 +4,10 @@ import { SModal } from "@stuntrocket/ui";
 
 const shortcuts = [
   { group: "Navigation", items: [
-    { keys: ["Cmd", "1"], description: "Go to Locations" },
-    { keys: ["Cmd", "2"], description: "Go to Library" },
-    { keys: ["Cmd", "3"], description: "Go to Sets" },
-    { keys: ["Cmd", "4"], description: "Go to Changelog" },
-    { keys: ["Cmd", "5"], description: "Go to Health" },
+    { keys: ["⌘", "1"], description: "Locations" },
+    { keys: ["⌘", "2"], description: "Library" },
+    { keys: ["⌘", "3"], description: "Health" },
+    { keys: ["⌘", "4"], description: "Recently modified" },
   ]},
   { group: "List", items: [
     { keys: ["j"], description: "Move down in list" },
@@ -17,7 +16,7 @@ const shortcuts = [
     { keys: ["/"], description: "Focus search input" },
   ]},
   { group: "General", items: [
-    { keys: ["Cmd", "/"], description: "Toggle this help" },
+    { keys: ["⌘", "/"], description: "Toggle this help" },
     { keys: ["Esc"], description: "Close overlay" },
   ]},
 ];
