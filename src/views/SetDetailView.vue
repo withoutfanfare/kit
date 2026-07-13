@@ -309,6 +309,7 @@ watch(setKey, loadDetail);
             class="skill-row"
             :class="{ 'drag-over': dragOverIndex === index, 'dragging': dragIndex === index }"
             tabindex="0"
+            aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
             draggable="true"
             @dragstart="onReorderDragStart($event, index)"
             @dragover="onReorderDragOver($event, index)"

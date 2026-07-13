@@ -204,9 +204,7 @@ fn cmd_apply(
         // before creating a fresh symlink.
         if dst.exists() || fs::symlink_metadata(&dst).is_ok() {
             if let Ok(meta) = fs::symlink_metadata(&dst) {
-                if meta.file_type().is_symlink() {
-                    fs::remove_file(&dst).ok();
-                } else if meta.is_file() {
+                if meta.file_type().is_symlink() || meta.is_file() {
                     fs::remove_file(&dst).ok();
                 } else if meta.is_dir() {
                     fs::remove_dir_all(&dst).ok();
