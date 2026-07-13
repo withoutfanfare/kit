@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useAppStore } from "@/stores/appStore";
 import { useAssignmentStore } from "@/stores/assignmentStore";
+import { useRoute } from "vue-router";
 import SkillStatusLegend from "@/components/domain/SkillStatusLegend.vue";
 import {
   linkStateBadgeVariant,
@@ -15,6 +16,7 @@ import type { LocationComparison, LocationId } from "@/types";
 const locationsStore = useLocationsStore();
 const appStore = useAppStore();
 const assignmentStore = useAssignmentStore();
+const route = useRoute();
 
 const locationAId = ref<LocationId | null>(null);
 const locationBId = ref<LocationId | null>(null);
@@ -108,8 +110,15 @@ function exportComparison() {
   );
 }
 
-onMounted(() => {
-  locationsStore.fetchList();
+onMounted(async () => {
+  await locationsStore.fetchList();
+  const requestedLocation = route.query.locationA;
+  if (
+    typeof requestedLocation === "string" &&
+    locationsStore.locationList.some((location) => location.id === requestedLocation)
+  ) {
+    locationAId.value = requestedLocation;
+  }
 });
 </script>
 

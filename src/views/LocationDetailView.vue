@@ -60,6 +60,11 @@ const healthLabel = computed(() => {
   }
 });
 
+const healthActionLabel = computed(() => {
+  const count = detail.value?.issues.length ?? 0;
+  return `Resolve ${count} issue${count === 1 ? "" : "s"}`;
+});
+
 function healthBadgeVariant(status: string): "success" | "warning" | "error" | "default" {
   switch (status) {
     case "error": return "error";
@@ -131,7 +136,18 @@ watch(locationId, loadDetail);
         <span class="stat-value">{{ detail.issues.length }}</span>
         <span class="stat-label">Issues</span>
       </div>
-      <div class="dashboard-stat clickable" @click="navigateToHealth">
+      <button
+        v-if="detail.issues.length > 0"
+        type="button"
+        class="dashboard-stat health-action"
+        @click="navigateToHealth"
+      >
+        <SBadge :variant="healthBadgeVariant(healthStatus)" compact>
+          {{ healthLabel }}
+        </SBadge>
+        <span class="stat-label">{{ healthActionLabel }}</span>
+      </button>
+      <div v-else class="dashboard-stat">
         <SBadge :variant="healthBadgeVariant(healthStatus)" compact>
           {{ healthLabel }}
         </SBadge>
@@ -236,6 +252,7 @@ watch(locationId, loadDetail);
   display: flex;
   flex-direction: column;
   height: 100%;
+  container-type: inline-size;
 }
 
 .dashboard-header {
@@ -255,12 +272,22 @@ watch(locationId, loadDetail);
   gap: 2px;
 }
 
-.dashboard-stat.clickable {
+.health-action {
+  padding: 0;
+  font: inherit;
+  background: none;
+  border: 0;
   cursor: pointer;
 }
 
-.dashboard-stat.clickable:hover {
+.health-action:hover {
   opacity: 0.8;
+}
+
+.health-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .stat-value {
