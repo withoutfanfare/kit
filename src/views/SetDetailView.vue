@@ -10,7 +10,7 @@ import { useSkillPeekStore } from "@/stores/skillPeekStore";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { SBadge, SButton, SConfirmDialog, SInlineTextField, SModal, SSearchInput, SSectionHeader } from "@stuntrocket/ui";
+import { SBadge, SButton, SConfirmDialog, SInlineTextField, SModal, SRowActionMenu, SSearchInput, SSectionHeader } from "@stuntrocket/ui";
 
 const route = useRoute();
 const router = useRouter();
@@ -28,6 +28,7 @@ const showDeleteConfirm = ref(false);
 const showSkillPicker = ref(false);
 const skillPickerQuery = ref("");
 const isDraggingSkill = ref(false);
+const isEditingDescription = ref(false);
 let unlistenDragDrop: UnlistenFn | null = null;
 
 // Drag-and-drop reordering state
@@ -102,6 +103,12 @@ async function moveSkillInSet(index: number, direction: -1 | 1) {
   );
 }
 
+async function handleSkillAction(action: string, index: number, skillId: string) {
+  if (action === "move-up") await moveSkillInSet(index, -1);
+  if (action === "move-down") await moveSkillInSet(index, 1);
+  if (action === "remove") await removeSkill(skillId);
+}
+
 const availableSkills = computed(() => {
   if (!detail.value) return [];
   const existingIds = new Set(detail.value.skills.map((s) => s.id));
@@ -120,6 +127,7 @@ const availableSkills = computed(() => {
 });
 
 function loadDetail() {
+  isEditingDescription.value = false;
   const key = setKey.value;
   if (key) {
     setsStore.selectSet(key);
@@ -144,6 +152,7 @@ async function updateDescription(description: string) {
     detail.value.ownerLocationId ?? undefined,
     { description: description || null }
   );
+  isEditingDescription.value = false;
 }
 
 async function removeSkill(skillId: string) {
@@ -268,37 +277,47 @@ watch(setKey, loadDetail);
         </SBadge>
         <SBadge variant="count">{{ detail.skills.length }} skills</SBadge>
       </div>
-      <SInlineTextField
-        :model-value="detail.description ?? ''"
-        placeholder="Add a description..."
-        class="header-description-field"
-        @update:model-value="updateDescription"
-      />
+      <div v-if="isEditingDescription" class="header-description-row">
+        <SInlineTextField
+          :model-value="detail.description ?? ''"
+          placeholder="Add a description..."
+          class="header-description-field"
+          @update:model-value="updateDescription"
+        />
+        <SButton variant="ghost" size="sm" @click="isEditingDescription = false">Done</SButton>
+      </div>
+      <div v-else class="header-description-row">
+        <span class="header-description" :class="{ muted: !detail.description }">
+          {{ detail.description || "No description" }}
+        </span>
+        <SButton variant="ghost" size="sm" @click="isEditingDescription = true">Edit description</SButton>
+      </div>
       <span class="header-path">{{ detail.path }}</span>
     </div>
 
     <div class="detail-content">
       <!-- Skills section -->
       <div class="detail-section">
-        <SSectionHeader
-          title="Skills"
-          :count="detail.skills.length"
-          action-label="Add"
-          @action="openSkillPicker"
-        />
+        <div class="section-header-row">
+          <SSectionHeader title="Skills" :count="detail.skills.length" />
+          <SButton size="sm" @click="openSkillPicker">Add skills</SButton>
+        </div>
         <div v-if="detail.skills.length > 0" class="section-group">
           <div
             v-for="(skill, index) in detail.skills"
             :key="skill.id"
             class="skill-row"
             :class="{ 'drag-over': dragOverIndex === index, 'dragging': dragIndex === index }"
+            tabindex="0"
             draggable="true"
             @dragstart="onReorderDragStart($event, index)"
             @dragover="onReorderDragOver($event, index)"
             @dragend="onReorderDragEnd"
             @drop="onReorderDrop($event, index)"
+            @keydown.alt.up.self.prevent="moveSkillInSet(index, -1)"
+            @keydown.alt.down.self.prevent="moveSkillInSet(index, 1)"
           >
-            <span class="drag-handle" title="Drag to reorder">
+            <span class="drag-handle" :title="`Drag to reorder ${skill.name}`">
               <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
                 <circle cx="5" cy="4" r="1.5" />
                 <circle cx="11" cy="4" r="1.5" />
@@ -313,34 +332,19 @@ watch(setKey, loadDetail);
               <SBadge v-if="skill.missing" variant="error">missing</SBadge>
               <SBadge v-else-if="skill.archived" variant="count">Archived</SBadge>
             </div>
-            <div class="reorder-buttons">
-              <button
-                v-if="index > 0"
-                class="move-button"
-                title="Move up (Alt+Up)"
-                @click="moveSkillInSet(index, -1)"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-              </button>
-              <button
-                v-if="index < detail.skills.length - 1"
-                class="move-button"
-                title="Move down (Alt+Down)"
-                @click="moveSkillInSet(index, 1)"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-            </div>
-            <button class="remove-button" title="Remove from set" @click="removeSkill(skill.id)">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+            <SRowActionMenu
+              :actions="[
+                { label: 'Move up', value: 'move-up', disabled: index === 0 },
+                { label: 'Move down', value: 'move-down', disabled: index === detail.skills.length - 1 },
+                { label: 'Remove from set', value: 'remove', danger: true },
+              ]"
+              @click.stop
+              @select="handleSkillAction($event, index, skill.id)"
+            />
           </div>
         </div>
         <div v-else class="section-empty">
-          <span class="section-empty-text">No skills yet — click Add or drag skill folders here</span>
+          <span class="section-empty-text">No skills yet — add skills or drag skill folders here</span>
         </div>
       </div>
 
@@ -532,6 +536,21 @@ watch(setKey, loadDetail);
   color: var(--text-secondary) !important;
 }
 
+.header-description-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.header-description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.header-description.muted {
+  color: var(--text-tertiary);
+}
+
 .header-path {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
@@ -550,6 +569,13 @@ watch(setKey, loadDetail);
 .detail-section {
   display: flex;
   flex-direction: column;
+  gap: var(--space-2);
+}
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
 }
 
@@ -577,6 +603,11 @@ watch(setKey, loadDetail);
   background: var(--surface-hover);
 }
 
+.skill-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .skill-row.dragging {
   opacity: 0.4;
 }
@@ -597,32 +628,6 @@ watch(setKey, loadDetail);
 
 .drag-handle:active {
   cursor: grabbing;
-}
-
-.reorder-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  flex-shrink: 0;
-}
-
-.move-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 14px;
-  border: none;
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  border-radius: 2px;
-  transition: all var(--duration-fast) var(--ease-default);
-}
-
-.move-button:hover {
-  background: var(--accent-subtle);
-  color: var(--accent);
 }
 
 .skill-row-content {
@@ -646,26 +651,6 @@ watch(setKey, loadDetail);
 .skill-name.skill-missing {
   color: var(--text-tertiary);
   text-decoration: line-through;
-}
-
-.remove-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: transparent;
-  color: var(--text-tertiary);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all var(--duration-fast) var(--ease-default);
-}
-
-.remove-button:hover {
-  background: var(--danger-subtle);
-  color: var(--danger);
 }
 
 /* Location rows */
