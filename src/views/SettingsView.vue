@@ -6,10 +6,15 @@ import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useAppStore } from "@/stores/appStore";
 import type { SkillsRepoStatus, RepoState, BackupResult, RestorePreview, RestoreResult } from "@/types";
-import { SButton, SBadge } from "@stuntrocket/ui";
-import { useTheme } from "@/composables/useTheme";
+import { SButton, SBadge, SSegmentedControl } from "@stuntrocket/ui";
+import { useTheme, type ThemePreference } from "@/composables/useTheme";
 
-const { theme, toggle: toggleTheme } = useTheme();
+const { theme, setTheme } = useTheme();
+const themeOptions = [
+  { label: "System", value: "system" },
+  { label: "Light", value: "light" },
+  { label: "Dark", value: "dark" },
+];
 const preferencesStore = usePreferencesStore();
 const libraryStore = useLibraryStore();
 const appStore = useAppStore();
@@ -309,17 +314,14 @@ onMounted(async () => {
       <div class="settings-group">
         <div class="setting-row">
           <div class="setting-label">
-            <span class="label-text">Dark mode</span>
-            <span class="label-description">Switch between dark and light themes</span>
+            <span class="label-text">Appearance</span>
+            <span class="label-description">Choose a theme or follow the system appearance</span>
           </div>
-          <label class="toggle">
-            <input
-              type="checkbox"
-              :checked="theme === 'dark'"
-              @change="toggleTheme"
-            />
-            <span class="toggle-track" />
-          </label>
+          <SSegmentedControl
+            :model-value="theme"
+            :options="themeOptions"
+            @update:model-value="setTheme($event as ThemePreference)"
+          />
         </div>
       </div>
     </section>
@@ -493,10 +495,10 @@ onMounted(async () => {
         <div class="setting-row">
           <div class="setting-label">
             <span class="label-text">Restore</span>
-            <span class="label-description">Import a backup archive to restore skills and sets</span>
+            <span class="label-description">Choose a Kit backup to preview changes before replacing or merging current library data.</span>
           </div>
           <SButton variant="secondary" size="sm" @click="selectRestoreFile">
-            Select Backup
+            Restore from Backup…
           </SButton>
         </div>
 
@@ -518,7 +520,7 @@ onMounted(async () => {
             <div class="setting-label">
               <label class="toggle-label">
                 <input type="checkbox" v-model="overwriteOnRestore" />
-                <span class="label-text">Overwrite existing items</span>
+                <span class="label-text">Replace matching current skill and set files</span>
               </label>
             </div>
           </div>
@@ -601,6 +603,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
   overflow-y: auto;
   padding: var(--space-5) var(--space-6);
 }
