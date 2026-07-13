@@ -8,6 +8,7 @@ import type {
   LocationId,
 } from "@/types";
 import { useAppStore } from "./appStore";
+import { useLocationsStore } from "./locationsStore";
 
 export type HealthSeverityFilter = "all" | "healthy" | "warning" | "error";
 
@@ -62,8 +63,8 @@ export const useHealthStore = defineStore("health", () => {
     filterLocationId.value = locationId;
   }
 
-  function setSeverityFilter(filter: Exclude<HealthSeverityFilter, "all">) {
-    severityFilter.value = severityFilter.value === filter ? "all" : filter;
+  function setSeverityFilter(filter: HealthSeverityFilter) {
+    severityFilter.value = filter === "all" || severityFilter.value === filter ? "all" : filter;
   }
 
   function isSelected(locationId: LocationId) {
@@ -118,12 +119,30 @@ export const useHealthStore = defineStore("health", () => {
         locationIds,
       });
       result.value = removal.health;
+      const locationsStore = useLocationsStore();
+      const cachedLocationIds = locationIds.filter((id) => locationsStore.detailCache[id]);
+      cachedLocationIds.forEach((id) => delete locationsStore.detailCache[id]);
+      await locationsStore.fetchList();
+      await Promise.allSettled(
+        cachedLocationIds.map((id) => locationsStore.fetchDetail(id)),
+      );
       clearSelection();
       clearPreview();
-      useAppStore().toast(
-        `Removed ${removal.removedCount} broken link${removal.removedCount === 1 ? "" : "s"}`,
-        "success",
-      );
+      if (removal.failures.length > 0) {
+        const failureCount = removal.failures.length;
+        const removed = removal.removedCount > 0
+          ? `Removed ${removal.removedCount} broken link${removal.removedCount === 1 ? "" : "s"}; `
+          : "";
+        useAppStore().toast(
+          `${removed}${failureCount} broken link${failureCount === 1 ? "" : "s"} could not be removed: ${removal.failures[0].error}`,
+          "error",
+        );
+      } else {
+        useAppStore().toast(
+          `Removed ${removal.removedCount} broken link${removal.removedCount === 1 ? "" : "s"}`,
+          "success",
+        );
+      }
     } catch {
       useAppStore().toast("Failed to remove broken links", "error");
     } finally {

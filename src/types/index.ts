@@ -235,6 +235,7 @@ export type BrokenLinkRemovalPreview = {
 
 export type BrokenLinkRemovalResult = {
   removedCount: number;
+  failures: Array<{ path: string; error: string }>;
   health: HealthCheckResult;
 };
 

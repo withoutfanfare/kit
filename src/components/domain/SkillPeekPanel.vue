@@ -97,8 +97,8 @@ watch(
           :aria-label="peekStore.detail ? peekStore.detail.name : 'Skill details'"
         >
           <!-- Close button -->
-          <button class="close-button" @click="peekStore.close()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" class="close-button" aria-label="Close skill details" @click="peekStore.close()">
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>

@@ -109,7 +109,26 @@ fn remove_broken_links_for_locations(
     library_skills: &[SkillMeta],
     library_sets: &[(String, SetDefinition)],
 ) -> Result<BrokenLinkRemovalResult, AppError> {
+    remove_broken_links_for_locations_with(
+        location_ids,
+        locations,
+        library_root,
+        library_skills,
+        library_sets,
+        linker::remove_skill_link,
+    )
+}
+
+fn remove_broken_links_for_locations_with(
+    location_ids: &[String],
+    locations: &[SavedLocation],
+    library_root: &std::path::Path,
+    library_skills: &[SkillMeta],
+    library_sets: &[(String, SetDefinition)],
+    remove_link: impl Fn(&std::path::Path) -> Result<(), String>,
+) -> Result<BrokenLinkRemovalResult, AppError> {
     let mut removed = 0;
+    let mut failures = Vec::new();
     for location in selected_locations(location_ids, locations)? {
         for path in broken_link_paths(
             location,
@@ -121,13 +140,19 @@ fn remove_broken_links_for_locations(
                 .map(|metadata| metadata.file_type().is_symlink() && !path.exists())
                 .unwrap_or(false);
             if is_broken_symlink {
-                linker::remove_skill_link(&path).map_err(AppError::new)?;
-                removed += 1;
+                match remove_link(&path) {
+                    Ok(()) => removed += 1,
+                    Err(error) => failures.push(BrokenLinkRemovalFailure {
+                        path: path.to_string_lossy().to_string(),
+                        error,
+                    }),
+                }
             }
         }
     }
     Ok(BrokenLinkRemovalResult {
         removed_count: removed,
+        failures,
         health: scanner::run_health_check(
             locations,
             library_root,
@@ -309,6 +334,61 @@ mod tests {
             serde_json::to_value(result).unwrap()["removedCount"],
             serde_json::json!(0)
         );
+
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn apply_reports_partial_failure_with_refreshed_health() {
+        use std::fs;
+        use std::os::unix::fs::symlink;
+
+        let base = std::env::temp_dir().join(format!(
+            "kit-health-partial-removal-test-{}",
+            std::process::id()
+        ));
+        fs::remove_dir_all(&base).ok();
+        let library_root = base.join("library");
+        let location_path = base.join("location");
+        let skills_path = location_path.join(".claude/skills");
+        let removed_path = skills_path.join("removed-link");
+        let failed_path = skills_path.join("failed-link");
+        fs::create_dir_all(&library_root).unwrap();
+        fs::create_dir_all(&skills_path).unwrap();
+        symlink(base.join("missing-removed"), &removed_path).unwrap();
+        symlink(base.join("missing-failed"), &failed_path).unwrap();
+
+        let locations = vec![SavedLocation {
+            id: "location-1".to_string(),
+            label: "Location 1".to_string(),
+            path: location_path.to_string_lossy().to_string(),
+            notes: None,
+            last_synced_at: None,
+        }];
+        let result = remove_broken_links_for_locations_with(
+            &["location-1".to_string()],
+            &locations,
+            &library_root,
+            &[],
+            &[],
+            |path| {
+                if path == failed_path {
+                    Err("simulated removal failure".to_string())
+                } else {
+                    linker::remove_skill_link(path)
+                }
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.removed_count, 1);
+        assert_eq!(result.failures.len(), 1);
+        assert_eq!(result.failures[0].path, failed_path.to_string_lossy());
+        assert!(fs::symlink_metadata(&removed_path).is_err());
+        assert!(fs::symlink_metadata(&failed_path).is_ok());
+        assert_eq!(result.health.error_count, 1);
+        assert_eq!(result.health.locations[0].broken_link_count, 1);
 
         fs::remove_dir_all(&base).ok();
     }

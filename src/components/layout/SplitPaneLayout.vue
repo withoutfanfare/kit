@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { SButton } from "@stuntrocket/ui";
 
 type CompactPane = "list" | "main" | "detail";
@@ -18,6 +18,14 @@ defineEmits<{
 }>();
 
 const inspectorOpen = ref(false);
+const inspectorRef = ref<HTMLElement | null>(null);
+const previousFocus = ref<HTMLElement | null>(null);
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === "Escape" && inspectorOpen.value) {
+    inspectorOpen.value = false;
+  }
+}
 
 watch(
   () => props.showInspector,
@@ -25,6 +33,22 @@ watch(
     if (!showInspector) inspectorOpen.value = false;
   }
 );
+
+watch(inspectorOpen, async (open) => {
+  if (open) {
+    previousFocus.value = document.activeElement as HTMLElement | null;
+    document.addEventListener("keydown", handleKeydown);
+    await nextTick();
+    inspectorRef.value?.querySelector<HTMLElement>("button")?.focus();
+  } else {
+    document.removeEventListener("keydown", handleKeydown);
+    await nextTick();
+    if (previousFocus.value?.isConnected) previousFocus.value.focus();
+    previousFocus.value = null;
+  }
+});
+
+onBeforeUnmount(() => document.removeEventListener("keydown", handleKeydown));
 </script>
 
 <template>
@@ -32,10 +56,10 @@ watch(
     class="split-pane"
     :class="[`compact-${compactPane}`, { 'has-inspector': showInspector, 'inspector-open': inspectorOpen }]"
   >
-    <div class="split-sidebar">
+    <div class="split-sidebar" :inert="inspectorOpen">
       <slot name="sidebar" />
     </div>
-    <div class="split-main">
+    <div class="split-main" :inert="inspectorOpen">
       <div v-if="compactPane === 'detail'" class="compact-toolbar">
         <SButton type="button" variant="secondary" size="sm" @click="$emit('back')">
           Back to {{ backLabel }}
@@ -56,9 +80,11 @@ watch(
     </div>
     <div
       v-if="showInspector"
+      ref="inspectorRef"
       id="compact-inspector"
       class="split-inspector"
-      role="region"
+      :role="inspectorOpen ? 'dialog' : 'region'"
+      :aria-modal="inspectorOpen ? 'true' : undefined"
       aria-label="Details"
     >
       <div class="inspector-close-row">

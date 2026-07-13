@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { SBadge, SButton, SConfirmDialog, SModal } from "@stuntrocket/ui";
 import { useHealthStore } from "@/stores/healthStore";
@@ -56,10 +56,12 @@ async function confirmRemoval() {
   showConfirm.value = false;
 }
 
+watch(locationFilter, (locationId) => {
+  healthStore.setFilter(locationId);
+  healthStore.setSeverityFilter("all");
+}, { immediate: true });
+
 onMounted(() => {
-  if (locationFilter.value) {
-    healthStore.setFilter(locationFilter.value);
-  }
   healthStore.runCheck();
 });
 </script>
