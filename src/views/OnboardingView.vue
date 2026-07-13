@@ -18,6 +18,7 @@ type OnboardingStep = "library" | "project" | "scan" | "review";
 
 const step = ref<OnboardingStep>("library");
 const selectedPath = ref<string | null>(null);
+const persistedLibraryPath = ref<string | null>(null);
 const validation = ref<SkillsRepoValidation | null>(null);
 const isValidating = ref(false);
 const validationError = ref<string | null>(null);
@@ -40,6 +41,15 @@ function editorCommand() {
   return editorDraft.value.trim();
 }
 
+async function persistLibrary() {
+  if (!selectedPath.value) return;
+  await preferencesStore.update({
+    libraryRoot: selectedPath.value,
+    editorCommand: editorCommand(),
+  });
+  persistedLibraryPath.value = selectedPath.value;
+}
+
 async function chooseRepository() {
   const selected = await open({
     directory: true,
@@ -48,6 +58,8 @@ async function chooseRepository() {
   });
   if (selected && typeof selected === "string") {
     selectedPath.value = selected;
+    persistedLibraryPath.value = null;
+    validation.value = null;
     isValidating.value = true;
     validationError.value = null;
     try {
@@ -57,10 +69,7 @@ async function chooseRepository() {
       );
       validation.value = result;
       if (result.valid) {
-        await preferencesStore.update({
-          libraryRoot: result.path,
-          editorCommand: editorCommand(),
-        });
+        await persistLibrary();
         step.value = "project";
       }
     } catch (err) {
@@ -75,11 +84,15 @@ async function chooseRepository() {
 async function continueFromLibrary() {
   if (!isValid.value || !selectedPath.value) return;
   try {
-    await preferencesStore.update({ editorCommand: editorCommand() });
+    if (persistedLibraryPath.value === selectedPath.value) {
+      await preferencesStore.update({ editorCommand: editorCommand() });
+    } else {
+      await persistLibrary();
+    }
     step.value = "project";
   } catch (err) {
     validationError.value =
-      err instanceof Error ? err.message : "Failed to save editor command";
+      err instanceof Error ? err.message : "Failed to save repository settings";
   }
 }
 
@@ -90,8 +103,10 @@ async function addFirstProject() {
     title: "Add a Project Location",
   });
   if (selected && typeof selected === "string") {
+    if (selected !== projectPath.value) {
+      addedLocationId.value = null;
+    }
     projectPath.value = selected;
-    addedLocationId.value = null;
     await scanProject();
   }
 }
@@ -126,8 +141,9 @@ async function completeSetup() {
   isCompleting.value = true;
   try {
     const locationId = addedLocationId.value;
+    const bootstrapped = await appStore.bootstrap();
+    if (!bootstrapped) return;
     appStore.needsSetup = false;
-    await appStore.bootstrap();
     await router.push(
       reviewIssueCount.value > 0
         ? { path: "/health", query: { locationId } }

@@ -37,7 +37,7 @@ export const useAppStore = defineStore("app", () => {
     toasts.value = toasts.value.filter((t) => t.id !== id);
   }
 
-  async function bootstrap() {
+  async function bootstrap(): Promise<boolean> {
     isLoading.value = true;
     try {
       const data = await invoke<AppBootstrap>("get_app_bootstrap");
@@ -57,9 +57,11 @@ export const useAppStore = defineStore("app", () => {
 
       needsSetup.value = !data.libraryRoot;
       isBootstrapped.value = true;
+      return true;
     } catch (err) {
       globalError.value =
         err instanceof Error ? err.message : "Failed to load app data";
+      return false;
     } finally {
       isLoading.value = false;
     }
