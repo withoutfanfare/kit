@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { SButton } from "@stuntrocket/ui";
 
 type CompactPane = "list" | "main" | "detail";
@@ -20,11 +20,16 @@ defineEmits<{
 const inspectorOpen = ref(false);
 const inspectorRef = ref<HTMLElement | null>(null);
 const previousFocus = ref<HTMLElement | null>(null);
+let compactMedia: MediaQueryList | null = null;
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === "Escape" && inspectorOpen.value) {
     inspectorOpen.value = false;
   }
+}
+
+function handleViewportChange(event: MediaQueryListEvent | MediaQueryList) {
+  if (!event.matches) inspectorOpen.value = false;
 }
 
 watch(
@@ -43,12 +48,27 @@ watch(inspectorOpen, async (open) => {
   } else {
     document.removeEventListener("keydown", handleKeydown);
     await nextTick();
-    if (previousFocus.value?.isConnected) previousFocus.value.focus();
+    const previous = previousFocus.value;
+    if (previous?.isConnected && previous.getClientRects().length > 0) {
+      previous.focus();
+    } else {
+      inspectorRef.value?.focus();
+    }
     previousFocus.value = null;
   }
 });
 
-onBeforeUnmount(() => document.removeEventListener("keydown", handleKeydown));
+onMounted(() => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+  compactMedia = window.matchMedia("(max-width: 960px)");
+  compactMedia.addEventListener("change", handleViewportChange);
+  handleViewportChange(compactMedia);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("keydown", handleKeydown);
+  compactMedia?.removeEventListener("change", handleViewportChange);
+});
 </script>
 
 <template>
@@ -86,6 +106,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", handleKeydown));
       :role="inspectorOpen ? 'dialog' : 'region'"
       :aria-modal="inspectorOpen ? 'true' : undefined"
       aria-label="Details"
+      tabindex="-1"
     >
       <div class="inspector-close-row">
         <SButton type="button" variant="secondary" size="sm" @click="inspectorOpen = false">

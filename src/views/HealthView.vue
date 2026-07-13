@@ -59,6 +59,7 @@ async function confirmRemoval() {
 watch(locationFilter, (locationId) => {
   healthStore.setFilter(locationId);
   healthStore.setSeverityFilter("all");
+  healthStore.clearSelection();
 }, { immediate: true });
 
 onMounted(() => {
