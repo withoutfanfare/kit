@@ -1,5 +1,9 @@
 # Kit
 
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" alt="Kit app icon" width="144" height="144">
+</p>
+
 **Skill loadout manager for Claude Code.**
 
 Kit is a native macOS desktop app for managing Claude Code skills across a central library and multiple project locations. Instead of hand-editing symlinks and manifests, you get a Finder-style interface: see what's active, assign skills in seconds, and catch broken links before they bite.
