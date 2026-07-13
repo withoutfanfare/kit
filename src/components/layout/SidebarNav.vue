@@ -27,6 +27,7 @@ function isActive(to: string): boolean {
           :key="item.to"
           :to="item.to"
           :active="isActive(item.to)"
+          :aria-label="item.label"
         >
           <span class="nav-icon">
             <svg v-if="item.icon === 'folder'" width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -61,7 +62,7 @@ function isActive(to: string): boolean {
       </div>
     </template>
     <template #footer>
-      <SSidebarLink to="/help" :active="isActive('/help')">
+      <SSidebarLink to="/help" :active="isActive('/help')" aria-label="Help">
         <span class="footer-icon">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
@@ -71,7 +72,7 @@ function isActive(to: string): boolean {
         </span>
         <span class="footer-label">Help</span>
       </SSidebarLink>
-      <SSidebarLink to="/settings" :active="isActive('/settings')">
+      <SSidebarLink to="/settings" :active="isActive('/settings')" aria-label="Settings">
         <span class="footer-icon">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M8 10a2 2 0 100-4 2 2 0 000 4z" fill="currentColor" opacity="0.7"/>
@@ -141,5 +142,13 @@ function isActive(to: string): boolean {
 
 .footer-label {
   margin-left: 8px;
+}
+
+@media (max-width: 1120px) {
+  .nav-text,
+  .nav-subtitle,
+  .footer-label {
+    display: none;
+  }
 }
 </style>

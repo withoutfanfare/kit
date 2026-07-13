@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useSetsStore } from "@/stores/setsStore";
 import { useLocationsStore } from "@/stores/locationsStore";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import SetRow from "@/components/domain/SetRow.vue";
 import SetInspector from "@/components/domain/SetInspector.vue";
@@ -13,6 +13,7 @@ import { setKeyFromSummary } from "@/utils/setKey";
 const setsStore = useSetsStore();
 const locationsStore = useLocationsStore();
 const router = useRouter();
+const route = useRoute();
 
 const scopeOptions = [
   { label: "All", value: "all" },
@@ -27,6 +28,18 @@ const newSetScope = ref<SetScope>("global");
 const newSetDescription = ref("");
 const newSetOwnerLocationId = ref<string | undefined>(undefined);
 const isCreating = ref(false);
+const compactPane = computed(() =>
+  route.params.setKey
+    ? "detail"
+    : setsStore.items.length > 0
+      ? "list"
+      : "main"
+);
+
+function showSetList() {
+  setsStore.selectSet(null);
+  router.push("/sets");
+}
 
 function selectSet(set: SetSummary) {
   const key = setKeyFromSummary(set);
@@ -69,7 +82,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <SplitPaneLayout :show-inspector="!!setsStore.selectedDetail">
+  <SplitPaneLayout
+    :show-inspector="!!(route.params.setKey && setsStore.selectedDetail)"
+    :compact-pane="compactPane"
+    back-label="Sets"
+    @back="showSetList"
+  >
     <template #sidebar>
       <div class="sets-sidebar">
         <div class="sidebar-controls">

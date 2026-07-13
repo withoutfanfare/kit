@@ -3,7 +3,7 @@ import { onMounted, ref, computed } from "vue";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useAppStore } from "@/stores/appStore";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { invoke } from "@tauri-apps/api/core";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import SkillInspector from "@/components/domain/SkillInspector.vue";
@@ -13,6 +13,7 @@ const libraryStore = useLibraryStore();
 const locationsStore = useLocationsStore();
 const appStore = useAppStore();
 const router = useRouter();
+const route = useRoute();
 
 const filterOptions = [
   { label: "All", value: "all" },
@@ -27,6 +28,18 @@ const isLoadingPreview = ref(false);
 
 const activeLocationId = computed(() => locationsStore.selectedLocationId);
 const activeLocation = computed(() => locationsStore.selectedLocation);
+const compactPane = computed(() =>
+  route.params.skillId
+    ? "detail"
+    : libraryStore.items.length > 0
+      ? "list"
+      : "main"
+);
+
+function showSkillList() {
+  libraryStore.selectSkill(null);
+  router.push("/skills");
+}
 
 function selectItem(id: string, kind: string) {
   if (kind === "skill") {
@@ -99,7 +112,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <SplitPaneLayout :show-inspector="false">
+  <SplitPaneLayout
+    :show-inspector="!!(route.params.skillId && libraryStore.selectedDetail)"
+    :compact-pane="compactPane"
+    back-label="Skills"
+    @back="showSkillList"
+  >
     <template #sidebar>
       <div class="library-sidebar">
         <div class="sidebar-controls">

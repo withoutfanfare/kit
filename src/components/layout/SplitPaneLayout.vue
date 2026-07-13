@@ -1,18 +1,71 @@
 <script setup lang="ts">
-defineProps<{
+import { ref, watch } from "vue";
+import { SButton } from "@stuntrocket/ui";
+
+type CompactPane = "list" | "main" | "detail";
+
+const props = withDefaults(defineProps<{
   showInspector?: boolean;
+  compactPane?: CompactPane;
+  backLabel?: string;
+}>(), {
+  compactPane: "list",
+  backLabel: "list",
+});
+
+defineEmits<{
+  back: [];
 }>();
+
+const inspectorOpen = ref(false);
+
+watch(
+  () => props.showInspector,
+  (showInspector) => {
+    if (!showInspector) inspectorOpen.value = false;
+  }
+);
 </script>
 
 <template>
-  <div class="split-pane" :class="{ 'has-inspector': showInspector }">
+  <div
+    class="split-pane"
+    :class="[`compact-${compactPane}`, { 'has-inspector': showInspector, 'inspector-open': inspectorOpen }]"
+  >
     <div class="split-sidebar">
       <slot name="sidebar" />
     </div>
     <div class="split-main">
+      <div v-if="compactPane === 'detail'" class="compact-toolbar">
+        <SButton type="button" variant="secondary" size="sm" @click="$emit('back')">
+          Back to {{ backLabel }}
+        </SButton>
+        <SButton
+          v-if="showInspector"
+          type="button"
+          variant="secondary"
+          size="sm"
+          aria-controls="compact-inspector"
+          :aria-expanded="inspectorOpen"
+          @click="inspectorOpen = !inspectorOpen"
+        >
+          Details
+        </SButton>
+      </div>
       <slot name="main" />
     </div>
-    <div v-if="showInspector" class="split-inspector">
+    <div
+      v-if="showInspector"
+      id="compact-inspector"
+      class="split-inspector"
+      role="region"
+      aria-label="Details"
+    >
+      <div class="inspector-close-row">
+        <SButton type="button" variant="secondary" size="sm" @click="inspectorOpen = false">
+          Close
+        </SButton>
+      </div>
       <slot name="inspector" />
     </div>
   </div>
@@ -24,6 +77,7 @@ defineProps<{
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .split-sidebar {
@@ -48,5 +102,55 @@ defineProps<{
   overflow-y: auto;
   background: var(--surface-panel);
   padding: var(--space-4);
+}
+
+.compact-toolbar,
+.inspector-close-row {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .split-sidebar {
+    width: 100%;
+    border-right: 0;
+  }
+
+  .compact-list .split-main,
+  .compact-main .split-sidebar,
+  .compact-detail .split-sidebar {
+    display: none;
+  }
+
+  .compact-detail .compact-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface-app);
+  }
+
+  .split-inspector {
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: var(--z-overlay);
+    display: none;
+    width: min(var(--inspector-width), 100%);
+    border-left: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .inspector-open .split-inspector {
+    display: block;
+  }
+
+  .inspector-close-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--space-3);
+  }
 }
 </style>
