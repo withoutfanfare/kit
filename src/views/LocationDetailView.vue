@@ -188,7 +188,7 @@ watch(locationId, loadDetail);
 
       <SkillList
         :skills="linkedSkills"
-        title="Linked Skills"
+        title="Assigned Skills"
         show-link-state
         @select-skill="peekSkill"
         @toggle-activation="handleToggleActivation"

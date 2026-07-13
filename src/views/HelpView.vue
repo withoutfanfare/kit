@@ -52,8 +52,9 @@
         <div class="help-row">
           <span class="help-title">Skill states</span>
           <p class="help-description">
-            Green dot = linked from library. Blue dot = local only. Amber dot =
-            declared but missing. Red dot = broken link.
+            Assigned = linked from the library. Local only = present outside the
+            library. Missing = declared but not installed. Broken link = a link whose
+            target cannot be found.
           </p>
         </div>
         <div class="help-row">

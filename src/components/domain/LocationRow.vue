@@ -35,6 +35,7 @@ function truncatePath(path: string, maxLen = 32): string {
       class="row-menu"
       :items="[{ label: 'Remove…', value: 'remove', danger: true }]"
       align="right"
+      @click.stop
       @select="onRowAction"
     >
       <template #trigger="{ toggle, open }">
