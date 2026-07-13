@@ -1,24 +1,59 @@
 <script setup lang="ts">
-import { onMounted, computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { SBadge, SButton, SConfirmDialog, SModal } from "@stuntrocket/ui";
 import { useHealthStore } from "@/stores/healthStore";
-import { SButton, SBadge } from "@stuntrocket/ui";
+import type { LocationId, LocationIssue } from "@/types";
 
 const route = useRoute();
 const router = useRouter();
 const healthStore = useHealthStore();
+const showPreview = ref(false);
+const showConfirm = ref(false);
 
 const locationFilter = computed(() =>
-  route.query.locationId ? String(route.query.locationId) : null
+  route.query.locationId ? String(route.query.locationId) : null,
 );
-
-function navigateToLocation(id: string) {
-  router.push(`/locations/${id}`);
-}
+const previewCount = computed(() =>
+  healthStore.removalPreview?.reduce(
+    (count, location) => count + location.paths.length,
+    0,
+  ) ?? 0,
+);
 
 function clearFilter() {
   healthStore.setFilter(null);
   router.replace({ path: "/health" });
+}
+
+function issueCause(kind: LocationIssue["kind"]) {
+  return {
+    broken_link: "Broken link",
+    declared_missing: "Declared skill missing",
+    linked_undeclared: "Undeclared linked skill",
+    stale: "Stale skill",
+    missing_set: "Missing set",
+  }[kind];
+}
+
+async function openPreview(locationIds?: LocationId[]) {
+  showPreview.value = await healthStore.previewRemoval(locationIds);
+}
+
+function continueToConfirmation() {
+  showPreview.value = false;
+  showConfirm.value = true;
+}
+
+function cancelRemoval() {
+  showPreview.value = false;
+  showConfirm.value = false;
+  healthStore.clearPreview();
+}
+
+async function confirmRemoval() {
+  await healthStore.applyRemoval();
+  showConfirm.value = false;
 }
 
 onMounted(() => {
@@ -40,12 +75,20 @@ onMounted(() => {
       </div>
       <div class="header-actions">
         <SButton
+          v-if="healthStore.selectedLocationIds.size > 0"
+          variant="secondary"
+          size="sm"
+          @click="openPreview()"
+        >
+          Remove selected…
+        </SButton>
+        <SButton
           v-if="healthStore.filterLocationId"
           variant="secondary"
           size="sm"
           @click="clearFilter"
         >
-          Clear filter
+          Clear location filter
         </SButton>
         <SButton
           :loading="healthStore.isLoading"
@@ -59,114 +102,156 @@ onMounted(() => {
 
     <div v-if="healthStore.isLoading && !healthStore.result" class="loading-state">
       <span class="spinner" />
-      <span class="loading-label">Scanning all locations...</span>
+      <span class="loading-label">Scanning all locations…</span>
     </div>
 
     <div v-else-if="healthStore.result" class="health-content">
-      <!-- Summary cards -->
-      <div class="summary-row">
-        <div class="summary-card healthy">
-          <span class="summary-value">{{ healthStore.result.healthyCount }}</span>
-          <span class="summary-label">Healthy</span>
-        </div>
-        <div class="summary-card warning">
-          <span class="summary-value">{{ healthStore.result.warningCount }}</span>
-          <span class="summary-label">Warnings</span>
-        </div>
-        <div class="summary-card error">
-          <span class="summary-value">{{ healthStore.result.errorCount }}</span>
-          <span class="summary-label">Errors</span>
-        </div>
+      <div class="summary-row" aria-label="Filter health results">
+        <button
+          type="button"
+          class="summary-card healthy"
+          :class="{ active: healthStore.severityFilter === 'healthy' }"
+          :aria-pressed="healthStore.severityFilter === 'healthy'"
+          @click="healthStore.setSeverityFilter('healthy')"
+        >
+          {{ healthStore.result.healthyCount }} healthy locations
+        </button>
+        <button
+          type="button"
+          class="summary-card warning"
+          :class="{ active: healthStore.severityFilter === 'warning' }"
+          :aria-pressed="healthStore.severityFilter === 'warning'"
+          @click="healthStore.setSeverityFilter('warning')"
+        >
+          {{ healthStore.result.warningCount }} warnings
+        </button>
+        <button
+          type="button"
+          class="summary-card error"
+          :class="{ active: healthStore.severityFilter === 'error' }"
+          :aria-pressed="healthStore.severityFilter === 'error'"
+          @click="healthStore.setSeverityFilter('error')"
+        >
+          {{ healthStore.result.errorCount }} errors
+        </button>
       </div>
 
-      <!-- Issues list -->
-      <div v-if="healthStore.filteredIssues.length === 0" class="all-clear">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div v-if="healthStore.groupedIssues.length === 0" class="all-clear">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
           <polyline points="22 4 12 14.01 9 11.01" />
         </svg>
-        <p class="all-clear-title">All locations are healthy</p>
-        <p class="all-clear-desc">No broken symlinks, manifest mismatches, or duplicate IDs found.</p>
+        <p class="all-clear-title">
+          {{ healthStore.result.issues.length === 0 ? "All locations are healthy" : "No locations match this filter" }}
+        </p>
+        <p class="all-clear-desc">
+          {{ healthStore.result.issues.length === 0 ? "No broken symlinks or manifest mismatches found." : "Choose another summary filter to continue triage." }}
+        </p>
       </div>
 
-      <div v-else class="issues-section">
-        <!-- Errors -->
-        <div v-if="healthStore.errorIssues.length > 0" class="issue-group">
-          <div class="group-banner severity-error">
-            <span class="group-label">Errors</span>
-            <span class="group-count">{{ healthStore.errorIssues.length }}</span>
+      <div v-else class="location-groups">
+        <section
+          v-for="group in healthStore.groupedIssues"
+          :key="group.location.locationId"
+          class="location-group"
+        >
+          <header class="location-header">
+            <label
+              v-if="group.location.brokenLinkCount > 0"
+              class="selection-control"
+            >
+              <input
+                type="checkbox"
+                :checked="healthStore.isSelected(group.location.locationId)"
+                :aria-label="`Select ${group.location.locationLabel} for broken-link removal`"
+                @change="healthStore.toggleLocation(group.location.locationId)"
+              />
+            </label>
+            <RouterLink
+              class="location-link"
+              :to="`/locations/${group.location.locationId}`"
+            >
+              {{ group.location.locationLabel }}
+            </RouterLink>
+            <div class="location-counts">
+              <SBadge v-if="group.location.errorCount" variant="error" compact>
+                {{ group.location.errorCount }} errors
+              </SBadge>
+              <SBadge v-if="group.location.warningCount" variant="warning" compact>
+                {{ group.location.warningCount }} warnings
+              </SBadge>
+              <SBadge v-if="group.location.infoCount" variant="default" compact>
+                {{ group.location.infoCount }} info
+              </SBadge>
+              <SBadge v-if="group.issues.length === 0" variant="success" compact>
+                Healthy
+              </SBadge>
+            </div>
+            <SButton
+              v-if="group.location.brokenLinkCount > 0"
+              variant="secondary"
+              size="sm"
+              @click="openPreview([group.location.locationId])"
+            >
+              Remove {{ group.location.brokenLinkCount === 1 ? "broken link" : `${group.location.brokenLinkCount} broken links` }}
+            </SButton>
+          </header>
+
+          <div v-if="group.issues.length === 0" class="healthy-row">
+            No health issues found.
           </div>
-          <div class="group-items">
+          <div v-else class="issue-list">
             <div
-              v-for="(issue, idx) in healthStore.errorIssues"
-              :key="'err-' + idx"
+              v-for="issue in group.issues"
+              :key="`${issue.kind}-${issue.skillId ?? issue.description}`"
               class="issue-row"
             >
+              <SBadge :variant="issue.severity === 'error' ? 'error' : issue.severity === 'warning' ? 'warning' : 'default'" compact>
+                {{ issueCause(issue.kind) }}
+              </SBadge>
               <div class="issue-content">
-                <span class="issue-location" @click="navigateToLocation(issue.locationId)">
-                  {{ issue.locationLabel }}
-                </span>
-                <span class="issue-desc">{{ issue.description }}</span>
+                <span class="issue-description">{{ issue.description }}</span>
                 <span class="issue-suggestion">{{ issue.suggestion }}</span>
               </div>
-              <div class="issue-actions">
-                <SButton
-                  v-if="issue.autoFixable"
-                  variant="secondary"
-                  size="sm"
-                  @click="healthStore.fixBrokenLinks(issue.locationId)"
-                >Fix</SButton>
-              </div>
             </div>
           </div>
-        </div>
-
-        <!-- Warnings -->
-        <div v-if="healthStore.warningIssues.length > 0" class="issue-group">
-          <div class="group-banner severity-warning">
-            <span class="group-label">Warnings</span>
-            <span class="group-count">{{ healthStore.warningIssues.length }}</span>
-          </div>
-          <div class="group-items">
-            <div
-              v-for="(issue, idx) in healthStore.warningIssues"
-              :key="'warn-' + idx"
-              class="issue-row"
-            >
-              <div class="issue-content">
-                <span class="issue-location" @click="navigateToLocation(issue.locationId)">
-                  {{ issue.locationLabel }}
-                </span>
-                <span class="issue-desc">{{ issue.description }}</span>
-                <span class="issue-suggestion">{{ issue.suggestion }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Info -->
-        <div v-if="healthStore.infoIssues.length > 0" class="issue-group">
-          <div class="group-banner severity-info">
-            <span class="group-label">Info</span>
-            <span class="group-count">{{ healthStore.infoIssues.length }}</span>
-          </div>
-          <div class="group-items">
-            <div
-              v-for="(issue, idx) in healthStore.infoIssues"
-              :key="'info-' + idx"
-              class="issue-row"
-            >
-              <div class="issue-content">
-                <span class="issue-location" @click="navigateToLocation(issue.locationId)">
-                  {{ issue.locationLabel }}
-                </span>
-                <span class="issue-desc">{{ issue.description }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
+
+    <SModal :open="showPreview" max-width="max-w-3xl" @close="cancelRemoval">
+      <template #header>
+        <h2 class="modal-title">Review broken links</h2>
+      </template>
+      <div class="preview-content">
+        <section
+          v-for="location in healthStore.removalPreview ?? []"
+          :key="location.locationId"
+          class="preview-location"
+        >
+          <h3>{{ location.locationLabel }}</h3>
+          <p>{{ location.paths.length }} broken {{ location.paths.length === 1 ? "link" : "links" }}</p>
+          <ul>
+            <li v-for="path in location.paths" :key="path">{{ path }}</li>
+          </ul>
+        </section>
+        <div class="modal-actions">
+          <SButton variant="secondary" @click="cancelRemoval">Cancel</SButton>
+          <SButton @click="continueToConfirmation">Continue</SButton>
+        </div>
+      </div>
+    </SModal>
+
+    <SConfirmDialog
+      :open="showConfirm"
+      title="Remove broken links?"
+      :message="`Kit will remove ${previewCount} broken link${previewCount === 1 ? '' : 's'}. Each location will be rescanned before anything is removed.`"
+      confirm-label="Remove"
+      danger
+      @confirm="confirmRemoval"
+      @cancel="cancelRemoval"
+      @close="cancelRemoval"
+    />
   </div>
 </template>
 
@@ -179,40 +264,56 @@ onMounted(() => {
   padding: var(--space-5) var(--space-6);
 }
 
-.page-header {
+.page-header,
+.header-left,
+.header-actions,
+.location-header,
+.location-counts,
+.issue-row,
+.modal-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-5);
-  flex-shrink: 0;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
+.page-header {
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.header-left,
+.location-header,
+.issue-row {
   gap: var(--space-3);
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
+.header-actions,
+.location-counts,
+.modal-actions {
   gap: var(--space-2);
+}
+
+.page-title,
+.modal-title,
+.preview-location h3 {
+  margin: 0;
+  color: var(--text-primary);
 }
 
 .page-title {
-  font-family: var(--font-sans);
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-  margin: 0;
+}
+
+.loading-state,
+.all-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .loading-state {
-  display: flex;
-  align-items: center;
   gap: var(--space-2);
   padding: var(--space-8) 0;
-  justify-content: center;
 }
 
 .spinner {
@@ -228,55 +329,60 @@ onMounted(() => {
   to { transform: rotate(360deg); }
 }
 
-.loading-label {
-  font-size: var(--text-sm);
+.loading-label,
+.all-clear-desc,
+.healthy-row,
+.preview-location p {
   color: var(--text-secondary);
+  font-size: var(--text-sm);
 }
 
-.health-content {
+.health-content,
+.location-groups,
+.preview-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
 }
 
+.health-content { gap: var(--space-5); }
+.location-groups,
+.preview-content { gap: var(--space-3); }
+
 .summary-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
 .summary-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
   padding: var(--space-4);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-panel);
-}
-
-.summary-card.healthy { border-left: 3px solid var(--success); }
-.summary-card.warning { border-left: 3px solid var(--warning); }
-.summary-card.error { border-left: 3px solid var(--danger); }
-
-.summary-value {
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
   color: var(--text-primary);
+  font: inherit;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
 }
 
-.summary-label {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.summary-card:hover,
+.summary-card.active {
+  background: var(--surface-hover);
+  border-color: currentColor;
+}
+
+.summary-card.healthy { color: var(--success); }
+.summary-card.warning { color: var(--warning); }
+.summary-card.error { color: var(--danger); }
+
+.summary-card:focus-visible,
+.location-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .all-clear {
-  display: flex;
   flex-direction: column;
-  align-items: center;
   gap: var(--space-2);
   padding: var(--space-8);
   text-align: center;
@@ -284,97 +390,112 @@ onMounted(() => {
 }
 
 .all-clear-title {
+  margin: 0;
+  color: var(--text-primary);
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
-  color: var(--text-primary);
+}
+
+.all-clear-desc,
+.preview-location p {
   margin: 0;
 }
 
-.all-clear-desc {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.issues-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.issue-group {
+.location-group {
+  overflow: hidden;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-panel);
-  overflow: hidden;
 }
 
-.group-banner {
+.location-header {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.selection-control {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
 }
 
-.group-banner.severity-error {
-  background: var(--danger-subtle);
-  color: var(--danger);
-}
-
-.group-banner.severity-warning {
-  background: var(--warning-subtle);
-  color: var(--warning);
-}
-
-.group-banner.severity-info {
-  background: var(--accent-subtle);
+.location-link {
+  flex: 1;
   color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
 }
 
-.group-label { flex: 1; }
-.group-count { font-variant-numeric: tabular-nums; }
+.location-link:hover { text-decoration: underline; }
+
+.issue-list {
+  display: flex;
+  flex-direction: column;
+}
 
 .issue-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3);
   border-top: 1px solid var(--border-subtle);
 }
 
+.issue-row:first-child { border-top: 0; }
+
 .issue-content {
-  flex: 1;
   display: flex;
+  flex: 1;
+  min-width: 0;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
 }
 
-.issue-location {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--accent);
-  cursor: pointer;
-}
-
-.issue-location:hover {
-  text-decoration: underline;
-}
-
-.issue-desc {
-  font-size: var(--text-sm);
+.issue-description {
   color: var(--text-primary);
+  font-size: var(--text-sm);
 }
 
 .issue-suggestion {
-  font-size: var(--text-xs);
   color: var(--text-tertiary);
-  font-style: italic;
+  font-size: var(--text-xs);
 }
 
-.issue-actions {
-  flex-shrink: 0;
+.healthy-row { padding: var(--space-3); }
+
+.modal-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.preview-location {
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.preview-location h3 { font-size: var(--text-sm); }
+
+.preview-location ul {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+}
+
+.preview-location li {
+  color: var(--text-secondary);
+  font-family: ui-monospace, "SF Mono", SFMono-Regular, monospace;
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.modal-actions { justify-content: flex-end; }
+
+@media (max-width: 760px) {
+  .page-header,
+  .location-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .summary-row { grid-template-columns: 1fr; }
+  .location-counts { flex-wrap: wrap; }
 }
 </style>

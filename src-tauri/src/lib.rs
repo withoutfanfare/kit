@@ -13,7 +13,10 @@ use commands::bootstrap::{get_app_bootstrap, get_app_data_path, update_preferenc
 use commands::comparison::compare_locations;
 use commands::changelog::get_skill_changelog;
 use commands::external::{open_path_in_editor, open_with_default_app, resolve_skill_path, reveal_in_finder};
-use commands::health::{fix_broken_links, get_skill_versions, read_skill_content, run_health_check};
+use commands::health::{
+    get_skill_versions, preview_broken_link_removal, read_skill_content, remove_broken_links,
+    run_health_check,
+};
 use commands::library::{archive_skill, get_skill_detail, list_library_items, unarchive_skill};
 use commands::locations::{
     add_location, get_location_detail, list_locations, remove_location, sync_location,
@@ -79,7 +82,8 @@ pub fn run() {
             resolve_skill_path,
             // Health check
             run_health_check,
-            fix_broken_links,
+            preview_broken_link_removal,
+            remove_broken_links,
             read_skill_content,
             get_skill_versions,
             // Sharing / export-import

@@ -217,8 +217,24 @@ export type HealthIssue = {
   kind: LocationIssue["kind"];
 };
 
+export type HealthLocationSummary = {
+  locationId: LocationId;
+  locationLabel: string;
+  errorCount: number;
+  warningCount: number;
+  infoCount: number;
+  brokenLinkCount: number;
+};
+
+export type BrokenLinkRemovalPreview = {
+  locationId: LocationId;
+  locationLabel: string;
+  paths: string[];
+};
+
 export type HealthCheckResult = {
   issues: HealthIssue[];
+  locations: HealthLocationSummary[];
   locationCount: number;
   healthyCount: number;
   warningCount: number;

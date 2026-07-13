@@ -1006,7 +1006,7 @@ pub fn run_health_check(
     use crate::domain::*;
 
     let mut issues = Vec::new();
-    let mut healthy_count = 0;
+    let mut location_summaries = Vec::new();
 
     // Check for duplicate skill IDs in the library
     let mut seen_ids: HashMap<String, usize> = HashMap::new();
@@ -1031,10 +1031,11 @@ pub fn run_health_check(
     for loc in locations {
         let loc_path = PathBuf::from(&loc.path);
         let scan = scan_location(&loc_path, library_root, library_skills, library_sets);
-        let mut loc_has_issues = false;
+        let mut error_count = 0;
+        let mut warning_count = 0;
+        let mut info_count = 0;
 
         for issue in &scan.issues {
-            loc_has_issues = true;
             let (severity, suggestion, auto_fixable) = match issue.kind {
                 IssueKind::BrokenLink => (
                     HealthIssueSeverity::Error,
@@ -1062,6 +1063,11 @@ pub fn run_health_check(
                     false,
                 ),
             };
+            match severity {
+                HealthIssueSeverity::Error => error_count += 1,
+                HealthIssueSeverity::Warning => warning_count += 1,
+                HealthIssueSeverity::Info => info_count += 1,
+            }
 
             issues.push(HealthIssue {
                 severity,
@@ -1075,10 +1081,24 @@ pub fn run_health_check(
             });
         }
 
-        if !loc_has_issues {
-            healthy_count += 1;
-        }
+        location_summaries.push(HealthLocationSummary {
+            location_id: loc.id.clone(),
+            location_label: loc.label.clone(),
+            error_count,
+            warning_count,
+            info_count,
+            broken_link_count: scan.stats.broken_count,
+        });
     }
+
+    let healthy_count = location_summaries
+        .iter()
+        .filter(|location| {
+            location.error_count == 0
+                && location.warning_count == 0
+                && location.info_count == 0
+        })
+        .count();
 
     let error_count = issues
         .iter()
@@ -1091,6 +1111,7 @@ pub fn run_health_check(
 
     HealthCheckResult {
         issues,
+        locations: location_summaries,
         location_count: locations.len(),
         healthy_count,
         warning_count,
@@ -1102,6 +1123,79 @@ pub fn run_health_check(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn health_check_reports_location_and_issue_count_units() {
+        use std::os::unix::fs::symlink;
+
+        let base = std::env::temp_dir().join(format!(
+            "kit-health-counts-test-{}",
+            std::process::id()
+        ));
+        fs::remove_dir_all(&base).ok();
+        let library_root = base.join("library");
+        let healthy_path = base.join("healthy");
+        let faulty_path = base.join("faulty");
+        fs::create_dir_all(&library_root).unwrap();
+        fs::create_dir_all(healthy_path.join(".claude/skills")).unwrap();
+        fs::create_dir_all(faulty_path.join(".claude/skills")).unwrap();
+        fs::write(
+            faulty_path.join(".claude/settings.json"),
+            r#"{"skills":["missing"]}"#,
+        )
+        .unwrap();
+        symlink(
+            base.join("missing-one"),
+            faulty_path.join(".claude/skills/broken-one"),
+        )
+        .unwrap();
+        symlink(
+            base.join("missing-two"),
+            faulty_path.join(".claude/skills/broken-two"),
+        )
+        .unwrap();
+
+        let locations = vec![
+            SavedLocation {
+                id: "healthy".to_string(),
+                label: "Healthy".to_string(),
+                path: healthy_path.to_string_lossy().to_string(),
+                notes: None,
+                last_synced_at: None,
+            },
+            SavedLocation {
+                id: "faulty".to_string(),
+                label: "Faulty".to_string(),
+                path: faulty_path.to_string_lossy().to_string(),
+                notes: None,
+                last_synced_at: None,
+            },
+        ];
+
+        let result = run_health_check(&locations, &library_root, &[], &[]);
+
+        assert_eq!(result.location_count, 2);
+        assert_eq!(result.healthy_count, 1);
+        assert_eq!(result.error_count, 2);
+        assert_eq!(result.warning_count, 1);
+        assert_eq!(result.locations.len(), 2);
+        let healthy = result
+            .locations
+            .iter()
+            .find(|location| location.location_id == "healthy")
+            .unwrap();
+        assert_eq!((healthy.error_count, healthy.warning_count, healthy.info_count), (0, 0, 0));
+        let faulty = result
+            .locations
+            .iter()
+            .find(|location| location.location_id == "faulty")
+            .unwrap();
+        assert_eq!((faulty.error_count, faulty.warning_count, faulty.info_count), (2, 1, 0));
+        assert_eq!(faulty.broken_link_count, 2);
+
+        fs::remove_dir_all(&base).ok();
+    }
 
     #[test]
     fn parse_skill_md_basic() {

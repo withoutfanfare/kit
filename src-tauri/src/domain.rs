@@ -371,8 +371,28 @@ pub struct HealthIssue {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct HealthLocationSummary {
+    pub location_id: String,
+    pub location_label: String,
+    pub error_count: usize,
+    pub warning_count: usize,
+    pub info_count: usize,
+    pub broken_link_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BrokenLinkRemovalPreview {
+    pub location_id: String,
+    pub location_label: String,
+    pub paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HealthCheckResult {
     pub issues: Vec<HealthIssue>,
+    pub locations: Vec<HealthLocationSummary>,
     pub location_count: usize,
     pub healthy_count: usize,
     pub warning_count: usize,
