@@ -10,7 +10,7 @@ defineProps<{
   <div class="overview-group">
     <div class="overview-row">
       <span class="status-dot linked" />
-      <span class="overview-label">Linked</span>
+      <span class="overview-label">Assigned</span>
       <span class="overview-value">{{ linkedCount }}</span>
     </div>
     <div class="overview-row">
@@ -18,9 +18,9 @@ defineProps<{
       <span class="overview-label">Local only</span>
       <span class="overview-value">{{ localOnlyCount }}</span>
     </div>
-    <div v-if="brokenCount > 0" class="overview-row">
+    <div class="overview-row">
       <span class="status-dot broken" />
-      <span class="overview-label">Broken</span>
+      <span class="overview-label">Broken links</span>
       <span class="overview-value">{{ brokenCount }}</span>
     </div>
   </div>

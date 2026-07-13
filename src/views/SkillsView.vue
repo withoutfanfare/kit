@@ -7,6 +7,7 @@ import { useRoute, useRouter } from "vue-router";
 import { invoke } from "@tauri-apps/api/core";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import SkillInspector from "@/components/domain/SkillInspector.vue";
+import SkillStatusLegend from "@/components/domain/SkillStatusLegend.vue";
 import { SBadge, SSearchInput, SSegmentedControl, SEmptyState } from "@stuntrocket/ui";
 
 const libraryStore = useLibraryStore();
@@ -130,15 +131,18 @@ onMounted(() => {
             v-model="libraryStore.filterKind"
             :options="filterOptions"
           />
-          <label v-if="libraryStore.unusedCount > 0" class="unused-filter">
-            <input
-              type="checkbox"
-              :checked="libraryStore.filterUnused"
-              @change="libraryStore.filterUnused = !libraryStore.filterUnused"
-            />
-            <span>Unused only</span>
-            <SBadge variant="warning" compact>{{ libraryStore.unusedCount }}</SBadge>
-          </label>
+          <div class="status-controls">
+            <label v-if="libraryStore.unusedCount > 0" class="unused-filter">
+              <input
+                type="checkbox"
+                :checked="libraryStore.filterUnused"
+                @change="libraryStore.filterUnused = !libraryStore.filterUnused"
+              />
+              <span>Unused only</span>
+              <SBadge variant="warning" compact>{{ libraryStore.unusedCount }} unused</SBadge>
+            </label>
+            <SkillStatusLegend />
+          </div>
         </div>
         <div class="sidebar-items">
           <div
@@ -162,7 +166,11 @@ onMounted(() => {
                 <SBadge v-if="item.useCount30d > 0" variant="count" compact>
                   {{ item.useCount30d }} uses
                 </SBadge>
-                <span v-if="item.kind === 'skill' && item.useCount30d === 0 && item.isUnusedEverywhere" class="unused-dot" title="Not assigned anywhere" />
+                <SBadge
+                  v-if="item.kind === 'skill' && item.useCount30d === 0 && item.isUnusedEverywhere"
+                  variant="warning"
+                  compact
+                >Unused</SBadge>
                 <SBadge
                   v-if="item.validationIssues.some((i: any) => i.severity === 'error')"
                   variant="error"
@@ -191,7 +199,8 @@ onMounted(() => {
               <button
                 class="preview-button"
                 :class="{ active: previewSkillId === item.id }"
-                title="Preview SKILL.md"
+                :title="`Preview SKILL.md for ${item.name}`"
+                :aria-label="`Preview SKILL.md for ${item.name}`"
                 @click.stop="togglePreview(item.id)"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -202,7 +211,8 @@ onMounted(() => {
               <button
                 v-if="activeLocationId && !isAssignedToActive(item.id)"
                 class="quick-assign-button"
-                :title="`Assign to ${activeLocation?.label ?? 'active location'}`"
+                :title="`Assign ${item.name} to ${activeLocation?.label ?? 'active location'}`"
+                :aria-label="`Assign ${item.name} to ${activeLocation?.label ?? 'active location'}`"
                 @click.stop="quickAssign(item.id)"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -211,7 +221,7 @@ onMounted(() => {
                 </svg>
               </button>
               <SBadge v-if="activeLocationId && isAssignedToActive(item.id)" variant="success" compact>
-                assigned
+                Assigned
               </SBadge>
             </div>
 
@@ -281,6 +291,13 @@ onMounted(() => {
   color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
+}
+
+.status-controls {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .unused-filter input {
@@ -359,14 +376,6 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.unused-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--warning);
-  flex-shrink: 0;
-}
-
 .row-actions {
   display: flex;
   align-items: center;
@@ -402,6 +411,12 @@ onMounted(() => {
 .quick-assign-button:hover {
   background: var(--success-subtle);
   color: var(--success);
+}
+
+.preview-button:focus-visible,
+.quick-assign-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Inline preview */

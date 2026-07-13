@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import type { SkillAssignment } from "@/types";
+import {
+  linkStateBadgeVariant,
+  linkStateLabels,
+} from "@/utils/statusLabels";
 import { SBadge } from "@stuntrocket/ui";
 
 defineProps<{
@@ -12,21 +16,6 @@ defineEmits<{
   viewDiff: [];
 }>();
 
-function dotVariant(linkState: string): string {
-  switch (linkState) {
-    case "linked":
-      return "linked";
-    case "local_only":
-      return "local-only";
-    case "declared_only":
-      return "declared-only";
-    case "broken_link":
-      return "broken";
-    default:
-      return "linked";
-  }
-}
-
 function sourceBadgeVariant(source: string): "default" | "accent" {
   return source === "library" ? "accent" : "default";
 }
@@ -34,7 +23,9 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
 
 <template>
   <div class="skill-row" :class="{ archived: skill.archived, disabled: skill.disabled }" @click="$emit('select')">
-    <span class="status-dot" :class="dotVariant(skill.linkState)" />
+    <SBadge :variant="linkStateBadgeVariant(skill.linkState)">
+      {{ linkStateLabels[skill.linkState] }}
+    </SBadge>
     <span class="skill-name">{{ skill.name }}</span>
     <SBadge v-if="skill.disabled" variant="count">disabled</SBadge>
     <SBadge v-else-if="skill.archived" variant="count">archived</SBadge>
@@ -44,7 +35,8 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
     <button
       v-if="skill.linkState === 'linked'"
       class="action-btn"
-      title="View content changes"
+      :title="`View content changes for ${skill.name}`"
+      :aria-label="`View content changes for ${skill.name}`"
       @click.stop="$emit('viewDiff')"
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -52,7 +44,8 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
     <button
       v-if="skill.linkState === 'linked'"
       class="action-btn"
-      :title="skill.disabled ? 'Enable skill' : 'Disable skill'"
+      :title="`${skill.disabled ? 'Enable' : 'Disable'} ${skill.name}`"
+      :aria-label="`${skill.disabled ? 'Enable' : 'Disable'} ${skill.name}`"
       @click.stop="$emit('toggleActivation')"
     >
       {{ skill.disabled ? '&#9654;' : '&#10074;&#10074;' }}
@@ -79,29 +72,6 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
 .skill-row.archived,
 .skill-row.disabled {
   opacity: 0.6;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.status-dot.linked {
-  background: var(--success);
-}
-
-.status-dot.local-only {
-  background: var(--accent);
-}
-
-.status-dot.declared-only {
-  background: var(--warning);
-}
-
-.status-dot.broken {
-  background: var(--danger);
 }
 
 .skill-name {
@@ -133,5 +103,10 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
 .action-btn:hover {
   background: var(--surface-hover);
   color: var(--text-primary);
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 </style>

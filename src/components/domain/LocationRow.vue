@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SavedLocationSummary } from "@/types";
 import { requestRemoveLocation } from "@/composables/useRemoveLocation";
-import { SBadge, SRowActionMenu } from "@stuntrocket/ui";
+import { SBadge, SDropdownMenu, SIconButton } from "@stuntrocket/ui";
 
 const props = defineProps<{
   location: SavedLocationSummary;
@@ -29,15 +29,29 @@ function truncatePath(path: string, maxLen = 32): string {
       <span class="row-path">{{ truncatePath(location.path) }}</span>
     </div>
     <SBadge v-if="location.issueCount > 0" variant="warning">
-      {{ location.issueCount }}
+      {{ location.issueCount }} issue{{ location.issueCount === 1 ? "" : "s" }}
     </SBadge>
-    <SRowActionMenu
+    <SDropdownMenu
       class="row-menu"
-      :actions="[{ label: 'Remove…', value: 'remove', danger: true }]"
+      :items="[{ label: 'Remove…', value: 'remove', danger: true }]"
       align="right"
-      @click.stop
       @select="onRowAction"
-    />
+    >
+      <template #trigger="{ toggle, open }">
+        <SIconButton
+          size="sm"
+          :active="open"
+          :tooltip="`Actions for ${location.label}`"
+          aria-haspopup="menu"
+          :aria-expanded="open"
+          @click.stop="toggle"
+        >
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M10 3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM10 8.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM11.5 15.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0Z" />
+          </svg>
+        </SIconButton>
+      </template>
+    </SDropdownMenu>
   </div>
 </template>
 
