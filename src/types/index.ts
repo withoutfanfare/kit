@@ -232,6 +232,11 @@ export type BrokenLinkRemovalPreview = {
   paths: string[];
 };
 
+export type BrokenLinkRemovalResult = {
+  removedCount: number;
+  health: HealthCheckResult;
+};
+
 export type HealthCheckResult = {
   issues: HealthIssue[];
   locations: HealthLocationSummary[];

@@ -108,7 +108,7 @@ fn remove_broken_links_for_locations(
     library_root: &std::path::Path,
     library_skills: &[SkillMeta],
     library_sets: &[(String, SetDefinition)],
-) -> Result<usize, AppError> {
+) -> Result<BrokenLinkRemovalResult, AppError> {
     let mut removed = 0;
     for location in selected_locations(location_ids, locations)? {
         for path in broken_link_paths(
@@ -126,7 +126,15 @@ fn remove_broken_links_for_locations(
             }
         }
     }
-    Ok(removed)
+    Ok(BrokenLinkRemovalResult {
+        removed_count: removed,
+        health: scanner::run_health_check(
+            locations,
+            library_root,
+            library_skills,
+            library_sets,
+        ),
+    })
 }
 
 #[tauri::command]
@@ -151,7 +159,7 @@ pub fn preview_broken_link_removal(
 pub fn remove_broken_links(
     location_ids: Vec<String>,
     state: State<'_, SharedState>,
-) -> Result<HealthCheckResult, AppError> {
+) -> Result<BrokenLinkRemovalResult, AppError> {
     let (library_root, locations) = health_inputs(state)?;
     let library_root = PathBuf::from(library_root);
     let library_skills = scanner::scan_library_skills(&library_root);
@@ -162,16 +170,7 @@ pub fn remove_broken_links(
         &library_root,
         &library_skills,
         &library_sets,
-    )?;
-
-    let library_skills = scanner::scan_library_skills(&library_root);
-    let library_sets = scanner::scan_library_sets(&library_root);
-    Ok(scanner::run_health_check(
-        &locations,
-        &library_root,
-        &library_skills,
-        &library_sets,
-    ))
+    )
 }
 
 /// Read the SKILL.md content for a given skill path.
@@ -293,7 +292,7 @@ mod tests {
         assert_eq!(preview[0].paths, vec![link_path.to_string_lossy()]);
 
         fs::create_dir_all(&target_path).unwrap();
-        let removed = remove_broken_links_for_locations(
+        let result = remove_broken_links_for_locations(
             &location_ids,
             &locations,
             &library_root,
@@ -302,11 +301,14 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(removed, 0);
         assert!(fs::symlink_metadata(&link_path)
             .unwrap()
             .file_type()
             .is_symlink());
+        assert_eq!(
+            serde_json::to_value(result).unwrap()["removedCount"],
+            serde_json::json!(0)
+        );
 
         fs::remove_dir_all(&base).ok();
     }

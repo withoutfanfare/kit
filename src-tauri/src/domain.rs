@@ -390,6 +390,13 @@ pub struct BrokenLinkRemovalPreview {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BrokenLinkRemovalResult {
+    pub removed_count: usize,
+    pub health: HealthCheckResult,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HealthCheckResult {
     pub issues: Vec<HealthIssue>,
     pub locations: Vec<HealthLocationSummary>,

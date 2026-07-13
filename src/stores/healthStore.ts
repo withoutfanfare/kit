@@ -1,7 +1,12 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import type { BrokenLinkRemovalPreview, HealthCheckResult, LocationId } from "@/types";
+import type {
+  BrokenLinkRemovalPreview,
+  BrokenLinkRemovalResult,
+  HealthCheckResult,
+  LocationId,
+} from "@/types";
 import { useAppStore } from "./appStore";
 
 export type HealthSeverityFilter = "all" | "healthy" | "warning" | "error";
@@ -109,21 +114,14 @@ export const useHealthStore = defineStore("health", () => {
 
     isApplying.value = true;
     try {
-      const currentPreview = await invoke<BrokenLinkRemovalPreview[]>(
-        "preview_broken_link_removal",
-        { locationIds },
-      );
-      const removedCount = currentPreview.reduce(
-        (count, location) => count + location.paths.length,
-        0,
-      );
-      result.value = await invoke<HealthCheckResult>("remove_broken_links", {
+      const removal = await invoke<BrokenLinkRemovalResult>("remove_broken_links", {
         locationIds,
       });
+      result.value = removal.health;
       clearSelection();
       clearPreview();
       useAppStore().toast(
-        `Removed ${removedCount} broken link${removedCount === 1 ? "" : "s"}`,
+        `Removed ${removal.removedCount} broken link${removal.removedCount === 1 ? "" : "s"}`,
         "success",
       );
     } catch {
