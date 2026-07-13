@@ -119,7 +119,7 @@ onMounted(() => {
             <span class="list-empty-text">No sets found</span>
           </div>
         </div>
-        <div class="sidebar-footer">
+        <div v-if="setsStore.items.length > 0" class="sidebar-footer">
           <SButton variant="primary" @click="openNewSetDialog">New Set</SButton>
         </div>
       </div>
@@ -129,7 +129,7 @@ onMounted(() => {
       <SEmptyState
         v-else-if="setsStore.items.length === 0 && !setsStore.isLoading"
         title="No sets yet"
-        description="Create a set to group related skills together and assign them to locations."
+        description="Sets group related skills for assignment to projects."
         action-label="Create Set"
         @action="openNewSetDialog"
       />

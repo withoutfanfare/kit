@@ -180,15 +180,15 @@ onUnmounted(() => {
         <router-view v-if="route.params.locationId" />
         <SEmptyState
           v-else-if="locationsStore.locationList.length === 0"
-          title="Add your first project"
-          description="Drag a project folder here, or click the button below."
+          title="No projects yet"
+          description="Kit will scan the location for skills and issues."
           action-label="Add Location"
           @action="addLocation"
         />
         <SEmptyState
           v-else
           title="Select a location"
-          description="Choose a project from the sidebar, or drag a folder here to add it."
+          description="Review its skills, sets and health."
         />
       </template>
       <template #inspector>

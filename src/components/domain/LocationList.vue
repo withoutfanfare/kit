@@ -45,7 +45,7 @@ async function addLocation() {
         <span class="list-empty-text">No locations added yet</span>
       </div>
     </div>
-    <div class="list-footer">
+    <div v-if="locationsStore.locationList.length > 0" class="list-footer">
       <SButton @click="addLocation">Add Location</SButton>
     </div>
   </div>
