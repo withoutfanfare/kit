@@ -922,15 +922,6 @@ pub fn recommend_skills(
         return Vec::new();
     }
 
-    let type_keywords: Vec<String> = project_types
-        .iter()
-        .flat_map(|pt| {
-            let lower = pt.name.to_lowercase();
-            // Split "Laravel/PHP" into ["laravel", "php"]
-            lower.split('/').map(|s| s.trim().to_string()).collect::<Vec<_>>()
-        })
-        .collect();
-
     let assigned_set: std::collections::HashSet<&str> =
         already_assigned.iter().map(|s| s.as_str()).collect();
 
@@ -950,21 +941,23 @@ pub fn recommend_skills(
             .unwrap_or("")
             .to_lowercase();
 
-        for keyword in &type_keywords {
-            if folder_lower.contains(keyword)
-                || name_lower.contains(keyword)
-                || desc_lower.contains(keyword)
-            {
-                let type_name = project_types
-                    .iter()
-                    .find(|pt| pt.name.to_lowercase().contains(keyword))
-                    .map(|pt| pt.name.clone())
-                    .unwrap_or_else(|| keyword.clone());
-
+        for project_type in project_types {
+            let matches = project_type
+                .name
+                .to_lowercase()
+                .split('/')
+                .any(|keyword| {
+                    let keyword = keyword.trim();
+                    folder_lower.contains(keyword)
+                        || name_lower.contains(keyword)
+                        || desc_lower.contains(keyword)
+                });
+            if matches {
                 recommendations.push(crate::domain::SkillRecommendation {
                     skill_id: skill.folder_name.clone(),
                     skill_name: skill.name.clone(),
-                    reason: format!("Matches detected project type: {}", type_name),
+                    project_type: project_type.name.clone(),
+                    reason: None,
                 });
                 break;
             }
@@ -1123,6 +1116,89 @@ pub fn run_health_check(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn recommendation_skill(
+        folder_name: &str,
+        name: &str,
+        description: &str,
+        archived: bool,
+    ) -> SkillMeta {
+        SkillMeta {
+            name: name.to_string(),
+            description: Some(description.to_string()),
+            version: None,
+            archived,
+            tags: Vec::new(),
+            folder_name: folder_name.to_string(),
+            path: String::new(),
+            canonical_path: None,
+            validation_issues: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn recommendations_include_the_matched_project_type() {
+        let project_types = vec![
+            DetectedProjectType {
+                name: "Vue".to_string(),
+                marker_file: "vue.config.js".to_string(),
+            },
+            DetectedProjectType {
+                name: "Rust".to_string(),
+                marker_file: "Cargo.toml".to_string(),
+            },
+        ];
+        let skills = vec![
+            recommendation_skill("vue-review", "Vue Review", "Review Vue applications", false),
+            recommendation_skill("rust-review", "Rust Review", "Review Rust applications", false),
+        ];
+
+        let recommendations = recommend_skills(&project_types, &skills, &[]);
+
+        assert_eq!(recommendations.len(), 2);
+        assert_eq!(recommendations[0].project_type, "Vue");
+        assert_eq!(recommendations[1].project_type, "Rust");
+    }
+
+    #[test]
+    fn recommendations_exclude_archived_and_assigned_skills() {
+        let project_types = vec![DetectedProjectType {
+            name: "Rust".to_string(),
+            marker_file: "Cargo.toml".to_string(),
+        }];
+        let skills = vec![
+            recommendation_skill("rust-current", "Rust Current", "Rust checks", false),
+            recommendation_skill("rust-archived", "Rust Archived", "Rust checks", true),
+            recommendation_skill("rust-assigned", "Rust Assigned", "Rust checks", false),
+        ];
+
+        let recommendations = recommend_skills(
+            &project_types,
+            &skills,
+            &["rust-assigned".to_string()],
+        );
+
+        assert_eq!(recommendations.len(), 1);
+        assert_eq!(recommendations[0].skill_id, "rust-current");
+    }
+
+    #[test]
+    fn recommendation_reason_does_not_repeat_the_project_type() {
+        let project_types = vec![DetectedProjectType {
+            name: "TypeScript".to_string(),
+            marker_file: "tsconfig.json".to_string(),
+        }];
+        let skills = vec![recommendation_skill(
+            "typescript-review",
+            "TypeScript Review",
+            "Review TypeScript projects",
+            false,
+        )];
+
+        let recommendations = recommend_skills(&project_types, &skills, &[]);
+
+        assert_eq!(recommendations[0].reason, None);
+    }
 
     #[cfg(unix)]
     #[test]

@@ -423,7 +423,8 @@ pub struct DetectedProjectType {
 pub struct SkillRecommendation {
     pub skill_id: String,
     pub skill_name: String,
-    pub reason: String,
+    pub project_type: String,
+    pub reason: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

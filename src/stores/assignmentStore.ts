@@ -29,13 +29,15 @@ export const useAssignmentStore = defineStore("assignment", () => {
       removeSkillIds.value.size > 0
   );
 
-  function open(forLocationId: LocationId) {
+  function open(forLocationId: LocationId, initialSkillIds: SkillId[] = []) {
     locationId.value = forLocationId;
-    selectedSkillIds.value = new Set();
+    selectedSkillIds.value = new Set(initialSkillIds);
     selectedSetIds.value = new Set();
     removeSkillIds.value = new Set();
     preview.value = null;
+    previewError.value = null;
     isOpen.value = true;
+    if (initialSkillIds.length > 0) void fetchPreview();
   }
 
   function close() {

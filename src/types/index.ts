@@ -40,7 +40,8 @@ export type DetectedProjectType = {
 export type SkillRecommendation = {
   skillId: SkillId;
   skillName: string;
-  reason: string;
+  projectType: string;
+  reason: string | null;
 };
 
 export type LocationDetail = {
