@@ -13,9 +13,10 @@ const shortcuts = [
     { keys: ["j"], description: "Move down in list" },
     { keys: ["k"], description: "Move up in list" },
     { keys: ["Enter"], description: "Open selected item" },
-    { keys: ["/"], description: "Focus search input" },
+    { keys: ["/"], description: "Focus current filter" },
   ]},
   { group: "General", items: [
+    { keys: ["⌘", "K"], description: "Global search" },
     { keys: ["⌘", "/"], description: "Toggle this help" },
     { keys: ["Esc"], description: "Close overlay" },
   ]},
