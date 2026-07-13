@@ -4,8 +4,11 @@ export type ThemePreference = "system" | "light" | "dark";
 type ResolvedTheme = "light" | "dark";
 
 const STORAGE_KEY = "kit.theme";
-const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
-const systemThemeIsDark = ref(systemTheme.matches);
+const systemTheme =
+  typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : null;
+const systemThemeIsDark = ref(systemTheme?.matches ?? false);
 
 const theme = ref<ThemePreference>(loadTheme());
 const resolvedTheme = computed<ResolvedTheme>(() =>
@@ -25,11 +28,12 @@ function loadTheme(): ThemePreference {
 }
 
 function applyTheme(value: ResolvedTheme) {
+  if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("dark", value === "dark");
   document.documentElement.classList.toggle("light", value === "light");
 }
 
-systemTheme.addEventListener("change", (event) => {
+systemTheme?.addEventListener("change", (event) => {
   systemThemeIsDark.value = event.matches;
 });
 
