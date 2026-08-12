@@ -21,6 +21,21 @@ pub enum SkillSource {
     Local,
 }
 
+/// What kind of place a location is.
+///
+/// `Global` is `~/.claude/skills` — the folder Claude Code reads for skills that
+/// load in *every* session. Its skills live directly in the location path rather
+/// than under `.claude/skills`, and it has no manifest: the `.claude/settings.json`
+/// beside it is the user's own Claude Code settings file, not something Kit may
+/// write to.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum LocationKind {
+    Global,
+    #[default]
+    Project,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum LibraryItemKind {
@@ -133,6 +148,8 @@ pub struct SavedLocationSummary {
     pub id: String,
     pub label: String,
     pub path: String,
+    #[serde(default)]
+    pub kind: LocationKind,
     pub issue_count: usize,
     pub installed_skill_count: usize,
     pub installed_set_count: usize,
@@ -145,6 +162,8 @@ pub struct LocationDetail {
     pub id: String,
     pub label: String,
     pub path: String,
+    #[serde(default)]
+    pub kind: LocationKind,
     pub manifest_path: Option<String>,
     pub notes: Option<String>,
     pub sets: Vec<SetAssignment>,
@@ -512,6 +531,15 @@ pub struct SavedLocation {
     pub path: String,
     pub notes: Option<String>,
     pub last_synced_at: Option<DateTime<Utc>>,
+    /// Defaults to `Project` so state files written before Global existed still load.
+    #[serde(default)]
+    pub kind: LocationKind,
+}
+
+impl SavedLocation {
+    pub fn is_global(&self) -> bool {
+        self.kind == LocationKind::Global
+    }
 }
 
 /// Parsed skill metadata from SKILL.md frontmatter.

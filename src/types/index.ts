@@ -22,10 +22,18 @@ export type AppBootstrap = {
   };
 };
 
+/**
+ * `global` is `~/.claude/skills` — the folder Claude Code reads for skills that
+ * load in every session. It holds its skills directly rather than under
+ * `.claude/skills`, and it has no manifest.
+ */
+export type LocationKind = "global" | "project";
+
 export type SavedLocationSummary = {
   id: LocationId;
   label: string;
   path: string;
+  kind: LocationKind;
   issueCount: number;
   installedSkillCount: number;
   installedSetCount: number;
@@ -48,6 +56,7 @@ export type LocationDetail = {
   id: LocationId;
   label: string;
   path: string;
+  kind: LocationKind;
   manifestPath: string | null;
   notes: string | null;
   sets: SetAssignment[];

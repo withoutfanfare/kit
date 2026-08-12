@@ -32,11 +32,11 @@ pub fn toggle_skill_activation(
     if is_currently_disabled {
         // Re-enable: remove from disabled set, add to manifest
         guard.inner.disabled_skills.remove(&key);
-        add_skill_to_manifest(&location_path, &skill_id)?;
+        add_skill_to_manifest(&location_path, loc.kind, &skill_id)?;
     } else {
         // Disable: add to disabled set, remove from manifest
         guard.inner.disabled_skills.insert(key);
-        remove_skill_from_manifest(&location_path, &skill_id)?;
+        remove_skill_from_manifest(&location_path, loc.kind, &skill_id)?;
     }
 
     guard.save().map_err(AppError::new)?;
@@ -48,6 +48,7 @@ pub fn toggle_skill_activation(
     let library_sets = scanner::scan_library_sets(&library_root);
     let scan = scanner::scan_location(
         &location_path,
+        loc.kind,
         &library_root,
         &library_skills,
         &library_sets,
@@ -71,6 +72,7 @@ pub fn toggle_skill_activation(
         id: loc.id,
         label: loc.label,
         path: loc.path,
+        kind: loc.kind,
         manifest_path: scan.manifest_path,
         notes: loc.notes,
         sets: scan.sets,
@@ -140,9 +142,12 @@ pub fn get_skill_content_diff(
 
 fn add_skill_to_manifest(
     location_path: &std::path::Path,
+    kind: LocationKind,
     skill_id: &str,
 ) -> Result<(), AppError> {
-    let manifest_path = location_path.join(".claude").join("settings.json");
+    let Some(manifest_path) = scanner::writable_manifest_path(location_path, kind) else {
+        return Ok(());
+    };
 
     let mut value: serde_json::Value = if manifest_path.is_file() {
         let content = std::fs::read_to_string(&manifest_path)
@@ -177,9 +182,12 @@ fn add_skill_to_manifest(
 
 fn remove_skill_from_manifest(
     location_path: &std::path::Path,
+    kind: LocationKind,
     skill_id: &str,
 ) -> Result<(), AppError> {
-    let manifest_path = location_path.join(".claude").join("settings.json");
+    let Some(manifest_path) = scanner::writable_manifest_path(location_path, kind) else {
+        return Ok(());
+    };
 
     if !manifest_path.is_file() {
         return Ok(());

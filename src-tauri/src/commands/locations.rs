@@ -70,6 +70,7 @@ pub fn add_location(
         path: canonical_str,
         notes: None,
         last_synced_at: Some(chrono::Utc::now()),
+        kind: LocationKind::Project,
     };
 
     guard.locations_mut().push(loc.clone());
@@ -133,6 +134,13 @@ pub fn remove_location(
     id: String,
     state: State<'_, SharedState>,
 ) -> Result<Vec<SavedLocationSummary>, AppError> {
+    if id == crate::state::GLOBAL_LOCATION_ID {
+        return Err(AppError::new(
+            "Global cannot be removed — it is where Claude Code reads always-on skills from."
+                .to_string(),
+        ));
+    }
+
     let mut guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
 
     let before_len = guard.locations().len();
@@ -184,6 +192,7 @@ pub fn get_location_detail(
     let location_path = PathBuf::from(&loc.path);
     let scan = scanner::scan_location(
         &location_path,
+        loc.kind,
         &library_root,
         &library_skills,
         &library_sets,
@@ -207,6 +216,7 @@ pub fn get_location_detail(
         id: loc.id,
         label: loc.label,
         path: loc.path,
+        kind: loc.kind,
         manifest_path: scan.manifest_path,
         notes: loc.notes,
         sets: scan.sets,
@@ -245,6 +255,7 @@ pub fn sync_location(
     let location_path = PathBuf::from(&loc_snapshot.path);
     let scan = scanner::scan_location(
         &location_path,
+        loc_snapshot.kind,
         &library_root,
         &library_skills,
         &library_sets,
@@ -268,6 +279,7 @@ pub fn sync_location(
         id: loc_snapshot.id,
         label: loc_snapshot.label,
         path: loc_snapshot.path,
+        kind: loc_snapshot.kind,
         manifest_path: scan.manifest_path,
         notes: loc_snapshot.notes,
         sets: scan.sets,

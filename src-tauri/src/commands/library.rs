@@ -27,7 +27,7 @@ pub fn list_library_items(
         .iter()
         .map(|loc| {
             let loc_path = PathBuf::from(&loc.path);
-            scanner::scan_location(&loc_path, &library_root, &library_skills, &library_sets)
+            scanner::scan_location(&loc_path, loc.kind, &library_root, &library_skills, &library_sets)
         })
         .collect();
 

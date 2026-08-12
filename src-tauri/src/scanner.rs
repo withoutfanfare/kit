@@ -426,6 +426,43 @@ pub fn find_manifest_path(location_path: &Path) -> Option<PathBuf> {
     None
 }
 
+/// Kind-aware skills directory. The Global location *is* its skills directory
+/// (`~/.claude/skills`); a project keeps skills under `.claude/skills`.
+pub fn skills_dir_for(location_path: &Path, kind: LocationKind) -> Option<PathBuf> {
+    match kind {
+        LocationKind::Global => location_path
+            .is_dir()
+            .then(|| location_path.to_path_buf()),
+        LocationKind::Project => find_skills_dir(location_path),
+    }
+}
+
+/// Where a manifest *would* be written for this location, whether or not the
+/// file exists yet. `None` means this location has no manifest and nothing may
+/// be written — the only such kind is `Global`, whose neighbouring
+/// `.claude/settings.json` is the user's live Claude Code configuration.
+///
+/// Every manifest write must go through this. Joining the path by hand bypasses
+/// the guard.
+pub fn writable_manifest_path(location_path: &Path, kind: LocationKind) -> Option<PathBuf> {
+    match kind {
+        LocationKind::Global => None,
+        LocationKind::Project => Some(location_path.join(".claude").join("settings.json")),
+    }
+}
+
+/// Kind-aware manifest lookup.
+///
+/// The Global location never has one. Its neighbouring `.claude/settings.json`
+/// is the user's live Claude Code configuration, which governs every session —
+/// Kit reads that file elsewhere but must never write it as a manifest.
+pub fn manifest_path_for(location_path: &Path, kind: LocationKind) -> Option<PathBuf> {
+    match kind {
+        LocationKind::Global => None,
+        LocationKind::Project => find_manifest_path(location_path),
+    }
+}
+
 /// Read declared skill names from the manifest's `skills` array.
 pub fn read_manifest_skills(manifest_path: &Path) -> Vec<String> {
     let content = match fs::read_to_string(manifest_path) {
@@ -449,6 +486,7 @@ pub fn read_manifest_skills(manifest_path: &Path) -> Vec<String> {
 /// issues, given a set of known library skills.
 pub fn scan_location(
     location_path: &Path,
+    kind: LocationKind,
     library_root: &Path,
     library_skills: &[SkillMeta],
     library_sets: &[(String, SetDefinition)],
@@ -477,8 +515,8 @@ pub fn scan_location(
     // Canonicalised once — reused for every symlink target comparison below
     let canonical_library_root = fs::canonicalize(library_root).ok();
 
-    let skills_dir = find_skills_dir(location_path);
-    let manifest_path = find_manifest_path(location_path);
+    let skills_dir = skills_dir_for(location_path, kind);
+    let manifest_path = manifest_path_for(location_path, kind);
     let manifest_skills = manifest_path
         .as_ref()
         .map(|p| read_manifest_skills(p))
@@ -779,7 +817,7 @@ pub fn count_broken_links_for_locations(
         .iter()
         .map(|loc| {
             let loc_path = PathBuf::from(&loc.path);
-            let result = scan_location(&loc_path, library_root, library_skills, library_sets);
+            let result = scan_location(&loc_path, loc.kind, library_root, library_skills, library_sets);
             result.stats.broken_count
         })
         .sum()
@@ -794,6 +832,7 @@ fn summary_from_scan(
         id: loc.id.clone(),
         label: loc.label.clone(),
         path: loc.path.clone(),
+        kind: loc.kind,
         issue_count: result.issues.len(),
         installed_skill_count: result
             .skills
@@ -814,7 +853,7 @@ pub fn build_location_summary(
     library_sets: &[(String, SetDefinition)],
 ) -> SavedLocationSummary {
     let loc_path = PathBuf::from(&loc.path);
-    let result = scan_location(&loc_path, library_root, library_skills, library_sets);
+    let result = scan_location(&loc_path, loc.kind, library_root, library_skills, library_sets);
     summary_from_scan(loc, &result)
 }
 
@@ -831,7 +870,7 @@ pub fn locations_linking_skill(
         .iter()
         .filter_map(|loc| {
             let loc_path = PathBuf::from(&loc.path);
-            let result = scan_location(&loc_path, library_root, library_skills, library_sets);
+            let result = scan_location(&loc_path, loc.kind, library_root, library_skills, library_sets);
             let links = result
                 .skills
                 .iter()
@@ -1023,7 +1062,7 @@ pub fn run_health_check(
 
     for loc in locations {
         let loc_path = PathBuf::from(&loc.path);
-        let scan = scan_location(&loc_path, library_root, library_skills, library_sets);
+        let scan = scan_location(&loc_path, loc.kind, library_root, library_skills, library_sets);
         let mut error_count = 0;
         let mut warning_count = 0;
         let mut info_count = 0;
@@ -1239,6 +1278,7 @@ mod tests {
                 path: healthy_path.to_string_lossy().to_string(),
                 notes: None,
                 last_synced_at: None,
+                kind: LocationKind::Project,
             },
             SavedLocation {
                 id: "faulty".to_string(),
@@ -1246,6 +1286,7 @@ mod tests {
                 path: faulty_path.to_string_lossy().to_string(),
                 notes: None,
                 last_synced_at: None,
+                kind: LocationKind::Project,
             },
         ];
 
@@ -1461,5 +1502,97 @@ mod tests {
     fn validate_complete_frontmatter_no_issues() {
         let issues = validate_skill_md("---\nname: Test\ndescription: A skill\n---\n");
         assert!(issues.is_empty());
+    }
+
+    /// The file beside the Global location is the user's live Claude Code
+    /// settings, which governs every session. Kit must never offer it as a
+    /// manifest — for reading or, especially, for writing.
+    #[test]
+    fn global_location_never_yields_a_manifest_path() {
+        let base = std::env::temp_dir().join(format!("kit-global-manifest-{}", std::process::id()));
+        let global = base.join(".claude").join("skills");
+        fs::create_dir_all(&global).unwrap();
+        // A real settings.json sitting exactly where a project manifest would be.
+        fs::create_dir_all(global.join(".claude")).unwrap();
+        fs::write(global.join(".claude").join("settings.json"), "{}").unwrap();
+
+        assert_eq!(manifest_path_for(&global, LocationKind::Global), None);
+        assert_eq!(writable_manifest_path(&global, LocationKind::Global), None);
+
+        // The same directory treated as a project *would* expose one — which is
+        // exactly why the kind has to be carried through rather than inferred.
+        assert!(writable_manifest_path(&global, LocationKind::Project).is_some());
+
+        fs::remove_dir_all(&base).ok();
+    }
+
+    /// End-to-end on the real filesystem: a Global-shaped folder (skills sitting
+    /// directly inside it, symlinked to the library) is scanned as linked skills.
+    /// Scanning the same folder as a Project finds nothing, which is precisely
+    /// the bug this kind exists to prevent.
+    #[cfg(unix)]
+    #[test]
+    fn scan_location_reads_skills_directly_inside_a_global_location() {
+        use std::os::unix::fs::symlink;
+
+        let base = std::env::temp_dir().join(format!("kit-global-scan-{}", std::process::id()));
+        fs::remove_dir_all(&base).ok();
+        let library_root = base.join("library");
+        let global = base.join(".claude").join("skills");
+        fs::create_dir_all(library_root.join("alpha")).unwrap();
+        fs::create_dir_all(&global).unwrap();
+        fs::write(
+            library_root.join("alpha").join("SKILL.md"),
+            "---\nname: Alpha\ndescription: A skill\n---\nBody",
+        )
+        .unwrap();
+        symlink(library_root.join("alpha"), global.join("alpha")).unwrap();
+
+        let library_skills = scan_library_skills(&library_root);
+        assert_eq!(library_skills.len(), 1, "fixture: library should hold alpha");
+
+        let as_global = scan_location(
+            &global,
+            LocationKind::Global,
+            &library_root,
+            &library_skills,
+            &[],
+        );
+        assert_eq!(as_global.skills.len(), 1);
+        assert_eq!(as_global.skills[0].skill_id, "alpha");
+        assert_eq!(as_global.skills[0].link_state, LinkState::Linked);
+        assert_eq!(as_global.manifest_path, None);
+
+        let as_project = scan_location(
+            &global,
+            LocationKind::Project,
+            &library_root,
+            &library_skills,
+            &[],
+        );
+        assert!(
+            as_project.skills.is_empty(),
+            "a Global folder read as a Project must find nothing"
+        );
+
+        fs::remove_dir_all(&base).ok();
+    }
+
+    /// Global keeps its skills directly in the location path; a project nests
+    /// them under `.claude/skills`.
+    #[test]
+    fn skills_dir_depends_on_location_kind() {
+        let base = std::env::temp_dir().join(format!("kit-global-skills-{}", std::process::id()));
+        let global = base.join(".claude").join("skills");
+        fs::create_dir_all(global.join("some-skill")).unwrap();
+
+        assert_eq!(
+            skills_dir_for(&global, LocationKind::Global),
+            Some(global.clone())
+        );
+        // As a project it has no `.claude/skills` child, so nothing is found.
+        assert_eq!(skills_dir_for(&global, LocationKind::Project), None);
+
+        fs::remove_dir_all(&base).ok();
     }
 }

@@ -26,6 +26,7 @@ pub fn get_skill_changelog(
     for location in &locations {
         let scan = scanner::scan_location(
             &PathBuf::from(&location.path),
+            location.kind,
             &library_root,
             &library_skills,
             &library_sets,
@@ -118,6 +119,7 @@ mod tests {
             path: String::new(),
             notes: None,
             last_synced_at: None,
+            kind: LocationKind::Project,
         };
         let beta = SavedLocation {
             id: "beta-id".to_string(),
@@ -125,6 +127,7 @@ mod tests {
             path: String::new(),
             notes: None,
             last_synced_at: None,
+            kind: LocationKind::Project,
         };
         let alpha_assignments = vec![
             assignment("linked", LinkState::Linked),

@@ -206,6 +206,7 @@ fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
                 path: canonical_str,
                 notes: None,
                 last_synced_at: Some(chrono::Utc::now()),
+                kind: crate::domain::LocationKind::Project,
             };
             guard.locations_mut().push(loc);
             let _ = guard.save();

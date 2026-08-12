@@ -62,6 +62,7 @@ fn broken_link_paths(
 ) -> Vec<PathBuf> {
     let scan = scanner::scan_location(
         &PathBuf::from(&location.path),
+        location.kind,
         library_root,
         library_skills,
         library_sets,
@@ -239,6 +240,7 @@ pub fn get_skill_versions(
     let location_path = PathBuf::from(&loc.path);
     let scan = scanner::scan_location(
         &location_path,
+        loc.kind,
         &library_root,
         &library_skills,
         &library_sets,
@@ -303,6 +305,7 @@ mod tests {
             path: location_path.to_string_lossy().to_string(),
             notes: None,
             last_synced_at: None,
+            kind: LocationKind::Project,
         }];
         let location_ids = vec!["location-1".to_string()];
 
@@ -365,6 +368,7 @@ mod tests {
             path: location_path.to_string_lossy().to_string(),
             notes: None,
             last_synced_at: None,
+            kind: LocationKind::Project,
         }];
         let result = remove_broken_links_for_locations_with(
             &["location-1".to_string()],

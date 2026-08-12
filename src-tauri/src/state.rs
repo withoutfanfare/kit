@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use chrono::{DateTime, Utc};
 
-use crate::domain::{DefaultView, Preferences, SavedLocation};
+use crate::domain::{DefaultView, LocationKind, Preferences, SavedLocation};
+
+/// Stable id for the Global location. Reserved — user locations never use it.
+pub const GLOBAL_LOCATION_ID: &str = "__global__";
 
 // ---------------------------------------------------------------------------
 // Persisted state (written to ~/.kit/state.json)
@@ -90,7 +93,7 @@ impl AppState {
     /// Load from disk or create default.
     pub fn load() -> Self {
         let state_path = state_file_path();
-        let inner = if state_path.exists() {
+        let mut inner = if state_path.exists() {
             match fs::read_to_string(&state_path) {
                 Ok(json) => serde_json::from_str::<PersistedState>(&json)
                     .unwrap_or_default(),
@@ -99,6 +102,7 @@ impl AppState {
         } else {
             PersistedState::default()
         };
+        ensure_global_location(&mut inner);
         Self { inner, state_path }
     }
 
@@ -146,6 +150,46 @@ pub fn new_shared_state() -> SharedState {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/// Make sure the Global location (`~/.claude/skills`) is present and correct.
+///
+/// It is synthesised rather than stored by the user, so it survives an old state
+/// file, a hand-edited one, or a home directory that has moved. Any user location
+/// that happens to sit on the same path is folded into it so the folder is never
+/// listed twice.
+fn ensure_global_location(state: &mut PersistedState) {
+    let Some(path) = global_skills_path() else {
+        return;
+    };
+    ensure_global_location_at(state, &path);
+}
+
+/// The body of [`ensure_global_location`], with the path injected so it can be
+/// tested without depending on the real home directory.
+fn ensure_global_location_at(state: &mut PersistedState, path: &Path) {
+    let path_str = path.to_string_lossy().to_string();
+
+    state
+        .locations
+        .retain(|l| l.id != GLOBAL_LOCATION_ID && l.path != path_str);
+
+    state.locations.insert(
+        0,
+        SavedLocation {
+            id: GLOBAL_LOCATION_ID.to_string(),
+            label: "Global".to_string(),
+            path: path_str,
+            notes: Some("Loads in every session, in every project.".to_string()),
+            last_synced_at: None,
+            kind: LocationKind::Global,
+        },
+    );
+}
+
+/// `~/.claude/skills` — the folder Claude Code reads for always-on skills.
+pub fn global_skills_path() -> Option<PathBuf> {
+    Some(dirs::home_dir()?.join(".claude").join("skills"))
+}
 
 /// Write content to a file atomically by writing to a .tmp sibling then renaming.
 pub fn atomic_write(path: &Path, content: &str) -> Result<(), std::io::Error> {
@@ -196,4 +240,71 @@ fn default_library_root() -> Option<PathBuf> {
     }
     // No auto-detection possible — user must configure in Settings
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn project(id: &str, path: &str) -> SavedLocation {
+        SavedLocation {
+            id: id.to_string(),
+            label: id.to_string(),
+            path: path.to_string(),
+            notes: None,
+            last_synced_at: None,
+            kind: LocationKind::Project,
+        }
+    }
+
+    #[test]
+    fn global_location_is_added_first_and_marked_global() {
+        let mut state = PersistedState {
+            locations: vec![project("a", "/tmp/a")],
+            ..Default::default()
+        };
+        ensure_global_location_at(&mut state, Path::new("/home/x/.claude/skills"));
+
+        assert_eq!(state.locations.len(), 2);
+        assert_eq!(state.locations[0].id, GLOBAL_LOCATION_ID);
+        assert_eq!(state.locations[0].kind, LocationKind::Global);
+        assert_eq!(state.locations[1].id, "a");
+    }
+
+    /// Called on every load, so it must not stack up duplicates.
+    #[test]
+    fn ensuring_global_twice_leaves_one() {
+        let mut state = PersistedState::default();
+        let path = Path::new("/home/x/.claude/skills");
+        ensure_global_location_at(&mut state, path);
+        ensure_global_location_at(&mut state, path);
+
+        assert_eq!(
+            state
+                .locations
+                .iter()
+                .filter(|l| l.kind == LocationKind::Global)
+                .count(),
+            1
+        );
+    }
+
+    /// A user who had already added `~/.claude/skills` by hand must not end up
+    /// with the same folder listed twice, once as a project and once as Global.
+    #[test]
+    fn a_user_location_on_the_global_path_is_folded_in() {
+        let mut state = PersistedState {
+            locations: vec![
+                project("hand-added", "/home/x/.claude/skills"),
+                project("keep-me", "/tmp/other"),
+            ],
+            ..Default::default()
+        };
+        ensure_global_location_at(&mut state, Path::new("/home/x/.claude/skills"));
+
+        assert_eq!(state.locations.len(), 2);
+        assert!(!state.locations.iter().any(|l| l.id == "hand-added"));
+        assert!(state.locations.iter().any(|l| l.id == "keep-me"));
+        assert_eq!(state.locations[0].kind, LocationKind::Global);
+    }
 }
