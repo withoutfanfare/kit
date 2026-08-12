@@ -473,14 +473,6 @@ pub struct ExportManifest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportPreview {
-    pub skills: Vec<ImportSkillEntry>,
-    pub set_definition: Option<SetDefinition>,
-    pub conflict_count: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ImportSkillEntry {
     pub id: String,
     pub name: String,

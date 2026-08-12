@@ -338,12 +338,6 @@ export type HealthCheckResult = {
 };
 
 // Export/import types
-export type ImportPreview = {
-  skills: Array<{ id: SkillId; name: string; alreadyExists: boolean }>;
-  setDefinition: { name: string; description: string | null; skills: string[] } | null;
-  conflictCount: number;
-};
-
 // Skill version tracking
 export type SkillVersionInfo = {
   skillId: SkillId;

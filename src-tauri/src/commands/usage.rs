@@ -48,8 +48,8 @@ pub fn get_usage_summary(state: State<'_, SharedState>) -> Result<UsageSummary, 
         }
     }
 
-    most_used.sort_by(|a, b| b.count.cmp(&a.count));
-    recently_used.sort_by(|a, b| b.last_used_at.cmp(&a.last_used_at));
+    most_used.sort_by_key(|entry| std::cmp::Reverse(entry.count));
+    recently_used.sort_by_key(|entry| std::cmp::Reverse(entry.last_used_at));
 
     let mut suggestions: Vec<String> = Vec::new();
     if !index.is_available() {

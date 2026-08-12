@@ -28,7 +28,6 @@ use commands::locations::{
 use commands::manifest::update_manifest_entry;
 use commands::repo::{copy_repo_pull_command, get_skills_repo_status, recheck_skills_repo_status, validate_skills_repository};
 use commands::sets::{add_skill_to_set, create_set, delete_set, get_set_detail, list_sets, remove_skill_from_set, update_set};
-use commands::sharing::{export_skill_bundle, import_skill_bundle, preview_import_bundle};
 use commands::usage::{get_location_usage, get_usage_summary};
 use commands::watcher::{get_watcher_status, start_library_watcher, stop_library_watcher};
 
@@ -95,9 +94,6 @@ pub fn run() {
             read_skill_content,
             get_skill_versions,
             // Sharing / export-import
-            export_skill_bundle,
-            preview_import_bundle,
-            import_skill_bundle,
             // Changelog
             get_skill_changelog,
             // Filesystem watcher
