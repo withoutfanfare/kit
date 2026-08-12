@@ -150,6 +150,9 @@ pub struct SavedLocationSummary {
     pub path: String,
     #[serde(default)]
     pub kind: LocationKind,
+    /// `false` when the directory has been moved or deleted since it was saved.
+    #[serde(default)]
+    pub path_exists: bool,
     pub issue_count: usize,
     pub installed_skill_count: usize,
     pub installed_set_count: usize,
@@ -617,6 +620,15 @@ pub struct SessionLoadout {
     /// Overrides that cannot bite because the skill only exists under a
     /// `plugin:skill` name, which bare-name keys never match.
     pub unreachable_overrides: Vec<String>,
+}
+
+/// A project on disk that keeps Claude skills but is not yet tracked by Kit.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveredLocation {
+    pub path: String,
+    pub label: String,
+    pub skill_count: usize,
 }
 
 /// Parsed skill metadata from SKILL.md frontmatter.

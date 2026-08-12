@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -462,6 +462,107 @@ pub fn find_manifest_path(location_path: &Path) -> Option<PathBuf> {
     None
 }
 
+/// Find projects that keep Claude skills but are not yet tracked.
+///
+/// Rather than guess at fixed directories, this looks where the user already
+/// keeps work: the parent and grandparent of every saved location become search
+/// roots, each scanned one level deep. That finds siblings of a tracked project
+/// — the common case, since projects cluster — without ever walking the whole
+/// home directory.
+pub fn discover_unregistered(
+    saved: &[crate::domain::SavedLocation],
+    home: &Path,
+) -> Vec<DiscoveredLocation> {
+    // Compared by real path throughout: Herd serves each site through a
+    // `<name>-current` symlink, so the same worktree is reachable by two names
+    // and would otherwise be offered twice, or offered when already tracked.
+    let known: HashSet<PathBuf> = saved
+        .iter()
+        .map(|l| PathBuf::from(&l.path))
+        .chain(std::iter::once(home.join(".claude").join("skills")))
+        .map(|p| fs::canonicalize(&p).unwrap_or(p))
+        .collect();
+
+    let mut roots: Vec<PathBuf> = Vec::new();
+    for location in saved {
+        let path = PathBuf::from(&location.path);
+        for candidate in [path.parent(), path.parent().and_then(|p| p.parent())]
+            .into_iter()
+            .flatten()
+        {
+            // The home directory itself is too broad to sweep.
+            if candidate == home || candidate.parent().is_none() {
+                continue;
+            }
+            if !roots.contains(&candidate.to_path_buf()) {
+                roots.push(candidate.to_path_buf());
+            }
+        }
+    }
+
+    let mut found: Vec<DiscoveredLocation> = Vec::new();
+    let mut seen: HashSet<PathBuf> = HashSet::new();
+
+    // Two levels, because a worktree layout puts the project one deeper:
+    // `~/Herd/<name>-worktrees/<branch>` rather than `~/Herd/<name>`.
+    for root in roots {
+        for candidate in child_dirs(&root) {
+            let deeper = child_dirs(&candidate);
+            for path in std::iter::once(candidate).chain(deeper) {
+                // Report the real path, which is also what adding it would store.
+                let path = fs::canonicalize(&path).unwrap_or(path);
+                if known.contains(&path) || !seen.insert(path.clone()) {
+                    continue;
+                }
+                let Some(skill_count) = count_skills(&path.join(".claude").join("skills")) else {
+                    continue;
+                };
+                found.push(DiscoveredLocation {
+                    label: path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string(),
+                    path: path.to_string_lossy().to_string(),
+                    skill_count,
+                });
+            }
+        }
+    }
+
+    found.sort_by(|a, b| a.label.cmp(&b.label));
+    found
+}
+
+/// Directories worth descending into: no dot-directories, and none of the
+/// dependency trees that would make the sweep expensive for nothing.
+fn child_dirs(dir: &Path) -> Vec<PathBuf> {
+    const SKIP: [&str; 5] = ["node_modules", "vendor", "target", "dist", "build"];
+    let Ok(entries) = fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.is_dir()
+                && p.file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| !n.starts_with('.') && !SKIP.contains(&n))
+        })
+        .collect()
+}
+
+/// How many skills sit in this directory, or `None` when there are none.
+fn count_skills(skills_dir: &Path) -> Option<usize> {
+    let count = fs::read_dir(skills_dir)
+        .ok()?
+        .flatten()
+        .filter(|e| e.path().join("SKILL.md").is_file())
+        .count();
+    (count > 0).then_some(count)
+}
+
 /// Kind-aware skills directory. The Global location *is* its skills directory
 /// (`~/.claude/skills`); a project keeps skills under `.claude/skills`.
 pub fn skills_dir_for(location_path: &Path, kind: LocationKind) -> Option<PathBuf> {
@@ -869,6 +970,7 @@ fn summary_from_scan(
         label: loc.label.clone(),
         path: loc.path.clone(),
         kind: loc.kind,
+        path_exists: Path::new(&loc.path).is_dir(),
         issue_count: result.issues.len(),
         installed_skill_count: result
             .skills
@@ -1637,6 +1739,61 @@ mod tests {
             as_project.skills.is_empty(),
             "a Global folder read as a Project must find nothing"
         );
+
+        fs::remove_dir_all(&base).ok();
+    }
+
+    /// Environment smoke test: what discovery offers on this machine, using the
+    /// real saved locations. Ignored by default — the answer is machine-specific.
+    /// `cargo test -- --ignored discovery_on_this_machine --nocapture`
+    #[test]
+    #[ignore]
+    fn discovery_on_this_machine() {
+        let home = dirs::home_dir().expect("home");
+        let state = crate::state::AppState::load();
+        let saved = state.locations().to_vec();
+
+        for loc in &saved {
+            if !Path::new(&loc.path).is_dir() {
+                println!("dead:      {} ({})", loc.label, loc.path);
+            }
+        }
+        for found in discover_unregistered(&saved, &home) {
+            println!("discovered: {:<28} {} skills", found.label, found.skill_count);
+        }
+    }
+
+    /// Discovery looks beside what is already tracked, so a sibling project with
+    /// skills is offered while unrelated folders are left alone.
+    #[test]
+    fn discovers_sibling_projects_that_keep_skills() {
+        let base = std::env::temp_dir().join(format!("kit-discover-{}", std::process::id()));
+        fs::remove_dir_all(&base).ok();
+        let home = base.join("home");
+        let code = home.join("code");
+        for name in ["tracked", "sibling", "no-skills"] {
+            fs::create_dir_all(code.join(name)).unwrap();
+        }
+        for name in ["tracked", "sibling"] {
+            let d = code.join(name).join(".claude").join("skills").join("a-skill");
+            fs::create_dir_all(&d).unwrap();
+            fs::write(d.join("SKILL.md"), "---\nname: a\ndescription: d\n---\n").unwrap();
+        }
+
+        let saved = vec![SavedLocation {
+            id: "1".into(),
+            label: "tracked".into(),
+            path: code.join("tracked").to_string_lossy().to_string(),
+            notes: None,
+            last_synced_at: None,
+            kind: LocationKind::Project,
+        }];
+
+        let found = discover_unregistered(&saved, &home);
+        let labels: Vec<&str> = found.iter().map(|f| f.label.as_str()).collect();
+
+        assert_eq!(labels, vec!["sibling"], "got {labels:?}");
+        assert_eq!(found[0].skill_count, 1);
 
         fs::remove_dir_all(&base).ok();
     }

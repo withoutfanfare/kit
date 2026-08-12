@@ -291,3 +291,49 @@ pub fn sync_location(
         last_scanned_at: loc_snapshot.last_synced_at,
     })
 }
+
+/// Projects on disk that keep Claude skills but are not tracked yet.
+#[tauri::command]
+pub fn discover_unregistered_locations(
+    state: State<'_, SharedState>,
+) -> Result<Vec<DiscoveredLocation>, AppError> {
+    let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
+    let saved = guard.locations().to_vec();
+    drop(guard);
+
+    let home = dirs::home_dir()
+        .ok_or_else(|| AppError::new("Could not determine the home directory".to_string()))?;
+
+    Ok(scanner::discover_unregistered(&saved, &home))
+}
+
+/// Forget every saved location whose directory has gone.
+///
+/// Only Kit's own record is dropped; nothing on disk is touched, and Global is
+/// never a candidate because its folder is created when missing.
+#[tauri::command]
+pub fn remove_missing_locations(
+    state: State<'_, SharedState>,
+) -> Result<Vec<SavedLocationSummary>, AppError> {
+    let mut guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
+
+    guard.locations_mut().retain(|loc| {
+        loc.kind == LocationKind::Global || PathBuf::from(&loc.path).is_dir()
+    });
+    guard.save().map_err(AppError::new)?;
+
+    let prefs = guard.preferences().clone();
+    let locations = guard.locations().to_vec();
+    drop(guard);
+
+    let library_root = PathBuf::from(&prefs.library_root);
+    let library_skills = scanner::scan_library_skills(&library_root);
+    let library_sets = scanner::scan_library_sets(&library_root);
+
+    Ok(locations
+        .iter()
+        .map(|loc| {
+            scanner::build_location_summary(loc, &library_root, &library_skills, &library_sets)
+        })
+        .collect())
+}

@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  DiscoveredLocation,
   SavedLocationSummary,
   LocationDetail,
   LocationId,
@@ -12,6 +13,12 @@ export const useLocationsStore = defineStore("locations", () => {
   const selectedLocationId = ref<LocationId | null>(null);
   const detailCache = ref<Record<LocationId, LocationDetail>>({});
   const isLoadingDetail = ref(false);
+  const discovered = ref<DiscoveredLocation[]>([]);
+
+  /** Saved locations whose directory has since been moved or deleted. */
+  const missingLocations = computed(() =>
+    locationList.value.filter((l) => !l.pathExists)
+  );
 
   const selectedLocation = computed(() =>
     locationList.value.find((l) => l.id === selectedLocationId.value) ?? null
@@ -117,7 +124,29 @@ export const useLocationsStore = defineStore("locations", () => {
     }
   }
 
+  /** Projects on disk that keep skills but aren't tracked yet. */
+  async function refreshDiscovered() {
+    try {
+      discovered.value = await invoke<DiscoveredLocation[]>(
+        "discover_unregistered_locations"
+      );
+    } catch {
+      discovered.value = [];
+    }
+  }
+
+  /** Forget saved locations whose directory has gone. Touches no files. */
+  async function removeMissingLocations() {
+    locationList.value = await invoke<SavedLocationSummary[]>(
+      "remove_missing_locations"
+    );
+  }
+
   return {
+    discovered,
+    missingLocations,
+    refreshDiscovered,
+    removeMissingLocations,
     locationList,
     selectedLocationId,
     detailCache,

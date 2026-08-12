@@ -34,6 +34,8 @@ export type SavedLocationSummary = {
   label: string;
   path: string;
   kind: LocationKind;
+  /** False when the directory has been moved or deleted since it was saved. */
+  pathExists: boolean;
   issueCount: number;
   installedSkillCount: number;
   installedSetCount: number;
@@ -86,6 +88,13 @@ export type SessionLoadout = {
   deadOverrides: string[];
   /** Overrides that can't bite because the skill is only `plugin:skill`. */
   unreachableOverrides: string[];
+};
+
+/** A project on disk that keeps Claude skills but isn't tracked yet. */
+export type DiscoveredLocation = {
+  path: string;
+  label: string;
+  skillCount: number;
 };
 
 export type DetectedProjectType = {

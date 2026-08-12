@@ -33,7 +33,10 @@ function truncatePath(path: string, maxLen = 32): string {
         {{ isGlobal ? "Loads in every session" : truncatePath(location.path) }}
       </span>
     </div>
-    <SBadge v-if="location.issueCount > 0" variant="warning">
+    <SBadge v-if="!isGlobal && !location.pathExists" variant="warning">
+      Missing
+    </SBadge>
+    <SBadge v-else-if="location.issueCount > 0" variant="warning">
       {{ location.issueCount }} issue{{ location.issueCount === 1 ? "" : "s" }}
     </SBadge>
     <SDropdownMenu

@@ -21,8 +21,8 @@ use commands::health::{
 use commands::loadout::resolve_session_loadout;
 use commands::library::{archive_skill, get_skill_detail, list_library_items, unarchive_skill};
 use commands::locations::{
-    add_location, get_location_detail, list_locations, remove_location, sync_location,
-    update_location,
+    add_location, discover_unregistered_locations, get_location_detail, list_locations,
+    remove_location, remove_missing_locations, sync_location, update_location,
 };
 use commands::manifest::update_manifest_entry;
 use commands::repo::{copy_repo_pull_command, get_skills_repo_status, recheck_skills_repo_status, validate_skills_repository};
@@ -48,6 +48,8 @@ pub fn run() {
             resolve_session_loadout,
             // Locations
             list_locations,
+            discover_unregistered_locations,
+            remove_missing_locations,
             add_location,
             update_location,
             remove_location,

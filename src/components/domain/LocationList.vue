@@ -1,12 +1,32 @@
 <script setup lang="ts">
+import { onMounted } from "vue";
 import { useLocationsStore } from "@/stores/locationsStore";
+import { useAppStore } from "@/stores/appStore";
 import { useRouter } from "vue-router";
 import { open } from "@tauri-apps/plugin-dialog";
 import LocationRow from "@/components/domain/LocationRow.vue";
 import { SButton } from "@stuntrocket/ui";
 
 const locationsStore = useLocationsStore();
+const appStore = useAppStore();
 const router = useRouter();
+
+onMounted(() => locationsStore.refreshDiscovered());
+
+async function addDiscovered(path: string, label: string) {
+  await locationsStore.addLocation(path, label);
+  await locationsStore.refreshDiscovered();
+  appStore.toast(`Added ${label}`, "success");
+}
+
+async function clearMissing() {
+  const count = locationsStore.missingLocations.length;
+  await locationsStore.removeMissingLocations();
+  appStore.toast(
+    `Forgot ${count} location${count === 1 ? "" : "s"}. No files were touched.`,
+    "success"
+  );
+}
 
 function selectLocation(id: string) {
   locationsStore.selectLocation(id);
@@ -44,6 +64,30 @@ async function addLocation() {
       <div v-if="locationsStore.locationList.length === 0" class="list-empty">
         <span class="list-empty-text">No locations added yet</span>
       </div>
+
+      <!-- Saved locations whose folder has gone. Kit only forgets its record. -->
+      <div v-if="locationsStore.missingLocations.length" class="list-note">
+        <span class="note-text">
+          {{ locationsStore.missingLocations.length }}
+          {{ locationsStore.missingLocations.length === 1 ? "location has" : "locations have" }}
+          moved or been deleted.
+        </span>
+        <SButton size="sm" @click="clearMissing">Forget them</SButton>
+      </div>
+
+      <!-- Projects on disk keeping skills that Kit doesn't track yet. -->
+      <div v-if="locationsStore.discovered.length" class="list-discovered">
+        <span class="discovered-title">Found nearby</span>
+        <button
+          v-for="found in locationsStore.discovered"
+          :key="found.path"
+          class="discovered-row"
+          @click="addDiscovered(found.path, found.label)"
+        >
+          <span class="discovered-label">{{ found.label }}</span>
+          <span class="discovered-count">{{ found.skillCount }} skills · Add</span>
+        </button>
+      </div>
     </div>
     <div v-if="locationsStore.locationList.length > 0" class="list-footer">
       <SButton @click="addLocation">Add Location</SButton>
@@ -75,6 +119,68 @@ async function addLocation() {
   flex: 1;
   overflow-y: auto;
   padding: 0 var(--space-1);
+}
+
+.list-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) var(--space-1) 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+}
+
+.note-text {
+  flex: 1;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.list-discovered {
+  margin: var(--space-3) var(--space-1) 0;
+}
+
+.discovered-title {
+  display: block;
+  padding: 0 var(--space-2) var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.discovered-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: default;
+  text-align: left;
+}
+
+.discovered-row:hover {
+  background: var(--surface-hover);
+}
+
+.discovered-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discovered-count {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
 }
 
 .list-empty {
