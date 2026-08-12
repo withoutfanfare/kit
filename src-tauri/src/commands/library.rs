@@ -6,6 +6,7 @@ use crate::commands::AppError;
 use crate::domain::*;
 use crate::scanner;
 use crate::state::{self, SharedState};
+use crate::usage::UsageIndex;
 
 #[tauri::command]
 pub fn list_library_items(
@@ -14,10 +15,10 @@ pub fn list_library_items(
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
     let locations = guard.locations().to_vec();
-    let usage_map = guard.inner.usage.clone();
     drop(guard);
 
     let library_root = PathBuf::from(&prefs.library_root);
+    let usage_index = UsageIndex::load(&library_root);
 
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
@@ -56,7 +57,7 @@ pub fn list_library_items(
             .filter(|linked| linked.contains(skill.folder_name.as_str()))
             .count();
 
-        let usage = scanner::skill_usage(&skill.folder_name, &usage_map);
+        let usage = usage_index.for_skill(&skill.folder_name);
 
         items.push(LibraryListItem {
             id: skill.folder_name.clone(),
@@ -116,10 +117,10 @@ pub fn get_skill_detail(
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
     let locations = guard.locations().to_vec();
-    let usage_map = guard.inner.usage.clone();
     drop(guard);
 
     let library_root = PathBuf::from(&prefs.library_root);
+    let usage_index = UsageIndex::load(&library_root);
 
     let library_skills = scanner::scan_library_skills(&library_root);
     let library_sets = scanner::scan_library_sets(&library_root);
@@ -143,7 +144,7 @@ pub fn get_skill_detail(
             })
             .collect();
 
-        let usage = scanner::skill_usage(&skill_id, &usage_map);
+        let usage = usage_index.for_skill(&skill_id);
 
         return Ok(SkillDetail {
             id: skill.folder_name.clone(),
@@ -209,10 +210,10 @@ fn set_skill_archived(
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
     let locations = guard.locations().to_vec();
-    let usage_map = guard.inner.usage.clone();
     drop(guard);
 
     let library_root = PathBuf::from(&prefs.library_root);
+    let usage_index = UsageIndex::load(&library_root);
 
     let skill_dir = library_root.join(skill_id);
     let skill_md_path = skill_dir.join("SKILL.md");
@@ -257,7 +258,7 @@ fn set_skill_archived(
         })
         .collect();
 
-    let usage = scanner::skill_usage(skill_id, &usage_map);
+    let usage = usage_index.for_skill(skill_id);
 
     Ok(SkillDetail {
         id: skill.folder_name.clone(),

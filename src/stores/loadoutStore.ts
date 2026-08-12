@@ -1,11 +1,12 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import type { LocationId, SessionLoadout } from "@/types";
+import type { LocationId, LocationUsage, SessionLoadout } from "@/types";
 import { useAppStore } from "./appStore";
 
 export const useLoadoutStore = defineStore("loadout", () => {
   const loadout = ref<SessionLoadout | null>(null);
+  const usage = ref<LocationUsage | null>(null);
   const isLoading = ref(false);
   const locationId = ref<LocationId | null>(null);
 
@@ -37,9 +38,12 @@ export const useLoadoutStore = defineStore("loadout", () => {
     isLoading.value = true;
     locationId.value = id;
     try {
-      loadout.value = await invoke<SessionLoadout>("resolve_session_loadout", {
-        locationId: id,
-      });
+      const [resolved, used] = await Promise.all([
+        invoke<SessionLoadout>("resolve_session_loadout", { locationId: id }),
+        invoke<LocationUsage>("get_location_usage", { locationId: id }),
+      ]);
+      loadout.value = resolved;
+      usage.value = used;
     } catch {
       useAppStore().toast("Couldn't work out what loads here", "error");
       loadout.value = null;
@@ -50,11 +54,13 @@ export const useLoadoutStore = defineStore("loadout", () => {
 
   function reset() {
     loadout.value = null;
+    usage.value = null;
     locationId.value = null;
   }
 
   return {
     loadout,
+    usage,
     isLoading,
     locationId,
     countedGroups,

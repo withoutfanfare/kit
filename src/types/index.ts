@@ -90,6 +90,28 @@ export type SessionLoadout = {
   unreachableOverrides: string[];
 };
 
+export type LocationUsageRow = {
+  skillId: SkillId;
+  name: string;
+  /** Invocations recorded inside this location's directory. */
+  usesHere: number;
+  /** Invocations anywhere in the last 30 days. */
+  usesAnywhere: number;
+  lastUsedAt: string | null;
+};
+
+export type LocationUsage = {
+  locationId: LocationId;
+  locationLabel: string;
+  /** False when no logs were found — not the same as nothing being used. */
+  available: boolean;
+  recordedSince: string | null;
+  eventCount: number;
+  linkedCount: number;
+  usedHereCount: number;
+  rows: LocationUsageRow[];
+};
+
 /** A project on disk that keeps Claude skills but isn't tracked yet. */
 export type DiscoveredLocation = {
   path: string;

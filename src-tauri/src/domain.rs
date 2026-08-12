@@ -622,6 +622,35 @@ pub struct SessionLoadout {
     pub unreachable_overrides: Vec<String>,
 }
 
+/// One linked skill at a location, with how often it has actually been used.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocationUsageRow {
+    pub skill_id: String,
+    pub name: String,
+    /// Invocations recorded inside this location's directory.
+    pub uses_here: usize,
+    /// Invocations anywhere in the last 30 days.
+    pub uses_anywhere: usize,
+    pub last_used_at: Option<DateTime<Utc>>,
+}
+
+/// What is linked at a location set against what has been used there.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocationUsage {
+    pub location_id: String,
+    pub location_label: String,
+    /// `false` when no logs were found. Distinct from "found, but nothing used":
+    /// absence of a record is not evidence of no use.
+    pub available: bool,
+    pub recorded_since: Option<DateTime<Utc>>,
+    pub event_count: usize,
+    pub linked_count: usize,
+    pub used_here_count: usize,
+    pub rows: Vec<LocationUsageRow>,
+}
+
 /// A project on disk that keeps Claude skills but is not yet tracked by Kit.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

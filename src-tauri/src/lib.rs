@@ -5,6 +5,7 @@ pub mod resolver;
 pub mod scanner;
 pub mod state;
 pub mod tray;
+pub mod usage;
 pub mod watcher;
 
 use commands::activation::{get_skill_body_validation, get_skill_content_diff, toggle_skill_activation};
@@ -28,7 +29,7 @@ use commands::manifest::update_manifest_entry;
 use commands::repo::{copy_repo_pull_command, get_skills_repo_status, recheck_skills_repo_status, validate_skills_repository};
 use commands::sets::{add_skill_to_set, create_set, delete_set, get_set_detail, list_sets, remove_skill_from_set, update_set};
 use commands::sharing::{export_skill_bundle, import_skill_bundle, preview_import_bundle};
-use commands::usage::get_usage_summary;
+use commands::usage::{get_location_usage, get_usage_summary};
 use commands::watcher::{get_watcher_status, start_library_watcher, stop_library_watcher};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -76,6 +77,7 @@ pub fn run() {
             update_manifest_entry,
             // Usage
             get_usage_summary,
+            get_location_usage,
             // Repository
             validate_skills_repository,
             get_skills_repo_status,

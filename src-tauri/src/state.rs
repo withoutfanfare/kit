@@ -21,9 +21,6 @@ pub const GLOBAL_LOCATION_ID: &str = "__global__";
 pub struct PersistedState {
     pub preferences: Preferences,
     pub locations: Vec<SavedLocation>,
-    /// Lightweight per-skill usage counters keyed by skill folder name.
-    #[serde(default)]
-    pub usage: HashMap<String, UsageRecord>,
     /// Timestamp of the last skills repository status check.
     #[serde(default)]
     pub last_repo_check_at: Option<DateTime<Utc>>,
@@ -49,13 +46,6 @@ pub struct SkillHashRecord {
     pub assigned_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct UsageRecord {
-    pub last_used_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub use_count_30d: usize,
-}
-
 impl Default for PersistedState {
     fn default() -> Self {
         let library_root = default_library_root()
@@ -71,7 +61,6 @@ impl Default for PersistedState {
                 track_skill_versions: true,
             },
             locations: Vec::new(),
-            usage: HashMap::new(),
             last_repo_check_at: None,
             skill_hashes: HashMap::new(),
             disabled_skills: HashSet::new(),

@@ -3,7 +3,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::domain::*;
-use crate::state::UsageRecord;
 
 // ---------------------------------------------------------------------------
 // SKILL.md frontmatter parsing
@@ -1022,23 +1021,6 @@ pub fn locations_linking_skill(
         .collect()
 }
 
-/// Get usage data for a skill, falling back to defaults.
-pub fn skill_usage(
-    skill_folder: &str,
-    usage_map: &HashMap<String, UsageRecord>,
-) -> SkillUsage {
-    match usage_map.get(skill_folder) {
-        Some(rec) => SkillUsage {
-            last_used_at: rec.last_used_at,
-            use_count_30d: rec.use_count_30d,
-        },
-        None => SkillUsage {
-            last_used_at: None,
-            use_count_30d: 0,
-        },
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Project-type detection
 // ---------------------------------------------------------------------------
@@ -1565,24 +1547,7 @@ mod tests {
         assert_eq!(fm.name, "Indented");
     }
 
-    #[test]
-    fn skill_usage_known() {
-        let mut map = HashMap::new();
-        map.insert("my-skill".to_string(), UsageRecord {
-            last_used_at: None,
-            use_count_30d: 5,
-        });
-        let usage = skill_usage("my-skill", &map);
-        assert_eq!(usage.use_count_30d, 5);
-    }
 
-    #[test]
-    fn skill_usage_unknown() {
-        let map = HashMap::new();
-        let usage = skill_usage("unknown", &map);
-        assert_eq!(usage.use_count_30d, 0);
-        assert!(usage.last_used_at.is_none());
-    }
 
     // --- Tags parsing ---
 

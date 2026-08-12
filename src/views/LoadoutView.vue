@@ -63,6 +63,23 @@ watch(activeLocationId, refresh);
         </div>
       </header>
 
+      <!-- Linked against actually used. The gap is the point. -->
+      <section v-if="loadoutStore.usage" class="loadout-usage">
+        <template v-if="!loadoutStore.usage.available">
+          No usage logs found yet, so Kit can't say what's earning its place
+          here. That's missing data, not zero use.
+        </template>
+        <template v-else-if="loadoutStore.usage.linkedCount > 0">
+          <strong>
+            {{ loadoutStore.usage.usedHereCount }} of
+            {{ loadoutStore.usage.linkedCount }}
+          </strong>
+          skills linked here have actually been used here, across
+          {{ loadoutStore.usage.eventCount.toLocaleString() }} recorded
+          invocations.
+        </template>
+      </section>
+
       <!-- The failure this view exists to catch. -->
       <section v-if="loadoutStore.conflictCount > 0" class="loadout-alert">
         <strong>
@@ -170,6 +187,15 @@ watch(activeLocationId, refresh);
   font-size: var(--text-sm);
   color: var(--text-secondary);
   margin: var(--space-1) 0 0;
+}
+
+.loadout-usage {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-hover);
 }
 
 .loadout-alert {
