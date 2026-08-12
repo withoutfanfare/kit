@@ -40,6 +40,54 @@ export type SavedLocationSummary = {
   lastSyncedAt: string | null;
 };
 
+/** Where a skill reaching a session came from. */
+export type SkillOrigin = "global" | "project" | "plugin" | "account";
+
+export type ResolvedSkill = {
+  /** How the skill is addressed in a session: bare, or `plugin:skill`. */
+  id: string;
+  /** The folder name — what a `skillOverrides` key must match. */
+  folderName: string;
+  origin: SkillOrigin;
+  /** Plugin or pack it came from; empty for global and project. */
+  sourceLabel: string;
+  /** False for command-only skills, which never enter the model's list. */
+  modelFacing: boolean;
+  /** The `skillOverrides` key that switched this off, if any. */
+  vetoedBy: string | null;
+  tokenEstimate: number;
+  path: string;
+};
+
+export type LoadoutGroup = {
+  origin: SkillOrigin;
+  label: string;
+  modelFacingCount: number;
+  commandOnlyCount: number;
+  tokenEstimate: number;
+  /** False when Kit can't change this by moving symlinks. */
+  controllable: boolean;
+  /** True when nothing on disk says whether these are switched on. */
+  enablementUnknown: boolean;
+  caveat: string | null;
+  skills: ResolvedSkill[];
+};
+
+export type SessionLoadout = {
+  locationId: LocationId;
+  locationLabel: string;
+  groups: LoadoutGroup[];
+  modelFacingCount: number;
+  commandOnlyCount: number;
+  tokenEstimate: number;
+  /** Linked here but switched off globally — looks active, isn't. */
+  vetoed: ResolvedSkill[];
+  /** Overrides naming a skill that is nowhere on disk. */
+  deadOverrides: string[];
+  /** Overrides that can't bite because the skill is only `plugin:skill`. */
+  unreachableOverrides: string[];
+};
+
 export type DetectedProjectType = {
   name: string;
   markerFile: string;

@@ -25,6 +25,41 @@ pub fn find_closing_fence(after_first: &str) -> Option<(usize, usize)> {
     None
 }
 
+/// Read a YAML scalar that may continue across the following indented lines.
+///
+/// Most SKILL.md files fold their description with `>-`, so reading only the
+/// first line loses nearly all of the text — and with it any honest estimate of
+/// what the skill costs in context. Handles the folded and literal block markers
+/// as well as a plain indented continuation.
+fn read_block_scalar<'a, I>(inline: &str, rest: &mut std::iter::Peekable<I>) -> String
+where
+    I: Iterator<Item = &'a str>,
+{
+    let is_block_marker = matches!(inline, ">" | ">-" | ">+" | "|" | "|-" | "|+" | "");
+    let mut out = if is_block_marker {
+        String::new()
+    } else {
+        inline.to_string()
+    };
+
+    while let Some(next) = rest.peek() {
+        // An unindented line starts the next key, which ends the scalar.
+        if !next.starts_with(' ') && !next.starts_with('\t') {
+            break;
+        }
+        let piece = rest.next().unwrap_or_default().trim();
+        if piece.is_empty() {
+            continue;
+        }
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push_str(piece);
+    }
+
+    out.trim().trim_matches('"').trim_matches('\'').to_string()
+}
+
 /// Parse YAML frontmatter from a SKILL.md file.
 /// Expects the file to start with `---`, then YAML, then `---`.
 pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
@@ -45,9 +80,10 @@ pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
     let mut tags: Vec<String> = Vec::new();
 
     let mut in_tags_list = false;
+    let mut lines = yaml_block.lines().peekable();
 
-    for line in yaml_block.lines() {
-        let line = line.trim();
+    while let Some(raw) = lines.next() {
+        let line = raw.trim();
 
         // Continuation lines of a `tags:` dash list
         if in_tags_list {
@@ -66,7 +102,7 @@ pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
             let val = val.trim().trim_matches('"').trim_matches('\'');
             match key {
                 "name" => name = Some(val.to_string()),
-                "description" => description = Some(val.to_string()),
+                "description" => description = Some(read_block_scalar(val, &mut lines)),
                 "version" => version = Some(val.to_string()),
                 "archived" => archived = val == "true",
                 "tags" => {
@@ -1322,6 +1358,33 @@ mod tests {
         assert_eq!(fm.description.as_deref(), Some("A test skill"));
         assert_eq!(fm.version.as_deref(), Some("1.0"));
         assert!(!fm.archived);
+    }
+
+    /// 70 of 95 real skills fold their description with `>-`. Reading only the
+    /// first line was losing most of the text, which made every context-cost
+    /// estimate roughly five times too small.
+    #[test]
+    fn parse_skill_md_folded_description() {
+        let content = "---\nname: Templater\ndescription: >-\n  Internal template for creating new skills.\n  Not intended for direct invocation.\nversion: 1.0.0\n---\nBody";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.name, "Templater");
+        assert_eq!(
+            fm.description.as_deref(),
+            Some("Internal template for creating new skills. Not intended for direct invocation.")
+        );
+        assert_eq!(fm.version.as_deref(), Some("1.0.0"), "keys after the block still parse");
+    }
+
+    /// A continuation line containing a colon must not be mistaken for a key.
+    #[test]
+    fn parse_skill_md_folded_description_containing_a_colon() {
+        let content = "---\nname: Trigger\ndescription: >-\n  Use when the user says: do the thing.\n  Not otherwise.\narchived: true\n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(
+            fm.description.as_deref(),
+            Some("Use when the user says: do the thing. Not otherwise.")
+        );
+        assert!(fm.archived);
     }
 
     #[test]

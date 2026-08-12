@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod domain;
 pub mod linker;
+pub mod resolver;
 pub mod scanner;
 pub mod state;
 pub mod tray;
@@ -17,6 +18,7 @@ use commands::health::{
     get_skill_versions, preview_broken_link_removal, read_skill_content, remove_broken_links,
     run_health_check,
 };
+use commands::loadout::resolve_session_loadout;
 use commands::library::{archive_skill, get_skill_detail, list_library_items, unarchive_skill};
 use commands::locations::{
     add_location, get_location_detail, list_locations, remove_location, sync_location,
@@ -42,6 +44,8 @@ pub fn run() {
             get_app_bootstrap,
             update_preferences,
             get_app_data_path,
+            // Loadout
+            resolve_session_loadout,
             // Locations
             list_locations,
             add_location,

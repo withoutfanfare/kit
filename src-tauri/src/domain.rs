@@ -542,6 +542,83 @@ impl SavedLocation {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Session loadout — what actually reaches a Claude Code session
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SkillOrigin {
+    /// `~/.claude/skills` — loads in every session.
+    Global,
+    /// `<location>/.claude/skills` — loads only in that project.
+    Project,
+    /// A plugin cached under `~/.claude/plugins`, gated on `enabledPlugins`.
+    Plugin,
+    /// An account-level pack under `~/.codex/plugins/cache/claude-cowork`.
+    Account,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolvedSkill {
+    /// How the skill is addressed in a session — bare for Global and Project,
+    /// `plugin:skill` for the namespaced ones.
+    pub id: String,
+    /// The folder name, which is what a `skillOverrides` key must match.
+    pub folder_name: String,
+    pub origin: SkillOrigin,
+    /// Plugin or pack this came from. Empty for Global and Project.
+    pub source_label: String,
+    /// `false` for `disable-model-invocation: true` — those are slash-command
+    /// only, so they cost nothing in the model's skill list.
+    pub model_facing: bool,
+    /// The `skillOverrides` key that switched this off, if any.
+    pub vetoed_by: Option<String>,
+    pub token_estimate: usize,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoadoutGroup {
+    pub origin: SkillOrigin,
+    pub label: String,
+    pub model_facing_count: usize,
+    pub command_only_count: usize,
+    pub token_estimate: usize,
+    /// `false` when Kit cannot change this by moving symlinks — account-level
+    /// packs are toggled in the desktop app.
+    pub controllable: bool,
+    /// `true` when nothing on disk records whether these are switched on, so the
+    /// listing is "present" rather than "loading".
+    pub enablement_unknown: bool,
+    /// Shown alongside the group when its listing cannot be taken at face value.
+    pub caveat: Option<String>,
+    pub skills: Vec<ResolvedSkill>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionLoadout {
+    pub location_id: String,
+    pub location_label: String,
+    pub groups: Vec<LoadoutGroup>,
+    /// Counts and cost for the groups Kit can vouch for — excludes any group
+    /// whose enablement is unknown.
+    pub model_facing_count: usize,
+    pub command_only_count: usize,
+    pub token_estimate: usize,
+    /// Skills linked into this location but switched off globally. A symlink
+    /// that looks active and is not.
+    pub vetoed: Vec<ResolvedSkill>,
+    /// `skillOverrides` entries naming a skill that is nowhere on disk.
+    pub dead_overrides: Vec<String>,
+    /// Overrides that cannot bite because the skill only exists under a
+    /// `plugin:skill` name, which bare-name keys never match.
+    pub unreachable_overrides: Vec<String>,
+}
+
 /// Parsed skill metadata from SKILL.md frontmatter.
 #[derive(Debug, Clone)]
 pub struct SkillMeta {
