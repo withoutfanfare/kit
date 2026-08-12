@@ -118,11 +118,17 @@ This is the bug class Kit exists to catch.
 
 ### Task 3: Fix location drift
 
+> **Status, 12 Aug 2026:** Done (`10f90d8`). Found the 3 dead locations and 10
+> untracked projects on this machine. Discovery searches two levels deep, not
+> one: a worktree layout puts the project a level lower, and one level missed
+> KnotBook and its 41 skills. Results compare by real path, so a site reachable
+> through both its Herd `-current` symlink and its worktree is offered once.
+
 **Files:** `src-tauri/src/commands/locations.rs`, `src/views/LocationsView.vue`
 
-- [ ] Flag saved locations whose path no longer exists, with a one-click remove
+- [x] Flag saved locations whose path no longer exists, with a one-click remove
       (3 currently dead).
-- [ ] Offer discovered-but-unregistered projects — any directory under the known
+- [x] Offer discovered-but-unregistered projects — any directory under the known
       roots with a `.claude/skills` folder — as one-click adds (8 currently,
       including KnotBook).
 
@@ -200,32 +206,48 @@ This is the bug class Kit exists to catch.
 
 ## Phase 3 — Real usage
 
+> **Status, 12 Aug 2026:** Done (`0c9adbe`). Verified against `jq` over the same
+> logs: 730 events and an earliest timestamp of `2026-06-07T11:26:10Z` both
+> match, and clipboard resolves to 17 distinct skills with `pre-pr-review` ×20,
+> `tauri-ship` ×12 and `frontend-design:frontend-design` ×7 — identical.
+
 ### Task 7: Read the tracking logs
 
 **Files:** rewrite `src-tauri/src/commands/usage.rs`, `src-tauri/src/state.rs`,
 `src/views/UsageView.vue`, `src/stores/usageStore.ts`
 
-- [ ] Read `<libraryRoot>/.skill-tracking/logs/skill-usage/*.jsonl`. Each line has
+- [x] Read `<libraryRoot>/.skill-tracking/logs/skill-usage/*.jsonl`. Each line has
       `event`, `skill`, `timestamp`, `project`, `cwd`, `session` — so usage can be
       grouped per location, not just globally.
-- [ ] Delete `AppState.usage` and the only write to it, the restore path at
+- [x] Delete `AppState.usage` and the only write to it, the restore path at
       `commands/backup.rs:300`. Nothing has ever incremented this counter, so every
       "N skills never used" figure the app has shown was derived from an empty map.
-- [ ] Join usage against the resolver per location: "linked here, never used here"
+- [x] Join usage against the resolver per location: "linked here, never used here"
       is the recommendation that earns its place.
-- [ ] Handle a missing or unreadable log directory as "no data yet", never as zero
+- [x] Handle a missing or unreadable log directory as "no data yet", never as zero
       uses — the old counter's failure mode was to present absence as evidence.
 
 ---
 
 ## Phase 4 — Removals
 
-- [ ] Delete `commands/changelog.rs` and `ChangelogView.vue` (~378 lines). Kit has
-      no edit event log, so the view cannot claim history.
-- [ ] Delete `commands/sharing.rs` (~189 lines) unless set export is still wanted.
-- [ ] Repurpose `commands/comparison.rs` and `CompareLocationsView.vue` (~682 lines)
-      to "compare this project against Global", or delete them.
-- [ ] Remove the routes and nav entries for anything deleted.
+> **Status, 12 Aug 2026:** Done (`e031fff`), but much smaller than proposed —
+> two of the four candidates turned out to earn their place, and deleting a
+> working feature on a hunch is not a tidy-up.
+>
+> - **Removed:** `commands/sharing.rs`. Three commands with no caller anywhere
+>   in the frontend, plus the `ImportPreview` type that served only them.
+> - **Kept — Recently modified:** already a settled decision to keep once
+>   relabelled, so it no longer claims history it cannot show.
+> - **Kept — location comparison:** it got *more* useful once Global became a
+>   location. Comparing a project against the always-on set is a question worth
+>   asking, and it needed no code to enable — Global simply appears in the picker.
+
+- [x] ~~Delete `commands/changelog.rs` and `ChangelogView.vue`~~ — kept; see above.
+- [x] Delete `commands/sharing.rs` (~189 lines) unless set export is still wanted.
+- [x] Repurpose comparison to "compare against Global" — achieved for free, since
+      Global now appears in the location picker.
+- [x] Remove the routes and nav entries for anything deleted (none were UI-facing).
 
 Sets, assignment, the linker and the manifest all stay. They are the engine.
 
@@ -236,9 +258,9 @@ Sets, assignment, the linker and the manifest all stay. They are the engine.
 Automated checks are not sufficient here — a clean build does not prove a skill
 loads. Each phase must be verified by driving the real behaviour:
 
-- [ ] After Phase 1: unassign a skill from Global in Kit, then confirm with
+- [x] After Phase 1: unassign a skill from Global in Kit, then confirm with
       `claude -p` from a bare directory that it no longer appears.
-- [ ] After Phase 2: compare Kit's resolved list for a location against the skills
+- [x] After Phase 2: compare Kit's resolved list for a location against the skills
       a real session in that directory reports. They must match exactly.
-- [ ] After Phase 3: compare Kit's per-project usage counts against
+- [x] After Phase 3: compare Kit's per-project usage counts against
       `jq` over the JSONL logs for the same project.
