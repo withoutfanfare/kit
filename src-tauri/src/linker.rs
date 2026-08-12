@@ -98,11 +98,30 @@ pub fn hook_reference_in(
         }
     }
 
+    /// Substring matching alone would flag `clio` because `clio-hooks` starts
+    /// with it. A reference only counts when the name ends at a path boundary.
+    fn references(cmd: &str, needle: &str) -> bool {
+        let mut from = 0;
+        while let Some(offset) = cmd[from..].find(needle) {
+            let end = from + offset + needle.len();
+            let rest = &cmd[end..];
+            if rest.is_empty()
+                || rest.starts_with('/')
+                || rest.starts_with(['"', '\'', ';', ')'])
+                || rest.starts_with(char::is_whitespace)
+            {
+                return true;
+            }
+            from = end;
+        }
+        false
+    }
+
     let mut found = Vec::new();
     commands(settings.get("hooks")?, &mut found);
 
     found.into_iter().find(|cmd| {
-        cmd.contains(&absolute) || tilde.as_ref().is_some_and(|t| cmd.contains(t))
+        references(cmd, &absolute) || tilde.as_ref().is_some_and(|t| references(cmd, t))
     })
 }
 
@@ -257,6 +276,30 @@ mod tests {
             !guarded.is_empty(),
             "expected at least one hook-referenced skill to be protected"
         );
+    }
+
+    /// A shorter skill name must not match a longer one that starts with it.
+    /// `clio` is a prefix of `clio-hooks`, and blocking its removal would be a
+    /// guard that cries wolf — the kind users learn to work around.
+    #[test]
+    fn does_not_match_a_skill_whose_name_is_merely_a_prefix() {
+        let home = Path::new("/Users/someone");
+        let settings: serde_json::Value = serde_json::from_str(
+            r#"{"hooks":{"SessionStart":[{"hooks":[{"type":"command",
+               "command":"python3 ~/.claude/skills/clio-hooks/scripts/session_start.py"}]}]}}"#,
+        )
+        .unwrap();
+
+        let prefix_named = home.join(".claude/skills/clio");
+        assert_eq!(
+            hook_reference_in(&settings, &prefix_named, home),
+            None,
+            "'clio' is not 'clio-hooks' and must stay removable"
+        );
+
+        // The real one is still caught.
+        let actual = home.join(".claude/skills/clio-hooks");
+        assert!(hook_reference_in(&settings, &actual, home).is_some());
     }
 
     /// Absolute paths in hook commands must be caught too, not just `~` ones.

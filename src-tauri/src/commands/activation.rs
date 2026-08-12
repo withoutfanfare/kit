@@ -24,6 +24,18 @@ pub fn toggle_skill_activation(
         .ok_or_else(|| AppError::new(format!("Location not found: {}", location_id)))?
         .clone();
 
+    // Disabling works by dropping the skill from the manifest while leaving the
+    // symlink in place. Global has no manifest, so there is nothing to drop —
+    // the skill would keep loading while the UI showed it as off. Refuse rather
+    // than record a lie.
+    if loc.is_global() {
+        return Err(AppError::new(
+            "Skills in Global can't be disabled — there is no manifest to hold the \
+             exception. Unlink the skill instead to stop it loading."
+                .to_string(),
+        ));
+    }
+
     let location_path = PathBuf::from(&loc.path);
     let key = format!("{}:{}", location_id, skill_id);
 
