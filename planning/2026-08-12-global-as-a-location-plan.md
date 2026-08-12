@@ -130,26 +130,46 @@ This is the bug class Kit exists to catch.
 
 ## Phase 2 — What actually loads
 
+> **Status, 12 Aug 2026:** Done and committed (`8c90edb`). Verified end to end —
+> Global resolves to 42 model-facing skills and plugins to 9, both matching a
+> live session exactly; grove resolves to 5, matching its 7 folders minus the 2
+> carrying `disable-model-invocation`. 66 backend tests, `vue-tsc` and
+> `npm run build` all pass.
+>
+> **Judgement call:** Task 6's checks live in the Loadout view rather than
+> HealthView. They are conditions of a resolved loadout, and duplicating them
+> across two screens is exactly the confusing feature set this reshape set out
+> to avoid. The hook-referenced check was already enforced in Phase 1.
+>
+> **Two limits found while building, now encoded in the code:**
+> - Account packs are read from a cache the desktop app owns. It can be stale
+>   *and* incomplete — `anthropic-skills:explain-usage` and `file-router` were
+>   observed loading in a live session yet exist in no local file. The listing
+>   carries a caveat and is excluded from the totals.
+> - `~/.codex/plugins/cache` holds eleven marketplaces; only `claude-cowork`
+>   reaches a Claude session. Scanning the lot reported Codex's own plugins as
+>   Claude skills, which the first run did before this was scoped.
+
 ### Task 4: The resolver
 
 **Files:** new `src-tauri/src/resolver.rs`, `src-tauri/src/commands/mod.rs`,
 `src-tauri/src/lib.rs`, `src-tauri/src/domain.rs`, `src/types/index.ts`
 
-- [ ] `ResolvedSkill { name, source, model_facing, vetoed_by, token_estimate }`
+- [x] `ResolvedSkill { name, source, model_facing, vetoed_by, token_estimate }`
       where `source` is `Global | Project | Plugin(String) | Account(String) | BuiltIn`.
-- [ ] Read all four sources:
+- [x] Read all four sources:
       - Global: `~/.claude/skills`
       - Project: `<location>/.claude/skills`
       - Local plugins: `~/.claude/plugins/cache/*/*/*/skills/*/SKILL.md`, gated on
         `enabledPlugins` in `~/.claude/settings.json`
       - Account-level packs: `~/.codex/plugins/cache/claude-cowork/*/*/skills/*/SKILL.md`
-- [ ] Apply `skillOverrides` as a veto and record it in `vetoed_by` rather than
+- [x] Apply `skillOverrides` as a veto and record it in `vetoed_by` rather than
       dropping the row — the conflict is the interesting part.
-- [ ] Honour `disable-model-invocation: true`: those skills are command-only and
+- [x] Honour `disable-model-invocation: true`: those skills are command-only and
       must be excluded from the model-facing count and token estimate.
-- [ ] `token_estimate` = `(len(name) + len(description)) / 4`. Parse multi-line
+- [x] `token_estimate` = `(len(name) + len(description)) / 4`. Parse multi-line
       YAML descriptions properly; a first-line-only parser undercounts by ~5×.
-- [ ] Command `resolve_session(location_id) -> SessionLoadout` with per-source
+- [x] Command `resolve_session(location_id) -> SessionLoadout` with per-source
       counts and token totals.
 
 ### Task 5: The loadout view
@@ -157,24 +177,24 @@ This is the bug class Kit exists to catch.
 **Files:** new `src/views/LoadoutView.vue`, new `src/stores/loadoutStore.ts`,
 `src/components/layout/SidebarNav.vue`
 
-- [ ] For the selected location, show what loads grouped by source, with token
+- [x] For the selected location, show what loads grouped by source, with token
       cost per group and a total.
-- [ ] Show account-level packs as read-only with a note that they are toggled in
+- [x] Show account-level packs as read-only with a note that they are toggled in
       the desktop app, not by Kit.
 
 ### Task 6: Health checks for the real failure modes
 
 **Files:** `src-tauri/src/commands/health.rs`, `src/views/HealthView.vue`
 
-- [ ] **Override vetoes a symlink** — a skill linked into a location but switched
+- [x] **Override vetoes a symlink** — a skill linked into a location but switched
       off globally. This is the 31-link bug; it is the headline check. Offer the
       fix: lift the override and remove the global symlink instead.
-- [ ] **Dead override** — a `skillOverrides` entry naming a skill that no longer
+- [x] **Dead override** — a `skillOverrides` entry naming a skill that no longer
       exists on disk (10 found on 12 Aug 2026).
-- [ ] **Override cannot reach a namespaced skill** — `skillOverrides` keys match
+- [x] **Override cannot reach a namespaced skill** — `skillOverrides` keys match
       bare names only, so a `plugin:skill` copy keeps loading. Four skills were
       switched off yet still loading from the `anthropic-skills` pack.
-- [ ] **Hook-referenced skill** — warn before unlinking, per safety rule 2.
+- [x] **Hook-referenced skill** — warn before unlinking, per safety rule 2.
 
 ---
 
