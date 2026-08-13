@@ -9,7 +9,7 @@ use crate::usage::UsageIndex;
 
 /// Library-wide usage, read from the hook's logs.
 #[tauri::command]
-pub fn get_usage_summary(state: State<'_, SharedState>) -> Result<UsageSummary, AppError> {
+pub async fn get_usage_summary(state: State<'_, SharedState>) -> Result<UsageSummary, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
     let prefs = guard.preferences().clone();
     drop(guard);
@@ -79,7 +79,7 @@ pub fn get_usage_summary(state: State<'_, SharedState>) -> Result<UsageSummary, 
 /// What is linked into one location, set against what has actually been used
 /// there. The gap between the two is the reason this view exists.
 #[tauri::command]
-pub fn get_location_usage(
+pub async fn get_location_usage(
     location_id: String,
     state: State<'_, SharedState>,
 ) -> Result<LocationUsage, AppError> {

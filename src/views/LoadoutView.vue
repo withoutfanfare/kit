@@ -11,12 +11,12 @@ const loadoutStore = useLoadoutStore();
 const locationsStore = useLocationsStore();
 
 /** Falls back to Global, which is the honest default: it always loads. */
-const activeLocationId = computed(
-  () =>
-    (route.params.locationId as string | undefined) ??
-    locationsStore.locationList[0]?.id ??
-    null
-);
+const activeLocationId = computed(() => {
+  const fromRoute = route.params.locationId as string | undefined;
+  if (fromRoute) return fromRoute;
+  const list = locationsStore.locationList;
+  return list.find((l) => l.kind === "global")?.id ?? list[0]?.id ?? null;
+});
 
 const originLabel: Record<SkillOrigin, string> = {
   global: "Every session",
@@ -30,7 +30,15 @@ function refresh() {
   if (id) loadoutStore.load(id);
 }
 
-onMounted(refresh);
+// Reachable straight from the sidebar, so the locations may not have been
+// fetched yet by the Locations view. Without this the page sits on its empty
+// state with nothing to select.
+onMounted(async () => {
+  if (locationsStore.locationList.length === 0) {
+    await locationsStore.fetchList();
+  }
+  refresh();
+});
 watch(activeLocationId, refresh);
 </script>
 

@@ -294,7 +294,7 @@ pub fn sync_location(
 
 /// Projects on disk that keep Claude skills but are not tracked yet.
 #[tauri::command]
-pub fn discover_unregistered_locations(
+pub async fn discover_unregistered_locations(
     state: State<'_, SharedState>,
 ) -> Result<Vec<DiscoveredLocation>, AppError> {
     let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
