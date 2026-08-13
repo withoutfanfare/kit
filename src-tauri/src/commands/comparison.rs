@@ -36,8 +36,8 @@ pub async fn compare_locations(
     let library_skills = scanner::scan_library_skills(lib_path);
     let library_sets = scanner::scan_library_sets(lib_path);
 
-    let scan_a = scanner::scan_location(Path::new(&loc_a.path), lib_path, &library_skills, &library_sets);
-    let scan_b = scanner::scan_location(Path::new(&loc_b.path), lib_path, &library_skills, &library_sets);
+    let scan_a = scanner::scan_location(Path::new(&loc_a.path), loc_a.kind, lib_path, &library_skills, &library_sets);
+    let scan_b = scanner::scan_location(Path::new(&loc_b.path), loc_b.kind, lib_path, &library_skills, &library_sets);
 
     // Index skills by ID for each location
     let skills_a: HashMap<&str, &SkillAssignment> = scan_a

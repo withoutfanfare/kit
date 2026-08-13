@@ -21,6 +21,21 @@ pub enum SkillSource {
     Local,
 }
 
+/// What kind of place a location is.
+///
+/// `Global` is `~/.claude/skills` — the folder Claude Code reads for skills that
+/// load in *every* session. Its skills live directly in the location path rather
+/// than under `.claude/skills`, and it has no manifest: the `.claude/settings.json`
+/// beside it is the user's own Claude Code settings file, not something Kit may
+/// write to.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum LocationKind {
+    Global,
+    #[default]
+    Project,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum LibraryItemKind {
@@ -133,6 +148,11 @@ pub struct SavedLocationSummary {
     pub id: String,
     pub label: String,
     pub path: String,
+    #[serde(default)]
+    pub kind: LocationKind,
+    /// `false` when the directory has been moved or deleted since it was saved.
+    #[serde(default)]
+    pub path_exists: bool,
     pub issue_count: usize,
     pub installed_skill_count: usize,
     pub installed_set_count: usize,
@@ -145,6 +165,8 @@ pub struct LocationDetail {
     pub id: String,
     pub label: String,
     pub path: String,
+    #[serde(default)]
+    pub kind: LocationKind,
     pub manifest_path: Option<String>,
     pub notes: Option<String>,
     pub sets: Vec<SetAssignment>,
@@ -451,14 +473,6 @@ pub struct ExportManifest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportPreview {
-    pub skills: Vec<ImportSkillEntry>,
-    pub set_definition: Option<SetDefinition>,
-    pub conflict_count: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ImportSkillEntry {
     pub id: String,
     pub name: String,
@@ -512,6 +526,130 @@ pub struct SavedLocation {
     pub path: String,
     pub notes: Option<String>,
     pub last_synced_at: Option<DateTime<Utc>>,
+    /// Defaults to `Project` so state files written before Global existed still load.
+    #[serde(default)]
+    pub kind: LocationKind,
+}
+
+impl SavedLocation {
+    pub fn is_global(&self) -> bool {
+        self.kind == LocationKind::Global
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Session loadout — what actually reaches a Claude Code session
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SkillOrigin {
+    /// `~/.claude/skills` — loads in every session.
+    Global,
+    /// `<location>/.claude/skills` — loads only in that project.
+    Project,
+    /// A plugin cached under `~/.claude/plugins`, gated on `enabledPlugins`.
+    Plugin,
+    /// An account-level pack under `~/.codex/plugins/cache/claude-cowork`.
+    Account,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolvedSkill {
+    /// How the skill is addressed in a session — bare for Global and Project,
+    /// `plugin:skill` for the namespaced ones.
+    pub id: String,
+    /// The folder name, which is what a `skillOverrides` key must match.
+    pub folder_name: String,
+    pub origin: SkillOrigin,
+    /// Plugin or pack this came from. Empty for Global and Project.
+    pub source_label: String,
+    /// `false` for `disable-model-invocation: true` — those are slash-command
+    /// only, so they cost nothing in the model's skill list.
+    pub model_facing: bool,
+    /// The `skillOverrides` key that switched this off, if any.
+    pub vetoed_by: Option<String>,
+    pub token_estimate: usize,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoadoutGroup {
+    pub origin: SkillOrigin,
+    pub label: String,
+    pub model_facing_count: usize,
+    pub command_only_count: usize,
+    pub token_estimate: usize,
+    /// `false` when Kit cannot change this by moving symlinks — account-level
+    /// packs are toggled in the desktop app.
+    pub controllable: bool,
+    /// `true` when nothing on disk records whether these are switched on, so the
+    /// listing is "present" rather than "loading".
+    pub enablement_unknown: bool,
+    /// Shown alongside the group when its listing cannot be taken at face value.
+    pub caveat: Option<String>,
+    pub skills: Vec<ResolvedSkill>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionLoadout {
+    pub location_id: String,
+    pub location_label: String,
+    pub groups: Vec<LoadoutGroup>,
+    /// Counts and cost for the groups Kit can vouch for — excludes any group
+    /// whose enablement is unknown.
+    pub model_facing_count: usize,
+    pub command_only_count: usize,
+    pub token_estimate: usize,
+    /// Skills linked into this location but switched off globally. A symlink
+    /// that looks active and is not.
+    pub vetoed: Vec<ResolvedSkill>,
+    /// `skillOverrides` entries naming a skill that is nowhere on disk.
+    pub dead_overrides: Vec<String>,
+    /// Overrides that cannot bite because the skill only exists under a
+    /// `plugin:skill` name, which bare-name keys never match.
+    pub unreachable_overrides: Vec<String>,
+}
+
+/// One linked skill at a location, with how often it has actually been used.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocationUsageRow {
+    pub skill_id: String,
+    pub name: String,
+    /// Invocations recorded inside this location's directory.
+    pub uses_here: usize,
+    /// Invocations anywhere in the last 30 days.
+    pub uses_anywhere: usize,
+    pub last_used_at: Option<DateTime<Utc>>,
+}
+
+/// What is linked at a location set against what has been used there.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocationUsage {
+    pub location_id: String,
+    pub location_label: String,
+    /// `false` when no logs were found. Distinct from "found, but nothing used":
+    /// absence of a record is not evidence of no use.
+    pub available: bool,
+    pub recorded_since: Option<DateTime<Utc>>,
+    pub event_count: usize,
+    pub linked_count: usize,
+    pub used_here_count: usize,
+    pub rows: Vec<LocationUsageRow>,
+}
+
+/// A project on disk that keeps Claude skills but is not yet tracked by Kit.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveredLocation {
+    pub path: String,
+    pub label: String,
+    pub skill_count: usize,
 }
 
 /// Parsed skill metadata from SKILL.md frontmatter.

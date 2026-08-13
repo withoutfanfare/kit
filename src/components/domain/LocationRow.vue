@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { SavedLocationSummary } from "@/types";
 import { requestRemoveLocation } from "@/composables/useRemoveLocation";
 import { SBadge, SDropdownMenu, SIconButton } from "@stuntrocket/ui";
@@ -7,6 +8,8 @@ const props = defineProps<{
   location: SavedLocationSummary;
   selected: boolean;
 }>();
+
+const isGlobal = computed(() => props.location.kind === "global");
 
 function onRowAction(action: string) {
   if (action === "remove") {
@@ -23,15 +26,21 @@ function truncatePath(path: string, maxLen = 32): string {
 </script>
 
 <template>
-  <div class="location-row" :class="{ selected }">
+  <div class="location-row" :class="{ selected, global: isGlobal }">
     <div class="row-content">
       <span class="row-label">{{ location.label }}</span>
-      <span class="row-path">{{ truncatePath(location.path) }}</span>
+      <span class="row-path">
+        {{ isGlobal ? "Loads in every session" : truncatePath(location.path) }}
+      </span>
     </div>
-    <SBadge v-if="location.issueCount > 0" variant="warning">
+    <SBadge v-if="!isGlobal && !location.pathExists" variant="warning">
+      Missing
+    </SBadge>
+    <SBadge v-else-if="location.issueCount > 0" variant="warning">
       {{ location.issueCount }} issue{{ location.issueCount === 1 ? "" : "s" }}
     </SBadge>
     <SDropdownMenu
+      v-if="!isGlobal"
       class="row-menu"
       :items="[{ label: 'Remove…', value: 'remove', danger: true }]"
       align="right"
@@ -103,6 +112,17 @@ function truncatePath(path: string, maxLen = 32): string {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.location-row.global .row-label::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: var(--space-2);
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  vertical-align: middle;
 }
 
 .row-menu {

@@ -36,11 +36,15 @@ const manifestStatus = computed(() =>
         <span class="field-label">Path</span>
         <span class="field-value path">{{ detail.path }}</span>
       </div>
-      <div class="inspector-field">
+      <div v-if="detail.kind !== 'global'" class="inspector-field">
         <span class="field-label">Manifest</span>
         <span class="field-value" :class="{ muted: !detail.manifestPath }">
           {{ manifestStatus }}
         </span>
+      </div>
+      <div v-else class="inspector-field">
+        <span class="field-label">Scope</span>
+        <span class="field-value">Every session</span>
       </div>
       <div class="inspector-field">
         <span class="field-label">Last synced</span>

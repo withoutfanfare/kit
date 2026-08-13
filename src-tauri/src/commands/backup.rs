@@ -289,17 +289,8 @@ pub fn restore_library(
 
             // Parse the backed-up state and merge into current
             if let Ok(backed_up) = serde_json::from_str::<state::PersistedState>(&content) {
-                // Merge usage counters from backup (prefer higher counts)
-                for (key, record) in backed_up.usage {
-                    let existing = guard.inner.usage.get(&key);
-                    let should_insert = match existing {
-                        Some(ex) => record.use_count_30d > ex.use_count_30d,
-                        None => true,
-                    };
-                    if should_insert {
-                        guard.inner.usage.insert(key, record);
-                    }
-                }
+                // Usage is no longer kept here — it is read from the hook's logs,
+                // so an older backup's counters are simply ignored.
 
                 // Merge skill hashes (only add missing ones)
                 for (key, record) in backed_up.skill_hashes {

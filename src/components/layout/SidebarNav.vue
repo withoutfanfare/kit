@@ -7,6 +7,7 @@ const route = useRoute();
 const navItems = [
   { label: "Locations", subtitle: "Your projects", to: "/locations", icon: "folder" },
   { label: "Library", subtitle: "Skills and sets", to: "/skills", icon: "puzzle" },
+  { label: "Loadout", subtitle: "What loads, and its cost", to: "/loadout", icon: "chart" },
   { label: "Health", subtitle: "Issue scanner", to: "/health", icon: "health" },
   { label: "Recently modified", subtitle: "SKILL.md edits", to: "/changelog", icon: "chart" },
 ];

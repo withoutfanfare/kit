@@ -22,14 +22,101 @@ export type AppBootstrap = {
   };
 };
 
+/**
+ * `global` is `~/.claude/skills` — the folder Claude Code reads for skills that
+ * load in every session. It holds its skills directly rather than under
+ * `.claude/skills`, and it has no manifest.
+ */
+export type LocationKind = "global" | "project";
+
 export type SavedLocationSummary = {
   id: LocationId;
   label: string;
   path: string;
+  kind: LocationKind;
+  /** False when the directory has been moved or deleted since it was saved. */
+  pathExists: boolean;
   issueCount: number;
   installedSkillCount: number;
   installedSetCount: number;
   lastSyncedAt: string | null;
+};
+
+/** Where a skill reaching a session came from. */
+export type SkillOrigin = "global" | "project" | "plugin" | "account";
+
+export type ResolvedSkill = {
+  /** How the skill is addressed in a session: bare, or `plugin:skill`. */
+  id: string;
+  /** The folder name — what a `skillOverrides` key must match. */
+  folderName: string;
+  origin: SkillOrigin;
+  /** Plugin or pack it came from; empty for global and project. */
+  sourceLabel: string;
+  /** False for command-only skills, which never enter the model's list. */
+  modelFacing: boolean;
+  /** The `skillOverrides` key that switched this off, if any. */
+  vetoedBy: string | null;
+  tokenEstimate: number;
+  path: string;
+};
+
+export type LoadoutGroup = {
+  origin: SkillOrigin;
+  label: string;
+  modelFacingCount: number;
+  commandOnlyCount: number;
+  tokenEstimate: number;
+  /** False when Kit can't change this by moving symlinks. */
+  controllable: boolean;
+  /** True when nothing on disk says whether these are switched on. */
+  enablementUnknown: boolean;
+  caveat: string | null;
+  skills: ResolvedSkill[];
+};
+
+export type SessionLoadout = {
+  locationId: LocationId;
+  locationLabel: string;
+  groups: LoadoutGroup[];
+  modelFacingCount: number;
+  commandOnlyCount: number;
+  tokenEstimate: number;
+  /** Linked here but switched off globally — looks active, isn't. */
+  vetoed: ResolvedSkill[];
+  /** Overrides naming a skill that is nowhere on disk. */
+  deadOverrides: string[];
+  /** Overrides that can't bite because the skill is only `plugin:skill`. */
+  unreachableOverrides: string[];
+};
+
+export type LocationUsageRow = {
+  skillId: SkillId;
+  name: string;
+  /** Invocations recorded inside this location's directory. */
+  usesHere: number;
+  /** Invocations anywhere in the last 30 days. */
+  usesAnywhere: number;
+  lastUsedAt: string | null;
+};
+
+export type LocationUsage = {
+  locationId: LocationId;
+  locationLabel: string;
+  /** False when no logs were found — not the same as nothing being used. */
+  available: boolean;
+  recordedSince: string | null;
+  eventCount: number;
+  linkedCount: number;
+  usedHereCount: number;
+  rows: LocationUsageRow[];
+};
+
+/** A project on disk that keeps Claude skills but isn't tracked yet. */
+export type DiscoveredLocation = {
+  path: string;
+  label: string;
+  skillCount: number;
 };
 
 export type DetectedProjectType = {
@@ -48,6 +135,7 @@ export type LocationDetail = {
   id: LocationId;
   label: string;
   path: string;
+  kind: LocationKind;
   manifestPath: string | null;
   notes: string | null;
   sets: SetAssignment[];
@@ -250,12 +338,6 @@ export type HealthCheckResult = {
 };
 
 // Export/import types
-export type ImportPreview = {
-  skills: Array<{ id: SkillId; name: string; alreadyExists: boolean }>;
-  setDefinition: { name: string; description: string | null; skills: string[] } | null;
-  conflictCount: number;
-};
-
 // Skill version tracking
 export type SkillVersionInfo = {
   skillId: SkillId;

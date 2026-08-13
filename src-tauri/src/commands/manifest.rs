@@ -26,7 +26,12 @@ pub fn update_manifest_entry(
     drop(guard);
 
     let location_path = PathBuf::from(&loc.path);
-    let manifest_path = location_path.join(".claude").join("settings.json");
+    let Some(manifest_path) = scanner::writable_manifest_path(&location_path, loc.kind) else {
+        return Err(AppError::new(
+            "The Global location has no manifest — its skills are controlled by symlinks alone."
+                .to_string(),
+        ));
+    };
 
     let mut value: serde_json::Value = if manifest_path.is_file() {
         let content = std::fs::read_to_string(&manifest_path)
@@ -78,6 +83,7 @@ pub fn update_manifest_entry(
     let library_sets = scanner::scan_library_sets(&library_root);
     let scan = scanner::scan_location(
         &location_path,
+        loc.kind,
         &library_root,
         &library_skills,
         &library_sets,
@@ -101,6 +107,7 @@ pub fn update_manifest_entry(
         id: loc.id,
         label: loc.label,
         path: loc.path,
+        kind: loc.kind,
         manifest_path: scan.manifest_path,
         notes: loc.notes,
         sets: scan.sets,

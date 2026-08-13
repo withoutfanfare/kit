@@ -50,13 +50,15 @@ pub fn preview_assignment(
         .collect();
     let scan = scanner::scan_location(
         &location_path,
+        loc.kind,
         &library_root,
         &library_skills,
         &library_sets,
     );
 
     // Read the current manifest sets to know what's already assigned
-    let manifest_path = location_path.join(".claude").join("settings.json");
+    let manifest_path = scanner::writable_manifest_path(&location_path, loc.kind)
+        .unwrap_or_default();
     let current_manifest_sets = scanner::read_manifest_sets(&manifest_path);
 
     // Expand sets to add into skill IDs
@@ -260,7 +262,8 @@ pub fn apply_assignment(
         .collect();
 
     // Read current manifest sets
-    let manifest_path = location_path.join(".claude").join("settings.json");
+    let manifest_path = scanner::writable_manifest_path(&location_path, loc.kind)
+        .unwrap_or_default();
     let current_manifest_sets = scanner::read_manifest_sets(&manifest_path);
     let current_manifest_skills = scanner::read_manifest_skills(&manifest_path);
 
@@ -329,7 +332,7 @@ pub fn apply_assignment(
 
     // Perform skill additions
     if !expanded_skill_ids.is_empty() {
-        let skills_dir = linker::ensure_skills_dir(&location_path).map_err(AppError::new)?;
+        let skills_dir = linker::ensure_skills_dir(&location_path, loc.kind).map_err(AppError::new)?;
         for sid in &expanded_skill_ids {
             let target = library_root.join(sid);
             let link_path = skills_dir.join(sid);
@@ -347,6 +350,7 @@ pub fn apply_assignment(
     if update_manifest {
         update_manifest_skills_and_sets(
             &location_path,
+            loc.kind,
             &expanded_skill_ids,
             &expanded_skill_removals,
             &set_ids_to_add,
@@ -396,6 +400,7 @@ pub fn apply_assignment(
     let library_sets = scanner::scan_library_sets(&library_root);
     let scan = scanner::scan_location(
         &location_path,
+        loc.kind,
         &library_root,
         &library_skills,
         &library_sets,
@@ -419,6 +424,7 @@ pub fn apply_assignment(
         id: loc.id,
         label: loc.label,
         path: loc.path,
+        kind: loc.kind,
         manifest_path: scan.manifest_path,
         notes: loc.notes,
         sets: scan.sets,
@@ -489,7 +495,7 @@ pub fn bulk_assign_skills(
         let location_path = PathBuf::from(&loc.path);
 
         // Create symlinks
-        let skills_dir = match linker::ensure_skills_dir(&location_path) {
+        let skills_dir = match linker::ensure_skills_dir(&location_path, loc.kind) {
             Ok(sd) => sd,
             Err(e) => {
                 results.push(BulkAssignResult {
@@ -531,6 +537,7 @@ pub fn bulk_assign_skills(
         // Update manifest
         if let Err(e) = update_manifest_skills_and_sets(
             &location_path,
+            loc.kind,
             &skill_ids,
             &[],
             &[],
@@ -589,12 +596,15 @@ pub fn bulk_assign_skills(
 /// Helper to update the manifest's `skills` and `sets` arrays.
 fn update_manifest_skills_and_sets(
     location_path: &Path,
+    kind: LocationKind,
     skills_to_add: &[String],
     skills_to_remove: &[String],
     sets_to_add: &[String],
     sets_to_remove: &[String],
 ) -> Result<(), AppError> {
-    let manifest_path = location_path.join(".claude").join("settings.json");
+    let Some(manifest_path) = scanner::writable_manifest_path(location_path, kind) else {
+        return Ok(());
+    };
 
     let mut value: serde_json::Value = if manifest_path.is_file() {
         let content = std::fs::read_to_string(&manifest_path)

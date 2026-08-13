@@ -1,9 +1,11 @@
 pub mod commands;
 pub mod domain;
 pub mod linker;
+pub mod resolver;
 pub mod scanner;
 pub mod state;
 pub mod tray;
+pub mod usage;
 pub mod watcher;
 
 use commands::activation::{get_skill_body_validation, get_skill_content_diff, toggle_skill_activation};
@@ -17,16 +19,16 @@ use commands::health::{
     get_skill_versions, preview_broken_link_removal, read_skill_content, remove_broken_links,
     run_health_check,
 };
+use commands::loadout::resolve_session_loadout;
 use commands::library::{archive_skill, get_skill_detail, list_library_items, unarchive_skill};
 use commands::locations::{
-    add_location, get_location_detail, list_locations, remove_location, sync_location,
-    update_location,
+    add_location, discover_unregistered_locations, get_location_detail, list_locations,
+    remove_location, remove_missing_locations, sync_location, update_location,
 };
 use commands::manifest::update_manifest_entry;
 use commands::repo::{copy_repo_pull_command, get_skills_repo_status, recheck_skills_repo_status, validate_skills_repository};
 use commands::sets::{add_skill_to_set, create_set, delete_set, get_set_detail, list_sets, remove_skill_from_set, update_set};
-use commands::sharing::{export_skill_bundle, import_skill_bundle, preview_import_bundle};
-use commands::usage::get_usage_summary;
+use commands::usage::{get_location_usage, get_usage_summary};
 use commands::watcher::{get_watcher_status, start_library_watcher, stop_library_watcher};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -42,8 +44,12 @@ pub fn run() {
             get_app_bootstrap,
             update_preferences,
             get_app_data_path,
+            // Loadout
+            resolve_session_loadout,
             // Locations
             list_locations,
+            discover_unregistered_locations,
+            remove_missing_locations,
             add_location,
             update_location,
             remove_location,
@@ -70,6 +76,7 @@ pub fn run() {
             update_manifest_entry,
             // Usage
             get_usage_summary,
+            get_location_usage,
             // Repository
             validate_skills_repository,
             get_skills_repo_status,
@@ -87,9 +94,6 @@ pub fn run() {
             read_skill_content,
             get_skill_versions,
             // Sharing / export-import
-            export_skill_bundle,
-            preview_import_bundle,
-            import_skill_bundle,
             // Changelog
             get_skill_changelog,
             // Filesystem watcher

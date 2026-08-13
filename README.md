@@ -106,7 +106,11 @@ A single directory of skill folders. Each folder holds a `SKILL.md` with YAML fr
 
 ### Locations
 
-The project directories Kit tracks. Each has its own installed skills (symlinks or local folders) and a manifest. Kit scans a location to work out what's active and flag issues.
+The places skills are linked into. Kit scans each one to work out what's active and flag issues.
+
+**Global** is `~/.claude/skills` — the folder Claude Code reads for skills that load in every session. It is always listed first and can't be removed. Trimming what loads everywhere means unlinking a skill here.
+
+**Projects** are the directories you add yourself. Each keeps its skills in `.claude/skills/` alongside a manifest, so a project can add skills on top of your global set.
 
 ### Skills
 

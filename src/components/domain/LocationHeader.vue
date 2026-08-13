@@ -32,12 +32,18 @@ const syncLabel = computed(() => {
   }
 });
 
+const isGlobal = computed(() => props.detail.kind === "global");
+
 const moreActions = computed(() => [
   ...(props.detail.manifestPath
     ? [{ label: "Open manifest", value: "manifest" }]
     : []),
   { label: "Compare with…", value: "compare" },
-  { label: "Remove location…", value: "remove", danger: true },
+  // Global is where Claude Code reads always-on skills from; the backend
+  // refuses to remove it, so never offer the action.
+  ...(isGlobal.value
+    ? []
+    : [{ label: "Remove location…", value: "remove", danger: true }]),
 ]);
 
 async function updateLabel(label: string) {

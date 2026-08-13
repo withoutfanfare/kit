@@ -1,9 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::domain::*;
-use crate::state::UsageRecord;
 
 // ---------------------------------------------------------------------------
 // SKILL.md frontmatter parsing
@@ -23,6 +22,41 @@ pub fn find_closing_fence(after_first: &str) -> Option<(usize, usize)> {
         offset += line.len();
     }
     None
+}
+
+/// Read a YAML scalar that may continue across the following indented lines.
+///
+/// Most SKILL.md files fold their description with `>-`, so reading only the
+/// first line loses nearly all of the text — and with it any honest estimate of
+/// what the skill costs in context. Handles the folded and literal block markers
+/// as well as a plain indented continuation.
+fn read_block_scalar<'a, I>(inline: &str, rest: &mut std::iter::Peekable<I>) -> String
+where
+    I: Iterator<Item = &'a str>,
+{
+    let is_block_marker = matches!(inline, ">" | ">-" | ">+" | "|" | "|-" | "|+" | "");
+    let mut out = if is_block_marker {
+        String::new()
+    } else {
+        inline.to_string()
+    };
+
+    while let Some(next) = rest.peek() {
+        // An unindented line starts the next key, which ends the scalar.
+        if !next.starts_with(' ') && !next.starts_with('\t') {
+            break;
+        }
+        let piece = rest.next().unwrap_or_default().trim();
+        if piece.is_empty() {
+            continue;
+        }
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push_str(piece);
+    }
+
+    out.trim().trim_matches('"').trim_matches('\'').to_string()
 }
 
 /// Parse YAML frontmatter from a SKILL.md file.
@@ -45,9 +79,10 @@ pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
     let mut tags: Vec<String> = Vec::new();
 
     let mut in_tags_list = false;
+    let mut lines = yaml_block.lines().peekable();
 
-    for line in yaml_block.lines() {
-        let line = line.trim();
+    while let Some(raw) = lines.next() {
+        let line = raw.trim();
 
         // Continuation lines of a `tags:` dash list
         if in_tags_list {
@@ -66,7 +101,7 @@ pub fn parse_skill_md(content: &str) -> Option<SkillFrontmatter> {
             let val = val.trim().trim_matches('"').trim_matches('\'');
             match key {
                 "name" => name = Some(val.to_string()),
-                "description" => description = Some(val.to_string()),
+                "description" => description = Some(read_block_scalar(val, &mut lines)),
                 "version" => version = Some(val.to_string()),
                 "archived" => archived = val == "true",
                 "tags" => {
@@ -426,6 +461,144 @@ pub fn find_manifest_path(location_path: &Path) -> Option<PathBuf> {
     None
 }
 
+/// Find projects that keep Claude skills but are not yet tracked.
+///
+/// Rather than guess at fixed directories, this looks where the user already
+/// keeps work: the parent and grandparent of every saved location become search
+/// roots, each scanned one level deep. That finds siblings of a tracked project
+/// — the common case, since projects cluster — without ever walking the whole
+/// home directory.
+pub fn discover_unregistered(
+    saved: &[crate::domain::SavedLocation],
+    home: &Path,
+) -> Vec<DiscoveredLocation> {
+    // Compared by real path throughout: Herd serves each site through a
+    // `<name>-current` symlink, so the same worktree is reachable by two names
+    // and would otherwise be offered twice, or offered when already tracked.
+    let known: HashSet<PathBuf> = saved
+        .iter()
+        .map(|l| PathBuf::from(&l.path))
+        .chain(std::iter::once(home.join(".claude").join("skills")))
+        .map(|p| fs::canonicalize(&p).unwrap_or(p))
+        .collect();
+
+    let mut roots: Vec<PathBuf> = Vec::new();
+    for location in saved {
+        let path = PathBuf::from(&location.path);
+        for candidate in [path.parent(), path.parent().and_then(|p| p.parent())]
+            .into_iter()
+            .flatten()
+        {
+            // The home directory itself is too broad to sweep.
+            if candidate == home || candidate.parent().is_none() {
+                continue;
+            }
+            if !roots.contains(&candidate.to_path_buf()) {
+                roots.push(candidate.to_path_buf());
+            }
+        }
+    }
+
+    let mut found: Vec<DiscoveredLocation> = Vec::new();
+    let mut seen: HashSet<PathBuf> = HashSet::new();
+
+    // Two levels, because a worktree layout puts the project one deeper:
+    // `~/Herd/<name>-worktrees/<branch>` rather than `~/Herd/<name>`.
+    for root in roots {
+        for candidate in child_dirs(&root) {
+            let deeper = child_dirs(&candidate);
+            for path in std::iter::once(candidate).chain(deeper) {
+                // Report the real path, which is also what adding it would store.
+                let path = fs::canonicalize(&path).unwrap_or(path);
+                if known.contains(&path) || !seen.insert(path.clone()) {
+                    continue;
+                }
+                let Some(skill_count) = count_skills(&path.join(".claude").join("skills")) else {
+                    continue;
+                };
+                found.push(DiscoveredLocation {
+                    label: path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string(),
+                    path: path.to_string_lossy().to_string(),
+                    skill_count,
+                });
+            }
+        }
+    }
+
+    found.sort_by(|a, b| a.label.cmp(&b.label));
+    found
+}
+
+/// Directories worth descending into: no dot-directories, and none of the
+/// dependency trees that would make the sweep expensive for nothing.
+fn child_dirs(dir: &Path) -> Vec<PathBuf> {
+    const SKIP: [&str; 5] = ["node_modules", "vendor", "target", "dist", "build"];
+    let Ok(entries) = fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.is_dir()
+                && p.file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| !n.starts_with('.') && !SKIP.contains(&n))
+        })
+        .collect()
+}
+
+/// How many skills sit in this directory, or `None` when there are none.
+fn count_skills(skills_dir: &Path) -> Option<usize> {
+    let count = fs::read_dir(skills_dir)
+        .ok()?
+        .flatten()
+        .filter(|e| e.path().join("SKILL.md").is_file())
+        .count();
+    (count > 0).then_some(count)
+}
+
+/// Kind-aware skills directory. The Global location *is* its skills directory
+/// (`~/.claude/skills`); a project keeps skills under `.claude/skills`.
+pub fn skills_dir_for(location_path: &Path, kind: LocationKind) -> Option<PathBuf> {
+    match kind {
+        LocationKind::Global => location_path
+            .is_dir()
+            .then(|| location_path.to_path_buf()),
+        LocationKind::Project => find_skills_dir(location_path),
+    }
+}
+
+/// Where a manifest *would* be written for this location, whether or not the
+/// file exists yet. `None` means this location has no manifest and nothing may
+/// be written — the only such kind is `Global`, whose neighbouring
+/// `.claude/settings.json` is the user's live Claude Code configuration.
+///
+/// Every manifest write must go through this. Joining the path by hand bypasses
+/// the guard.
+pub fn writable_manifest_path(location_path: &Path, kind: LocationKind) -> Option<PathBuf> {
+    match kind {
+        LocationKind::Global => None,
+        LocationKind::Project => Some(location_path.join(".claude").join("settings.json")),
+    }
+}
+
+/// Kind-aware manifest lookup.
+///
+/// The Global location never has one. Its neighbouring `.claude/settings.json`
+/// is the user's live Claude Code configuration, which governs every session —
+/// Kit reads that file elsewhere but must never write it as a manifest.
+pub fn manifest_path_for(location_path: &Path, kind: LocationKind) -> Option<PathBuf> {
+    match kind {
+        LocationKind::Global => None,
+        LocationKind::Project => find_manifest_path(location_path),
+    }
+}
+
 /// Read declared skill names from the manifest's `skills` array.
 pub fn read_manifest_skills(manifest_path: &Path) -> Vec<String> {
     let content = match fs::read_to_string(manifest_path) {
@@ -449,6 +622,7 @@ pub fn read_manifest_skills(manifest_path: &Path) -> Vec<String> {
 /// issues, given a set of known library skills.
 pub fn scan_location(
     location_path: &Path,
+    kind: LocationKind,
     library_root: &Path,
     library_skills: &[SkillMeta],
     library_sets: &[(String, SetDefinition)],
@@ -477,8 +651,8 @@ pub fn scan_location(
     // Canonicalised once — reused for every symlink target comparison below
     let canonical_library_root = fs::canonicalize(library_root).ok();
 
-    let skills_dir = find_skills_dir(location_path);
-    let manifest_path = find_manifest_path(location_path);
+    let skills_dir = skills_dir_for(location_path, kind);
+    let manifest_path = manifest_path_for(location_path, kind);
     let manifest_skills = manifest_path
         .as_ref()
         .map(|p| read_manifest_skills(p))
@@ -779,7 +953,7 @@ pub fn count_broken_links_for_locations(
         .iter()
         .map(|loc| {
             let loc_path = PathBuf::from(&loc.path);
-            let result = scan_location(&loc_path, library_root, library_skills, library_sets);
+            let result = scan_location(&loc_path, loc.kind, library_root, library_skills, library_sets);
             result.stats.broken_count
         })
         .sum()
@@ -794,6 +968,8 @@ fn summary_from_scan(
         id: loc.id.clone(),
         label: loc.label.clone(),
         path: loc.path.clone(),
+        kind: loc.kind,
+        path_exists: Path::new(&loc.path).is_dir(),
         issue_count: result.issues.len(),
         installed_skill_count: result
             .skills
@@ -814,7 +990,7 @@ pub fn build_location_summary(
     library_sets: &[(String, SetDefinition)],
 ) -> SavedLocationSummary {
     let loc_path = PathBuf::from(&loc.path);
-    let result = scan_location(&loc_path, library_root, library_skills, library_sets);
+    let result = scan_location(&loc_path, loc.kind, library_root, library_skills, library_sets);
     summary_from_scan(loc, &result)
 }
 
@@ -831,7 +1007,7 @@ pub fn locations_linking_skill(
         .iter()
         .filter_map(|loc| {
             let loc_path = PathBuf::from(&loc.path);
-            let result = scan_location(&loc_path, library_root, library_skills, library_sets);
+            let result = scan_location(&loc_path, loc.kind, library_root, library_skills, library_sets);
             let links = result
                 .skills
                 .iter()
@@ -843,23 +1019,6 @@ pub fn locations_linking_skill(
             }
         })
         .collect()
-}
-
-/// Get usage data for a skill, falling back to defaults.
-pub fn skill_usage(
-    skill_folder: &str,
-    usage_map: &HashMap<String, UsageRecord>,
-) -> SkillUsage {
-    match usage_map.get(skill_folder) {
-        Some(rec) => SkillUsage {
-            last_used_at: rec.last_used_at,
-            use_count_30d: rec.use_count_30d,
-        },
-        None => SkillUsage {
-            last_used_at: None,
-            use_count_30d: 0,
-        },
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1023,7 +1182,7 @@ pub fn run_health_check(
 
     for loc in locations {
         let loc_path = PathBuf::from(&loc.path);
-        let scan = scan_location(&loc_path, library_root, library_skills, library_sets);
+        let scan = scan_location(&loc_path, loc.kind, library_root, library_skills, library_sets);
         let mut error_count = 0;
         let mut warning_count = 0;
         let mut info_count = 0;
@@ -1239,6 +1398,7 @@ mod tests {
                 path: healthy_path.to_string_lossy().to_string(),
                 notes: None,
                 last_synced_at: None,
+                kind: LocationKind::Project,
             },
             SavedLocation {
                 id: "faulty".to_string(),
@@ -1246,6 +1406,7 @@ mod tests {
                 path: faulty_path.to_string_lossy().to_string(),
                 notes: None,
                 last_synced_at: None,
+                kind: LocationKind::Project,
             },
         ];
 
@@ -1281,6 +1442,33 @@ mod tests {
         assert_eq!(fm.description.as_deref(), Some("A test skill"));
         assert_eq!(fm.version.as_deref(), Some("1.0"));
         assert!(!fm.archived);
+    }
+
+    /// 70 of 95 real skills fold their description with `>-`. Reading only the
+    /// first line was losing most of the text, which made every context-cost
+    /// estimate roughly five times too small.
+    #[test]
+    fn parse_skill_md_folded_description() {
+        let content = "---\nname: Templater\ndescription: >-\n  Internal template for creating new skills.\n  Not intended for direct invocation.\nversion: 1.0.0\n---\nBody";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(fm.name, "Templater");
+        assert_eq!(
+            fm.description.as_deref(),
+            Some("Internal template for creating new skills. Not intended for direct invocation.")
+        );
+        assert_eq!(fm.version.as_deref(), Some("1.0.0"), "keys after the block still parse");
+    }
+
+    /// A continuation line containing a colon must not be mistaken for a key.
+    #[test]
+    fn parse_skill_md_folded_description_containing_a_colon() {
+        let content = "---\nname: Trigger\ndescription: >-\n  Use when the user says: do the thing.\n  Not otherwise.\narchived: true\n---\n";
+        let fm = parse_skill_md(content).unwrap();
+        assert_eq!(
+            fm.description.as_deref(),
+            Some("Use when the user says: do the thing. Not otherwise.")
+        );
+        assert!(fm.archived);
     }
 
     #[test]
@@ -1359,24 +1547,7 @@ mod tests {
         assert_eq!(fm.name, "Indented");
     }
 
-    #[test]
-    fn skill_usage_known() {
-        let mut map = HashMap::new();
-        map.insert("my-skill".to_string(), UsageRecord {
-            last_used_at: None,
-            use_count_30d: 5,
-        });
-        let usage = skill_usage("my-skill", &map);
-        assert_eq!(usage.use_count_30d, 5);
-    }
 
-    #[test]
-    fn skill_usage_unknown() {
-        let map = HashMap::new();
-        let usage = skill_usage("unknown", &map);
-        assert_eq!(usage.use_count_30d, 0);
-        assert!(usage.last_used_at.is_none());
-    }
 
     // --- Tags parsing ---
 
@@ -1461,5 +1632,152 @@ mod tests {
     fn validate_complete_frontmatter_no_issues() {
         let issues = validate_skill_md("---\nname: Test\ndescription: A skill\n---\n");
         assert!(issues.is_empty());
+    }
+
+    /// The file beside the Global location is the user's live Claude Code
+    /// settings, which governs every session. Kit must never offer it as a
+    /// manifest — for reading or, especially, for writing.
+    #[test]
+    fn global_location_never_yields_a_manifest_path() {
+        let base = std::env::temp_dir().join(format!("kit-global-manifest-{}", std::process::id()));
+        let global = base.join(".claude").join("skills");
+        fs::create_dir_all(&global).unwrap();
+        // A real settings.json sitting exactly where a project manifest would be.
+        fs::create_dir_all(global.join(".claude")).unwrap();
+        fs::write(global.join(".claude").join("settings.json"), "{}").unwrap();
+
+        assert_eq!(manifest_path_for(&global, LocationKind::Global), None);
+        assert_eq!(writable_manifest_path(&global, LocationKind::Global), None);
+
+        // The same directory treated as a project *would* expose one — which is
+        // exactly why the kind has to be carried through rather than inferred.
+        assert!(writable_manifest_path(&global, LocationKind::Project).is_some());
+
+        fs::remove_dir_all(&base).ok();
+    }
+
+    /// End-to-end on the real filesystem: a Global-shaped folder (skills sitting
+    /// directly inside it, symlinked to the library) is scanned as linked skills.
+    /// Scanning the same folder as a Project finds nothing, which is precisely
+    /// the bug this kind exists to prevent.
+    #[cfg(unix)]
+    #[test]
+    fn scan_location_reads_skills_directly_inside_a_global_location() {
+        use std::os::unix::fs::symlink;
+
+        let base = std::env::temp_dir().join(format!("kit-global-scan-{}", std::process::id()));
+        fs::remove_dir_all(&base).ok();
+        let library_root = base.join("library");
+        let global = base.join(".claude").join("skills");
+        fs::create_dir_all(library_root.join("alpha")).unwrap();
+        fs::create_dir_all(&global).unwrap();
+        fs::write(
+            library_root.join("alpha").join("SKILL.md"),
+            "---\nname: Alpha\ndescription: A skill\n---\nBody",
+        )
+        .unwrap();
+        symlink(library_root.join("alpha"), global.join("alpha")).unwrap();
+
+        let library_skills = scan_library_skills(&library_root);
+        assert_eq!(library_skills.len(), 1, "fixture: library should hold alpha");
+
+        let as_global = scan_location(
+            &global,
+            LocationKind::Global,
+            &library_root,
+            &library_skills,
+            &[],
+        );
+        assert_eq!(as_global.skills.len(), 1);
+        assert_eq!(as_global.skills[0].skill_id, "alpha");
+        assert_eq!(as_global.skills[0].link_state, LinkState::Linked);
+        assert_eq!(as_global.manifest_path, None);
+
+        let as_project = scan_location(
+            &global,
+            LocationKind::Project,
+            &library_root,
+            &library_skills,
+            &[],
+        );
+        assert!(
+            as_project.skills.is_empty(),
+            "a Global folder read as a Project must find nothing"
+        );
+
+        fs::remove_dir_all(&base).ok();
+    }
+
+    /// Environment smoke test: what discovery offers on this machine, using the
+    /// real saved locations. Ignored by default — the answer is machine-specific.
+    /// `cargo test -- --ignored discovery_on_this_machine --nocapture`
+    #[test]
+    #[ignore]
+    fn discovery_on_this_machine() {
+        let home = dirs::home_dir().expect("home");
+        let state = crate::state::AppState::load();
+        let saved = state.locations().to_vec();
+
+        for loc in &saved {
+            if !Path::new(&loc.path).is_dir() {
+                println!("dead:      {} ({})", loc.label, loc.path);
+            }
+        }
+        for found in discover_unregistered(&saved, &home) {
+            println!("discovered: {:<28} {} skills", found.label, found.skill_count);
+        }
+    }
+
+    /// Discovery looks beside what is already tracked, so a sibling project with
+    /// skills is offered while unrelated folders are left alone.
+    #[test]
+    fn discovers_sibling_projects_that_keep_skills() {
+        let base = std::env::temp_dir().join(format!("kit-discover-{}", std::process::id()));
+        fs::remove_dir_all(&base).ok();
+        let home = base.join("home");
+        let code = home.join("code");
+        for name in ["tracked", "sibling", "no-skills"] {
+            fs::create_dir_all(code.join(name)).unwrap();
+        }
+        for name in ["tracked", "sibling"] {
+            let d = code.join(name).join(".claude").join("skills").join("a-skill");
+            fs::create_dir_all(&d).unwrap();
+            fs::write(d.join("SKILL.md"), "---\nname: a\ndescription: d\n---\n").unwrap();
+        }
+
+        let saved = vec![SavedLocation {
+            id: "1".into(),
+            label: "tracked".into(),
+            path: code.join("tracked").to_string_lossy().to_string(),
+            notes: None,
+            last_synced_at: None,
+            kind: LocationKind::Project,
+        }];
+
+        let found = discover_unregistered(&saved, &home);
+        let labels: Vec<&str> = found.iter().map(|f| f.label.as_str()).collect();
+
+        assert_eq!(labels, vec!["sibling"], "got {labels:?}");
+        assert_eq!(found[0].skill_count, 1);
+
+        fs::remove_dir_all(&base).ok();
+    }
+
+    /// Global keeps its skills directly in the location path; a project nests
+    /// them under `.claude/skills`.
+    #[test]
+    fn skills_dir_depends_on_location_kind() {
+        let base = std::env::temp_dir().join(format!("kit-global-skills-{}", std::process::id()));
+        let global = base.join(".claude").join("skills");
+        fs::create_dir_all(global.join("some-skill")).unwrap();
+
+        assert_eq!(
+            skills_dir_for(&global, LocationKind::Global),
+            Some(global.clone())
+        );
+        // As a project it has no `.claude/skills` child, so nothing is found.
+        assert_eq!(skills_dir_for(&global, LocationKind::Project), None);
+
+        fs::remove_dir_all(&base).ok();
     }
 }

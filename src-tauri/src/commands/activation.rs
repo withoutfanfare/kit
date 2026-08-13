@@ -24,6 +24,18 @@ pub fn toggle_skill_activation(
         .ok_or_else(|| AppError::new(format!("Location not found: {}", location_id)))?
         .clone();
 
+    // Disabling works by dropping the skill from the manifest while leaving the
+    // symlink in place. Global has no manifest, so there is nothing to drop —
+    // the skill would keep loading while the UI showed it as off. Refuse rather
+    // than record a lie.
+    if loc.is_global() {
+        return Err(AppError::new(
+            "Skills in Global can't be disabled — there is no manifest to hold the \
+             exception. Unlink the skill instead to stop it loading."
+                .to_string(),
+        ));
+    }
+
     let location_path = PathBuf::from(&loc.path);
     let key = format!("{}:{}", location_id, skill_id);
 
@@ -32,11 +44,11 @@ pub fn toggle_skill_activation(
     if is_currently_disabled {
         // Re-enable: remove from disabled set, add to manifest
         guard.inner.disabled_skills.remove(&key);
-        add_skill_to_manifest(&location_path, &skill_id)?;
+        add_skill_to_manifest(&location_path, loc.kind, &skill_id)?;
     } else {
         // Disable: add to disabled set, remove from manifest
         guard.inner.disabled_skills.insert(key);
-        remove_skill_from_manifest(&location_path, &skill_id)?;
+        remove_skill_from_manifest(&location_path, loc.kind, &skill_id)?;
     }
 
     guard.save().map_err(AppError::new)?;
@@ -48,6 +60,7 @@ pub fn toggle_skill_activation(
     let library_sets = scanner::scan_library_sets(&library_root);
     let scan = scanner::scan_location(
         &location_path,
+        loc.kind,
         &library_root,
         &library_skills,
         &library_sets,
@@ -71,6 +84,7 @@ pub fn toggle_skill_activation(
         id: loc.id,
         label: loc.label,
         path: loc.path,
+        kind: loc.kind,
         manifest_path: scan.manifest_path,
         notes: loc.notes,
         sets: scan.sets,
@@ -140,9 +154,12 @@ pub fn get_skill_content_diff(
 
 fn add_skill_to_manifest(
     location_path: &std::path::Path,
+    kind: LocationKind,
     skill_id: &str,
 ) -> Result<(), AppError> {
-    let manifest_path = location_path.join(".claude").join("settings.json");
+    let Some(manifest_path) = scanner::writable_manifest_path(location_path, kind) else {
+        return Ok(());
+    };
 
     let mut value: serde_json::Value = if manifest_path.is_file() {
         let content = std::fs::read_to_string(&manifest_path)
@@ -177,9 +194,12 @@ fn add_skill_to_manifest(
 
 fn remove_skill_from_manifest(
     location_path: &std::path::Path,
+    kind: LocationKind,
     skill_id: &str,
 ) -> Result<(), AppError> {
-    let manifest_path = location_path.join(".claude").join("settings.json");
+    let Some(manifest_path) = scanner::writable_manifest_path(location_path, kind) else {
+        return Ok(());
+    };
 
     if !manifest_path.is_file() {
         return Ok(());

@@ -57,6 +57,12 @@ const router = createRouter({
       component: () => import("@/views/ChangelogView.vue"),
     },
     {
+      path: "/loadout/:locationId?",
+      name: "loadout",
+      component: () => import("@/views/LoadoutView.vue"),
+      props: true,
+    },
+    {
       path: "/health",
       name: "health",
       component: () => import("@/views/HealthView.vue"),

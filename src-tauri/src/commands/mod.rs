@@ -10,8 +10,8 @@ pub mod library;
 pub mod locations;
 pub mod manifest;
 pub mod repo;
+pub mod loadout;
 pub mod sets;
-pub mod sharing;
 pub mod usage;
 pub mod watcher;
 
