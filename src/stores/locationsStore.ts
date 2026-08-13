@@ -15,9 +15,15 @@ export const useLocationsStore = defineStore("locations", () => {
   const isLoadingDetail = ref(false);
   const discovered = ref<DiscoveredLocation[]>([]);
 
-  /** Saved locations whose directory has since been moved or deleted. */
+  /**
+   * Saved locations whose directory has since been moved or deleted.
+   *
+   * Global is excluded on purpose. `~/.claude/skills` may not exist yet, but
+   * the backend never forgets Global — so offering to forget it produced a
+   * "Forgot 1 location" that forgot nothing, and the warning came straight back.
+   */
   const missingLocations = computed(() =>
-    locationList.value.filter((l) => !l.pathExists)
+    locationList.value.filter((l) => !l.pathExists && l.kind !== "global")
   );
 
   const selectedLocation = computed(() =>

@@ -59,12 +59,45 @@ pub fn create_skill_link(target_path: &Path, link_path: &Path) -> Result<(), Str
 /// `python3 ~/.claude/skills/clio-hooks/scripts/session_start.py`. Removing that
 /// link breaks session start-up, and the breakage surfaces on the *next* session
 /// rather than at the moment of removal — so it has to be caught here.
-pub fn hook_reference(link_path: &Path) -> Option<String> {
-    let home = dirs::home_dir()?;
+///
+/// `Err` means the question could not be answered — no home directory, or a
+/// settings file that exists but cannot be read or parsed. A guard that cannot
+/// see the hooks must not wave the removal through, so callers refuse instead.
+/// A settings file that is simply *absent* is a clear answer: no hooks, `Ok(None)`.
+pub fn hook_reference(link_path: &Path) -> Result<Option<String>, String> {
+    let Some(home) = dirs::home_dir() else {
+        return Err("Cannot locate your home directory, so Kit cannot check \
+                    whether a hook runs from this skill."
+            .to_string());
+    };
+    hook_reference_from(&home, link_path)
+}
+
+/// The reading half of [`hook_reference`], with the home directory injected so
+/// the failure cases can be tested without touching the real config.
+pub fn hook_reference_from(home: &Path, link_path: &Path) -> Result<Option<String>, String> {
     let settings = home.join(".claude").join("settings.json");
-    let content = fs::read_to_string(&settings).ok()?;
-    let value: serde_json::Value = serde_json::from_str(&content).ok()?;
-    hook_reference_in(&value, link_path, &home)
+    let content = match fs::read_to_string(&settings) {
+        Ok(c) => c,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => {
+            return Err(format!(
+                "Cannot read {} ({}), so Kit cannot check whether a hook runs \
+                 from this skill.",
+                settings.display(),
+                e
+            ))
+        }
+    };
+    let value: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
+        format!(
+            "Cannot parse {} ({}), so Kit cannot check whether a hook runs from \
+             this skill. Fix the file and try again.",
+            settings.display(),
+            e
+        )
+    })?;
+    Ok(hook_reference_in(&value, link_path, home))
 }
 
 /// The matching half of [`hook_reference`], with the settings document and home
@@ -74,12 +107,15 @@ pub fn hook_reference_in(
     link_path: &Path,
     home: &Path,
 ) -> Option<String> {
-    let absolute = link_path.to_string_lossy().to_string();
-    // Hook commands usually write the home directory as `~`.
-    let tilde = link_path
-        .strip_prefix(home)
-        .ok()
-        .map(|rest| format!("~/{}", rest.display()));
+    // The same folder gets written several ways. `~` is the common one, but
+    // `$HOME` and `${HOME}` are just as valid and would otherwise slip past.
+    let mut forms = vec![link_path.to_string_lossy().to_string()];
+    if let Ok(rest) = link_path.strip_prefix(home) {
+        let rest = rest.display().to_string();
+        forms.push(format!("~/{rest}"));
+        forms.push(format!("$HOME/{rest}"));
+        forms.push(format!("${{HOME}}/{rest}"));
+    }
 
     fn commands(value: &serde_json::Value, out: &mut Vec<String>) {
         match value {
@@ -120,16 +156,24 @@ pub fn hook_reference_in(
     let mut found = Vec::new();
     commands(settings.get("hooks")?, &mut found);
 
-    found.into_iter().find(|cmd| {
-        references(cmd, &absolute) || tilde.as_ref().is_some_and(|t| references(cmd, t))
-    })
+    found
+        .into_iter()
+        .find(|cmd| forms.iter().any(|form| references(cmd, form)))
 }
 
 /// Remove a symlink at `link_path`. Verifies it is indeed a symlink before
 /// removing to avoid accidental deletion of real directories, and refuses when a
 /// configured hook runs a script from inside it.
 pub fn remove_skill_link(link_path: &Path) -> Result<(), String> {
-    if let Some(cmd) = hook_reference(link_path) {
+    // An unanswerable question is a refusal, not a green light: the whole point
+    // of the guard is that the damage only shows up in the *next* session.
+    if let Some(cmd) = hook_reference(link_path).map_err(|e| {
+        format!(
+            "Refusing to unlink {}: {}",
+            link_path.display(),
+            e
+        )
+    })? {
         return Err(format!(
             "Refusing to unlink {}: a hook runs a script from inside it, and removing \
              it would break session start-up.\n\nHook command: {}",
@@ -264,7 +308,7 @@ mod tests {
 
         let mut guarded = Vec::new();
         for entry in entries.flatten() {
-            if let Some(cmd) = hook_reference(&entry.path()) {
+            if let Some(cmd) = hook_reference(&entry.path()).expect("settings readable") {
                 guarded.push((entry.file_name().to_string_lossy().to_string(), cmd));
             }
         }
@@ -314,6 +358,55 @@ mod tests {
 
         let hooked = home.join(".claude/skills/tracker");
         assert!(hook_reference_in(&settings, &hooked, home).is_some());
+    }
+
+    /// `$HOME` and `${HOME}` mean exactly what `~` means, and a guard that only
+    /// knows one of the three spellings is a guard with holes in it.
+    #[test]
+    fn matches_hook_commands_written_with_home_variables() {
+        let home = Path::new("/Users/someone");
+        let hooked = home.join(".claude/skills/tracker");
+
+        for command in [
+            "bash $HOME/.claude/skills/tracker/log.sh",
+            "bash ${HOME}/.claude/skills/tracker/log.sh",
+        ] {
+            let settings: serde_json::Value = serde_json::from_str(&format!(
+                r#"{{"hooks":{{"Stop":[{{"hooks":[{{"type":"command","command":"{command}"}}]}}]}}}}"#
+            ))
+            .unwrap();
+            assert!(
+                hook_reference_in(&settings, &hooked, home).is_some(),
+                "missed: {command}"
+            );
+        }
+    }
+
+    /// Settings that exist but cannot be parsed leave the guard blind. Reading
+    /// that as "no hooks" is the dangerous half of the guess, so the answer is
+    /// an error the caller refuses on — not a quiet `None`.
+    #[test]
+    fn unparseable_settings_are_an_error_not_a_clean_bill_of_health() {
+        let base = std::env::temp_dir().join(format!("kit-linker-test-h-{}", std::process::id()));
+        fs::remove_dir_all(&base).ok();
+        let skills = base.join(".claude").join("skills");
+        fs::create_dir_all(&skills).unwrap();
+        let link = skills.join("ordinary");
+
+        fs::write(base.join(".claude").join("settings.json"), "{ not json").unwrap();
+        let blind = hook_reference_from(&base, &link);
+        assert!(blind.is_err(), "a guard that cannot read must not say 'safe'");
+        assert!(blind.unwrap_err().contains("Cannot parse"));
+
+        // Readable settings with no hooks are a real answer, and stay removable.
+        fs::write(base.join(".claude").join("settings.json"), r#"{"hooks":{}}"#).unwrap();
+        assert_eq!(hook_reference_from(&base, &link), Ok(None));
+
+        // No settings file at all is also a real answer: there are no hooks.
+        fs::remove_file(base.join(".claude").join("settings.json")).unwrap();
+        assert_eq!(hook_reference_from(&base, &link), Ok(None));
+
+        fs::remove_dir_all(&base).ok();
     }
 
     /// Global *is* the skills directory. Nesting `.claude/skills` underneath it

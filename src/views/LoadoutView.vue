@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useLoadoutStore } from "@/stores/loadoutStore";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { SBadge, SButton, SEmptyState } from "@stuntrocket/ui";
 import type { LoadoutGroup, SkillOrigin } from "@/types";
 
 const route = useRoute();
+const router = useRouter();
 const loadoutStore = useLoadoutStore();
 const locationsStore = useLocationsStore();
 
@@ -17,6 +18,15 @@ const activeLocationId = computed(() => {
   const list = locationsStore.locationList;
   return list.find((l) => l.kind === "global")?.id ?? list[0]?.id ?? null;
 });
+
+/**
+ * The route has always taken a location, but nothing in the app ever put one
+ * there — the sidebar links to a bare `/loadout`, so every project's loadout
+ * was unreachable. This is the control that was missing.
+ */
+function chooseLocation(id: string) {
+  if (id !== activeLocationId.value) router.push(`/loadout/${id}`);
+}
 
 const originLabel: Record<SkillOrigin, string> = {
   global: "Every session",
@@ -65,13 +75,14 @@ function refresh() {
 // Reachable straight from the sidebar, so the locations may not have been
 // fetched yet by the Locations view. Without this the page sits on its empty
 // state with nothing to select.
-onMounted(async () => {
-  if (locationsStore.locationList.length === 0) {
-    await locationsStore.fetchList();
-  }
-  refresh();
+//
+// One immediate watcher does the whole job. Fetching the list changes
+// `activeLocationId`, which fires this — a second `refresh()` after the fetch
+// meant every visit ran two full scans of the same location.
+onMounted(() => {
+  if (locationsStore.locationList.length === 0) locationsStore.fetchList();
 });
-watch(activeLocationId, refresh);
+watch(activeLocationId, refresh, { immediate: true });
 </script>
 
 <template>
@@ -92,7 +103,25 @@ watch(activeLocationId, refresh);
 
     <template v-else>
       <header class="head">
-        <h1 class="page-title">{{ loadoutStore.loadout.locationLabel }}</h1>
+        <div class="head-top">
+          <h1 class="page-title">{{ loadoutStore.loadout.locationLabel }}</h1>
+          <label v-if="locationsStore.locationList.length > 1" class="picker">
+            <span class="picker-label">Show</span>
+            <select
+              class="picker-select"
+              :value="activeLocationId ?? ''"
+              @change="chooseLocation(($event.target as HTMLSelectElement).value)"
+            >
+              <option
+                v-for="loc in locationsStore.locationList"
+                :key="loc.id"
+                :value="loc.id"
+              >
+                {{ loc.label }}
+              </option>
+            </select>
+          </label>
+        </div>
         <p class="head-line">
           <strong class="figure">{{ loadoutStore.loadout.modelFacingCount }}</strong>
           skills reach the model, costing about
@@ -102,6 +131,11 @@ watch(activeLocationId, refresh);
         <p v-if="loadoutStore.loadout.commandOnlyCount" class="head-aside">
           {{ loadoutStore.loadout.commandOnlyCount }} more are slash-command only,
           and cost nothing until you call them.
+        </p>
+        <p v-if="loadoutStore.loadout.settingsUnreadable" class="head-warn">
+          Kit couldn't read <code>~/.claude/settings.json</code>, so it can't see
+          which skills you've switched off. Everything below is what's on disk,
+          not necessarily what loads.
         </p>
       </header>
 
@@ -185,8 +219,10 @@ watch(activeLocationId, refresh);
           <span class="flag-more">Show</span>
         </summary>
         <p v-if="loadoutStore.loadout.deadOverrides.length" class="flag-body">
-          <strong>Pointing at nothing.</strong> No skill by these names exists, so
-          the entries do nothing at all.
+          <strong>Pointing at nothing here.</strong> No skill by these names is in
+          Global, your installed plugins, or this location — so here they do
+          nothing. Kit hasn't looked in your other projects, and a skill in one
+          of those would still be switched off.
         </p>
         <ul v-if="loadoutStore.loadout.deadOverrides.length" class="chips">
           <li v-for="name in loadoutStore.loadout.deadOverrides" :key="name">{{ name }}</li>
@@ -266,11 +302,60 @@ watch(activeLocationId, refresh);
   margin-bottom: var(--space-6);
 }
 
+.head-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
 .page-title {
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
-  margin: 0 0 var(--space-2);
+  margin: 0;
+  min-width: 0;
+}
+
+.picker {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.picker-label {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.picker-select {
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+  max-width: 22ch;
+}
+
+.head-warn {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background: var(--warning-subtle);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, transparent);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0 0;
+  max-width: 68ch;
+}
+
+.head-warn code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--text-primary);
 }
 
 .head-line {

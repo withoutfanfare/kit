@@ -20,11 +20,17 @@ async function addDiscovered(path: string, label: string) {
 }
 
 async function clearMissing() {
-  const count = locationsStore.missingLocations.length;
+  // Counted from what actually went, not from what was offered: a directory
+  // that reappeared in the meantime is kept, and the message should say so.
+  const before = locationsStore.locationList.length;
   await locationsStore.removeMissingLocations();
+  const count = before - locationsStore.locationList.length;
+
   appStore.toast(
-    `Forgot ${count} location${count === 1 ? "" : "s"}. No files were touched.`,
-    "success"
+    count === 0
+      ? "Nothing to forget — those locations are back."
+      : `Forgot ${count} location${count === 1 ? "" : "s"}. No files were touched.`,
+    count === 0 ? "info" : "success"
   );
 }
 

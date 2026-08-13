@@ -583,8 +583,29 @@ pub fn skills_dir_for(location_path: &Path, kind: LocationKind) -> Option<PathBu
 pub fn writable_manifest_path(location_path: &Path, kind: LocationKind) -> Option<PathBuf> {
     match kind {
         LocationKind::Global => None,
-        LocationKind::Project => Some(location_path.join(".claude").join("settings.json")),
+        LocationKind::Project => {
+            let candidate = location_path.join(".claude").join("settings.json");
+            // A "project" whose path *is* the home directory resolves to the
+            // user's live Claude Code settings. The kind alone cannot catch
+            // that, so the resolved path is checked on its own account.
+            if is_live_claude_settings(&candidate) {
+                return None;
+            }
+            Some(candidate)
+        }
     }
+}
+
+/// Whether a path is the user's live `~/.claude/settings.json` — the file that
+/// governs every Claude Code session, and which Kit reads but never writes.
+pub fn is_live_claude_settings(path: &Path) -> bool {
+    let Some(home) = dirs::home_dir() else {
+        return false;
+    };
+    let live = home.join(".claude").join("settings.json");
+    // Compare resolved forms where possible so a symlinked home still matches.
+    let resolve = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    path == live || resolve(path) == resolve(&live)
 }
 
 /// Kind-aware manifest lookup.

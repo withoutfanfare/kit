@@ -23,7 +23,14 @@ withDefaults(
     <span class="term-label">{{ label }}</span>
     <span class="term-meaning">{{ meaning }}</span>
   </span>
-  <abbr v-else class="term term-hint" :title="meaning">{{ label }}</abbr>
+  <!--
+    The tooltip is for the mouse. The same words are repeated as visually
+    hidden text so a screen reader reads the definition too, rather than
+    depending on `title`, which assistive technology treats inconsistently.
+  -->
+  <abbr v-else class="term term-hint" :title="meaning"
+    >{{ label }}<span class="term-sr">, {{ meaning }}</span></abbr
+  >
 </template>
 
 <style scoped>
@@ -52,5 +59,18 @@ withDefaults(
   text-decoration: underline dotted var(--border-strong);
   text-underline-offset: 3px;
   cursor: help;
+}
+
+/* Read aloud, never drawn, and never affecting layout. */
+.term-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 </style>

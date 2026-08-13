@@ -29,18 +29,33 @@ pub struct ClaudeSettings {
     pub overrides_off: BTreeSet<String>,
     /// `<plugin>@<marketplace>` → enabled.
     pub enabled_plugins: BTreeMap<String, bool>,
+    /// The file is there but could not be read or parsed. Everything derived
+    /// from it — vetoes, plugin enablement — is then a guess, and saying so is
+    /// the only honest option.
+    pub unreadable: bool,
 }
 
-/// Read the settings that govern loading. A missing or unparseable file means
-/// "nothing configured", never "everything off" — guessing the stricter reading
-/// would have Kit report skills as absent when they are in fact loading.
+/// Read the settings that govern loading. A missing file means "nothing
+/// configured", never "everything off" — guessing the stricter reading would
+/// have Kit report skills as absent when they are in fact loading. A file that
+/// exists but cannot be read is a different thing again, and is flagged.
 pub fn read_claude_settings(home: &Path) -> ClaudeSettings {
     let path = home.join(".claude").join("settings.json");
-    let Ok(content) = fs::read_to_string(&path) else {
-        return ClaudeSettings::default();
+    let content = match fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return ClaudeSettings::default(),
+        Err(_) => {
+            return ClaudeSettings {
+                unreadable: true,
+                ..Default::default()
+            }
+        }
     };
     let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) else {
-        return ClaudeSettings::default();
+        return ClaudeSettings {
+            unreadable: true,
+            ..Default::default()
+        };
     };
 
     let overrides_off = value
@@ -67,6 +82,7 @@ pub fn read_claude_settings(home: &Path) -> ClaudeSettings {
     ClaudeSettings {
         overrides_off,
         enabled_plugins,
+        unreadable: false,
     }
 }
 
@@ -160,6 +176,82 @@ fn resolve_folder(
         .collect()
 }
 
+/// One plugin Claude Code records as actually installed.
+#[derive(Debug, Clone)]
+pub struct InstalledPlugin {
+    pub plugin: String,
+    pub marketplace: String,
+    pub install_path: PathBuf,
+}
+
+/// What `~/.claude/plugins/installed_plugins.json` says is installed, and where.
+///
+/// This is the file that settles two questions the cache cannot. The cache
+/// keeps every version ever downloaded — often under content hashes, where
+/// "newest" is not a thing you can read off the name — and it keeps whole
+/// plugins long after they are gone. On a real machine that is 8 installed
+/// plugins against 21 leftovers, so scanning the cache reports skills as
+/// loading that Claude Code has not seen in months.
+///
+/// `None` means the file is missing or unreadable: the answer is unknown, and
+/// the caller downgrades rather than guessing.
+pub fn read_installed_plugins(home: &Path) -> Option<Vec<InstalledPlugin>> {
+    let path = home
+        .join(".claude")
+        .join("plugins")
+        .join("installed_plugins.json");
+    let content = fs::read_to_string(&path).ok()?;
+    let value: serde_json::Value = serde_json::from_str(&content).ok()?;
+    let plugins = value.get("plugins")?.as_object()?;
+
+    let mut found = Vec::new();
+    for (key, installs) in plugins {
+        // Keys are `<plugin>@<marketplace>`.
+        let Some((plugin, marketplace)) = key.rsplit_once('@') else {
+            continue;
+        };
+        let Some(installs) = installs.as_array() else {
+            continue;
+        };
+        for install in installs {
+            let Some(install_path) = install.get("installPath").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            found.push(InstalledPlugin {
+                plugin: plugin.to_string(),
+                marketplace: marketplace.to_string(),
+                install_path: PathBuf::from(install_path),
+            });
+        }
+    }
+    found.sort_by(|a, b| a.plugin.cmp(&b.plugin).then(a.marketplace.cmp(&b.marketplace)));
+    Some(found)
+}
+
+/// The skills one installed plugin contributes, addressed as `plugin:skill`.
+fn resolve_installed_plugin(installed: &InstalledPlugin) -> Vec<ResolvedSkill> {
+    let mut skills: Vec<ResolvedSkill> = skill_dirs(&installed.install_path.join("skills"))
+        .into_iter()
+        .filter_map(|skill_dir| {
+            let facts = read_skill_facts(&skill_dir)?;
+            let id = format!("{}:{}", installed.plugin, facts.folder_name);
+            Some(ResolvedSkill {
+                token_estimate: estimate_tokens(&id, &facts.description),
+                id,
+                folder_name: facts.folder_name,
+                origin: SkillOrigin::Plugin,
+                source_label: installed.plugin.clone(),
+                model_facing: facts.model_facing,
+                // A bare-name override never matches `plugin:skill`.
+                vetoed_by: None,
+                path: skill_dir.to_string_lossy().to_string(),
+            })
+        })
+        .collect();
+    skills.sort_by(|a, b| a.id.cmp(&b.id));
+    skills
+}
+
 /// Skills from a plugin cache laid out as
 /// `<cache>/<marketplace>/<plugin>/<version>/skills/<skill>/SKILL.md`.
 ///
@@ -250,12 +342,20 @@ const ACCOUNT_CAVEAT: &str = "Delivered by the desktop app, where they are also 
      on and off. Kit reads the local cache, which can be stale or incomplete, so treat \
      this as indicative rather than the full list.";
 
+/// Without `installed_plugins.json` the cache is all Kit has, and the cache
+/// remembers everything ever downloaded. Listed, but kept out of the totals.
+const STALE_CACHE_CAVEAT: &str = "Kit could not read \
+     `~/.claude/plugins/installed_plugins.json`, so this is the plugin cache — \
+     which keeps old versions and uninstalled plugins. Treat it as what has been \
+     downloaded, not what is loading.";
+
 fn group(
     origin: SkillOrigin,
     label: impl Into<String>,
     skills: Vec<ResolvedSkill>,
     controllable: bool,
     enablement_unknown: bool,
+    caveat: Option<&str>,
 ) -> LoadoutGroup {
     let live: Vec<&ResolvedSkill> = skills.iter().filter(|s| s.vetoed_by.is_none()).collect();
     LoadoutGroup {
@@ -270,7 +370,7 @@ fn group(
             .sum(),
         controllable,
         enablement_unknown,
-        caveat: (origin == SkillOrigin::Account).then(|| ACCOUNT_CAVEAT.to_string()),
+        caveat: caveat.map(str::to_string),
         skills,
     }
 }
@@ -280,47 +380,84 @@ pub fn resolve(location: &SavedLocation, home: &Path) -> SessionLoadout {
     let settings = read_claude_settings(home);
     let mut groups: Vec<LoadoutGroup> = Vec::new();
 
-    // 1. Global — always in play, whichever location is selected.
-    let global_dir = home.join(".claude").join("skills");
-    let global = resolve_folder(&global_dir, SkillOrigin::Global, &settings);
-    groups.push(group(
-        SkillOrigin::Global,
-        "Global",
-        global,
-        true,
-        false,
-    ));
-
-    // 2. The project's own skills, when a project is selected.
+    // 1. The project's own skills, when a project is selected. Resolved first
+    //    because a project skill and a global one of the same name are one
+    //    skill in the session, not two, and the project copy is the nearer one.
+    let mut project_names: BTreeSet<String> = BTreeSet::new();
+    let mut project_group = None;
     if !location.is_global() {
         let project_dir = scanner::skills_dir_for(Path::new(&location.path), location.kind);
         let project = project_dir
             .map(|d| resolve_folder(&d, SkillOrigin::Project, &settings))
             .unwrap_or_default();
         if !project.is_empty() {
-            groups.push(group(
+            project_names.extend(project.iter().map(|s| s.folder_name.clone()));
+            project_group = Some(group(
                 SkillOrigin::Project,
                 location.label.clone(),
                 project,
                 true,
                 false,
+                None,
             ));
         }
     }
 
-    // 3. Local plugins, gated on `enabledPlugins`. An entry Kit has never seen
-    //    is treated as enabled, matching Claude Code rather than guessing.
-    let enabled = settings.enabled_plugins.clone();
-    let plugin_gate = move |plugin: &str, marketplace: &str| -> Option<bool> {
-        enabled.get(&format!("{plugin}@{marketplace}")).copied()
-    };
-    for (plugin, skills) in resolve_plugin_cache(
-        &home.join(".claude").join("plugins").join("cache"),
-        SkillOrigin::Plugin,
-        None,
-        &plugin_gate,
-    ) {
-        groups.push(group(SkillOrigin::Plugin, plugin, skills, true, false));
+    // 2. Global — always in play, whichever location is selected, except where
+    //    the project shadows it. Counting both would inflate every total.
+    let global_dir = home.join(".claude").join("skills");
+    let global: Vec<ResolvedSkill> = resolve_folder(&global_dir, SkillOrigin::Global, &settings)
+        .into_iter()
+        .filter(|s| !project_names.contains(&s.folder_name))
+        .collect();
+    groups.push(group(SkillOrigin::Global, "Global", global, true, false, None));
+    groups.extend(project_group);
+
+    // 3. Local plugins. `installed_plugins.json` is the record of what is
+    //    actually installed and at which version; the cache is only what has
+    //    been downloaded. Where the record is unreadable, the cache is listed
+    //    but kept out of the totals rather than passed off as the truth.
+    match read_installed_plugins(home) {
+        Some(installed) => {
+            for plugin in installed {
+                let key = format!("{}@{}", plugin.plugin, plugin.marketplace);
+                if settings.enabled_plugins.get(&key) == Some(&false) {
+                    continue;
+                }
+                let skills = resolve_installed_plugin(&plugin);
+                if !skills.is_empty() {
+                    groups.push(group(
+                        SkillOrigin::Plugin,
+                        plugin.plugin.clone(),
+                        skills,
+                        true,
+                        false,
+                        None,
+                    ));
+                }
+            }
+        }
+        None => {
+            let enabled = settings.enabled_plugins.clone();
+            let plugin_gate = move |plugin: &str, marketplace: &str| -> Option<bool> {
+                enabled.get(&format!("{plugin}@{marketplace}")).copied()
+            };
+            for (plugin, skills) in resolve_plugin_cache(
+                &home.join(".claude").join("plugins").join("cache"),
+                SkillOrigin::Plugin,
+                None,
+                &plugin_gate,
+            ) {
+                groups.push(group(
+                    SkillOrigin::Plugin,
+                    plugin,
+                    skills,
+                    true,
+                    true,
+                    Some(STALE_CACHE_CAVEAT),
+                ));
+            }
+        }
     }
 
     // 4. Account-level packs. `~/.codex/plugins/cache` is the Codex CLI's own
@@ -334,7 +471,14 @@ pub fn resolve(location: &SavedLocation, home: &Path) -> SessionLoadout {
         Some(COWORK_MARKETPLACE),
         &|_, _| None,
     ) {
-        groups.push(group(SkillOrigin::Account, pack, skills, false, true));
+        groups.push(group(
+            SkillOrigin::Account,
+            pack,
+            skills,
+            false,
+            true,
+            Some(ACCOUNT_CAVEAT),
+        ));
     }
 
     // Conflicts worth surfacing.
@@ -381,6 +525,7 @@ pub fn resolve(location: &SavedLocation, home: &Path) -> SessionLoadout {
         vetoed,
         dead_overrides,
         unreachable_overrides,
+        settings_unreadable: settings.unreadable,
         groups,
     }
 }
@@ -515,7 +660,179 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// A disabled plugin contributes nothing.
+    /// Write `installed_plugins.json` naming exactly the given installs.
+    fn write_installed(home: &Path, installs: &[(&str, &str, PathBuf)]) {
+        let plugins: serde_json::Map<String, serde_json::Value> = installs
+            .iter()
+            .map(|(plugin, marketplace, path)| {
+                (
+                    format!("{plugin}@{marketplace}"),
+                    serde_json::json!([{
+                        "scope": "user",
+                        "installPath": path.to_string_lossy(),
+                    }]),
+                )
+            })
+            .collect();
+        fs::write(
+            home.join(".claude").join("plugins").join("installed_plugins.json"),
+            serde_json::json!({ "version": 2, "plugins": plugins }).to_string(),
+        )
+        .unwrap();
+    }
+
+    /// The cache keeps every plugin ever downloaded. On a real machine that was
+    /// 8 installed against 21 leftovers — all of which used to be reported as
+    /// loading, because a plugin absent from `enabledPlugins` was read as "on".
+    #[test]
+    fn cached_plugins_that_are_not_installed_do_not_count_as_loading() {
+        let home = fixture("uninstalled");
+        let cache = home.join(".claude").join("plugins").join("cache").join("market");
+        for plugin in ["live", "leftover"] {
+            let dir = cache.join(plugin).join("1.0.0").join("skills");
+            fs::create_dir_all(&dir).unwrap();
+            write_skill(&dir, &format!("{plugin}-skill"), "A plugin skill.", "");
+        }
+        write_installed(
+            &home,
+            &[("live", "market", cache.join("live").join("1.0.0"))],
+        );
+
+        let out = resolve(&global_location(&home), &home);
+        let labels: Vec<&str> = out.groups.iter().map(|g| g.label.as_str()).collect();
+
+        assert!(labels.contains(&"live"), "installed plugin missing: {labels:?}");
+        assert!(
+            !labels.contains(&"leftover"),
+            "a cached-but-uninstalled plugin was reported as loading: {labels:?}"
+        );
+        assert_eq!(out.model_facing_count, 1, "totals must count the live one only");
+
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Cache version folders are often content hashes, where "newest" cannot be
+    /// read off the name at all. `installed_plugins.json` names the live one, so
+    /// the obsolete version's skills must not leak into the answer.
+    #[test]
+    fn only_the_installed_version_of_a_plugin_is_read() {
+        let home = fixture("version-pick");
+        let plugin = home
+            .join(".claude")
+            .join("plugins")
+            .join("cache")
+            .join("market")
+            .join("pack");
+        // `aaa111` sorts first; `zzz999` is the one actually installed.
+        for (version, skill) in [("aaa111", "old-skill"), ("zzz999", "current-skill")] {
+            let dir = plugin.join(version).join("skills");
+            fs::create_dir_all(&dir).unwrap();
+            write_skill(&dir, skill, "A plugin skill.", "");
+        }
+        write_installed(&home, &[("pack", "market", plugin.join("zzz999"))]);
+
+        let out = resolve(&global_location(&home), &home);
+        let g = out.groups.iter().find(|g| g.label == "pack").unwrap();
+        let ids: Vec<&str> = g.skills.iter().map(|s| s.id.as_str()).collect();
+
+        assert_eq!(ids, vec!["pack:current-skill"], "wrong version won: {ids:?}");
+
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Without the record of what is installed, the cache is all there is — and
+    /// it is not good enough to count. Listed with a caveat, kept out of totals.
+    #[test]
+    fn without_the_installed_record_plugins_are_listed_but_not_counted() {
+        let home = fixture("no-record");
+        let dir = home
+            .join(".claude")
+            .join("plugins")
+            .join("cache")
+            .join("market")
+            .join("pack")
+            .join("1.0.0")
+            .join("skills");
+        fs::create_dir_all(&dir).unwrap();
+        write_skill(&dir, "some-skill", "A plugin skill.", "");
+
+        let out = resolve(&global_location(&home), &home);
+        let g = out.groups.iter().find(|g| g.label == "pack").unwrap();
+
+        assert!(g.enablement_unknown, "unverified plugins must not be counted");
+        assert!(g.caveat.is_some(), "and the UI must be told why");
+        assert_eq!(out.model_facing_count, 0);
+
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// The same skill name in Global and in the project is one skill in the
+    /// session. Counting both inflated every total on the screen.
+    #[test]
+    fn a_skill_in_both_global_and_the_project_is_counted_once() {
+        let home = fixture("shadow");
+        let global = home.join(".claude").join("skills");
+        write_skill(&global, "shared", "In both places.", "");
+        write_skill(&global, "global-only", "Only global.", "");
+
+        let project = home.join("code").join("app");
+        let project_skills = project.join(".claude").join("skills");
+        fs::create_dir_all(&project_skills).unwrap();
+        write_skill(&project_skills, "shared", "In both places.", "");
+
+        let location = SavedLocation {
+            id: "proj".into(),
+            label: "App".into(),
+            path: project.to_string_lossy().to_string(),
+            notes: None,
+            last_synced_at: None,
+            kind: LocationKind::Project,
+        };
+        let out = resolve(&location, &home);
+
+        assert_eq!(
+            out.model_facing_count, 2,
+            "shared must be counted once, not once per scope"
+        );
+        let global_group = out
+            .groups
+            .iter()
+            .find(|g| g.origin == SkillOrigin::Global)
+            .unwrap();
+        let names: Vec<&str> = global_group
+            .skills
+            .iter()
+            .map(|s| s.folder_name.as_str())
+            .collect();
+        assert_eq!(
+            names,
+            vec!["global-only"],
+            "the project's copy is the nearer one and shadows Global"
+        );
+
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Settings that exist but will not parse leave every veto unknown. Saying
+    /// "no overrides" there is a claim Kit cannot support.
+    #[test]
+    fn unreadable_settings_are_reported_as_unknown_not_as_nothing_configured() {
+        let home = fixture("bad-settings");
+        write_skill(&home.join(".claude").join("skills"), "alpha", "A skill.", "");
+        fs::write(home.join(".claude").join("settings.json"), "{ not json").unwrap();
+
+        let out = resolve(&global_location(&home), &home);
+        assert!(out.settings_unreadable);
+
+        // A readable file is not flagged.
+        fs::write(home.join(".claude").join("settings.json"), "{}").unwrap();
+        assert!(!resolve(&global_location(&home), &home).settings_unreadable);
+
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// A disabled plugin contributes nothing. Covers the cache fallback, which
+    /// is what runs when `installed_plugins.json` is absent.
     #[test]
     fn disabled_plugins_are_excluded() {
         let home = fixture("plugins");
