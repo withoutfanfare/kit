@@ -92,7 +92,7 @@ watch(activeLocationId, refresh);
 
     <template v-else>
       <header class="head">
-        <h2 class="head-title">{{ loadoutStore.loadout.locationLabel }}</h2>
+        <h1 class="page-title">{{ loadoutStore.loadout.locationLabel }}</h1>
         <p class="head-line">
           <strong class="figure">{{ loadoutStore.loadout.modelFacingCount }}</strong>
           skills reach the model, costing about
@@ -266,11 +266,10 @@ watch(activeLocationId, refresh);
   margin-bottom: var(--space-6);
 }
 
-.head-title {
+.page-title {
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
-  letter-spacing: -0.01em;
   margin: 0 0 var(--space-2);
 }
 

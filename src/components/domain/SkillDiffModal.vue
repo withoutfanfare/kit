@@ -183,7 +183,7 @@ function handleBackdropClick(event: MouseEvent) {
 .diff-column {
   display: flex;
   flex-direction: column;
-  background: var(--surface-base);
+  background: var(--surface-panel);
   overflow: hidden;
 }
 

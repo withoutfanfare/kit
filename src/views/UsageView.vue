@@ -66,7 +66,7 @@ onMounted(() => usageStore.fetchReport());
 
     <template v-else-if="usageStore.report">
       <header class="head">
-        <h2 class="head-title">What you actually use</h2>
+        <h1 class="page-title">What you actually use</h1>
         <p class="head-line">
           <strong class="figure">{{ usageStore.report.distinctSkills }}</strong>
           skills have run,
@@ -138,11 +138,10 @@ onMounted(() => usageStore.fetchReport());
   margin-bottom: var(--space-6);
 }
 
-.head-title {
+.page-title {
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
-  letter-spacing: -0.01em;
   margin: 0 0 var(--space-2);
 }
 

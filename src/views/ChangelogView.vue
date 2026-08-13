@@ -41,7 +41,7 @@ onMounted(() => {
   <div class="changelog-view">
     <div class="changelog-header">
       <div class="header-title">
-        <h2>Recently modified</h2>
+        <h1 class="page-title">Recently modified</h1>
         <span class="header-count">{{ store.filteredEntries.length }} skills</span>
       </div>
       <div class="header-controls">
@@ -113,8 +113,8 @@ onMounted(() => {
   gap: var(--space-2);
 }
 
-.header-title h2 {
-  font-size: var(--text-lg);
+.header-title .page-title {
+  font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
   margin: 0;
