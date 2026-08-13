@@ -322,7 +322,7 @@ watch(
       <SkillList
         v-if="localOnlySkills.length > 0"
         :skills="localOnlySkills"
-        title="Local-Only Skills"
+        title="Not in your library"
         show-link-state
         @select-skill="peekSkill"
       />

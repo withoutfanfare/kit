@@ -1,27 +1,42 @@
 <script setup lang="ts">
+import { linkStateTerms } from "@/utils/statusLabels";
+
 defineProps<{
   linkedCount: number;
   localOnlyCount: number;
   brokenCount: number;
 }>();
+
+/** One row per state, in the order that matters: normal, precious, broken. */
+const rows = [
+  { key: "linked", term: linkStateTerms.linked, dot: "linked" },
+  { key: "local_only", term: linkStateTerms.local_only, dot: "local-only" },
+  { key: "broken_link", term: linkStateTerms.broken_link, dot: "broken" },
+] as const;
 </script>
 
 <template>
   <div class="overview-group">
-    <div class="overview-row">
-      <span class="status-dot linked" />
-      <span class="overview-label">Assigned</span>
-      <span class="overview-value">{{ linkedCount }}</span>
-    </div>
-    <div class="overview-row">
-      <span class="status-dot local-only" />
-      <span class="overview-label">Local only</span>
-      <span class="overview-value">{{ localOnlyCount }}</span>
-    </div>
-    <div class="overview-row">
-      <span class="status-dot broken" />
-      <span class="overview-label">Broken links</span>
-      <span class="overview-value">{{ brokenCount }}</span>
+    <div
+      v-for="row in rows"
+      :key="row.key"
+      class="overview-row"
+      :title="row.term.meaning"
+    >
+      <span class="status-dot" :class="row.dot" />
+      <span class="overview-text">
+        <span class="overview-label">{{ row.term.label }}</span>
+        <span class="overview-meaning">{{ row.term.meaning }}</span>
+      </span>
+      <span class="overview-value">
+        {{
+          row.key === "linked"
+            ? linkedCount
+            : row.key === "local_only"
+              ? localOnlyCount
+              : brokenCount
+        }}
+      </span>
     </div>
   </div>
 </template>
@@ -36,10 +51,9 @@ defineProps<{
 
 .overview-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
+  padding: var(--space-3);
 }
 
 .overview-row + .overview-row {
@@ -47,14 +61,16 @@ defineProps<{
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
   flex-shrink: 0;
+  /* Sits on the label's first line rather than the block's top edge. */
+  margin-top: 5px;
 }
 
 .status-dot.linked {
-  background: var(--success);
+  background: var(--color-success);
 }
 
 .status-dot.local-only {
@@ -62,15 +78,31 @@ defineProps<{
 }
 
 .status-dot.broken {
-  background: var(--danger);
+  background: var(--color-danger);
+}
+
+.overview-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .overview-label {
-  flex: 1;
-  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.overview-meaning {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  line-height: 1.45;
+  text-wrap: pretty;
 }
 
 .overview-value {
+  font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
