@@ -7,7 +7,7 @@ use crate::state::SharedState;
 
 /// What reaches a session opened at this location, and what it costs.
 #[tauri::command]
-pub fn resolve_session_loadout(
+pub async fn resolve_session_loadout(
     location_id: String,
     state: State<'_, SharedState>,
 ) -> Result<SessionLoadout, AppError> {

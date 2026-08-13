@@ -1,306 +1,335 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useUsageStore } from "@/stores/usageStore";
-import { useSkillPeekStore } from "@/stores/skillPeekStore";
-import { SSectionHeader, SBadge } from "@stuntrocket/ui";
+import { SBadge, SButton, SEmptyState } from "@stuntrocket/ui";
+import type { UsageSkillRow } from "@/types";
 
 const usageStore = useUsageStore();
-const skillPeekStore = useSkillPeekStore();
+const showAll = ref(false);
 
-function navigateToSkill(skillId: string) {
-  skillPeekStore.peek(skillId);
-}
+/** The busiest skill sets the scale every other bar is read against. */
+const busiest = computed(() => usageStore.report?.rows[0]?.runs ?? 1);
 
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-
-  return date.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
-onMounted(() => {
-  usageStore.fetchSummary();
+const rows = computed<UsageSkillRow[]>(() => {
+  const all = usageStore.report?.rows ?? [];
+  return showAll.value ? all : all.slice(0, 20);
 });
+
+const hiddenCount = computed(() =>
+  Math.max(0, (usageStore.report?.rows.length ?? 0) - rows.value.length)
+);
+
+const since = computed(() => {
+  const raw = usageStore.report?.recordedSince;
+  if (!raw) return null;
+  return new Date(raw).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+});
+
+/** Plain relative time — "3 days ago" beats a timestamp for a keep-or-drop call. */
+function lastUsed(iso: string | null): string {
+  if (!iso) return "never";
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 31) return `${days} days ago`;
+  const months = Math.round(days / 30);
+  return months === 1 ? "a month ago" : `${months} months ago`;
+}
+
+/** Older than a month, but it did run once — the "probably drop it" band. */
+function isStale(row: UsageSkillRow): boolean {
+  if (!row.lastUsedAt) return true;
+  return Date.now() - new Date(row.lastUsedAt).getTime() > 30 * 86_400_000;
+}
+
+onMounted(() => usageStore.fetchReport());
 </script>
 
 <template>
-  <div class="usage-view">
-    <!-- Page header -->
-    <div class="page-header">
-      <h1 class="page-title">Usage</h1>
-      <span class="page-subtitle">Last 30 days</span>
+  <div class="usage">
+    <div v-if="usageStore.isLoading && !usageStore.report" class="skeleton" aria-busy="true">
+      <div class="sk sk-title"></div>
+      <div class="sk sk-row"></div>
+      <div class="sk sk-row"></div>
+      <div class="sk sk-row"></div>
     </div>
 
-    <div v-if="usageStore.isLoading && !usageStore.summary" class="loading-state">
-      <span class="spinner" />
-      <span class="loading-label">Loading usage data...</span>
-    </div>
+    <SEmptyState
+      v-else-if="usageStore.report && !usageStore.report.available"
+      title="No usage logs yet"
+      description="Kit reads the log the Skill hook writes into your library. Nothing has been recorded there yet, so there's nothing to judge — that's missing data, not zero use."
+    />
 
-    <div v-else-if="!usageStore.summary" class="empty-usage">
-      <p class="empty-usage-title">No usage data yet</p>
-      <p class="empty-usage-desc">Usage tracks how often each skill is invoked across your projects. Data will appear here once skills are in use.</p>
-    </div>
+    <template v-else-if="usageStore.report">
+      <header class="head">
+        <h1 class="page-title">What you actually use</h1>
+        <p class="head-line">
+          <strong class="figure">{{ usageStore.report.distinctSkills }}</strong>
+          skills have run,
+          <strong class="figure">{{ usageStore.report.eventCount.toLocaleString() }}</strong>
+          times in total<template v-if="since"> since {{ since }}</template>.
+          <template v-if="usageStore.report.neverUsed.length">
+            <strong class="figure">{{ usageStore.report.neverUsed.length }}</strong>
+            more have never run at all.
+          </template>
+        </p>
+      </header>
 
-    <div v-else class="usage-content">
-      <!-- Most Used -->
-      <section class="usage-section">
-        <SSectionHeader title="Most Used" :count="usageStore.summary.mostUsed.length" />
-        <div class="grouped-list">
-          <div
-            v-for="(item, index) in usageStore.summary.mostUsed"
-            :key="item.id"
-            class="list-item clickable"
-            @click="navigateToSkill(item.id)"
-          >
-            <div class="item-left">
-              <span class="rank">{{ index + 1 }}</span>
-              <span class="item-name">{{ item.name }}</span>
-            </div>
-            <SBadge variant="count">{{ item.count }}</SBadge>
-          </div>
-          <div v-if="usageStore.summary.mostUsed.length === 0" class="list-empty">
-            No usage data for this period
-          </div>
-        </div>
+      <section class="ranked" aria-label="Skills by number of runs">
+        <ol class="rows">
+          <li v-for="row in rows" :key="row.skill" class="row" :class="{ stale: isStale(row) }">
+            <span class="row-name" :title="row.skill">
+              {{ row.skill }}
+              <SBadge v-if="row.skill.includes(':')" variant="default">plugin</SBadge>
+            </span>
+            <span class="row-bar">
+              <span
+                class="row-fill"
+                :style="{ transform: `scaleX(${row.runs / busiest})` }"
+              />
+            </span>
+            <span class="row-runs">{{ row.runs }}</span>
+            <span class="row-when">{{ lastUsed(row.lastUsedAt) }}</span>
+            <span class="row-where">{{ row.projects[0]?.name ?? "—" }}</span>
+          </li>
+        </ol>
+
+        <SButton v-if="hiddenCount > 0" size="sm" @click="showAll = true">
+          Show {{ hiddenCount }} more
+        </SButton>
       </section>
 
-      <!-- Recently Used -->
-      <section class="usage-section">
-        <SSectionHeader title="Recently Used" :count="usageStore.summary.recentlyUsed.length" />
-        <div class="grouped-list">
-          <div
-            v-for="item in usageStore.summary.recentlyUsed"
-            :key="item.id"
-            class="list-item clickable"
-            @click="navigateToSkill(item.id)"
-          >
-            <span class="item-name">{{ item.name }}</span>
-            <span class="item-date">{{ item.lastUsedAt ? formatDate(item.lastUsedAt) : "—" }}</span>
-          </div>
-          <div v-if="usageStore.summary.recentlyUsed.length === 0" class="list-empty">
-            No recent activity
-          </div>
+      <!-- The decision list: in the library, costing context, never once used. -->
+      <section v-if="usageStore.report.neverUsed.length" class="never">
+        <div class="never-head">
+          <h3 class="never-title">Never used</h3>
+          <span class="never-count">{{ usageStore.report.neverUsed.length }}</span>
         </div>
+        <p class="never-line">
+          In your library and never called once in
+          {{ usageStore.report.eventCount.toLocaleString() }} recorded runs. Leaving
+          these unlinked costs you nothing and keeps them a click away.
+        </p>
+        <ul class="chips">
+          <li v-for="name in usageStore.report.neverUsed" :key="name">{{ name }}</li>
+        </ul>
       </section>
 
-      <!-- Unused -->
-      <section class="usage-section">
-        <SSectionHeader title="Unused" :count="usageStore.summary.unused.length" />
-        <div class="grouped-list">
-          <div
-            v-for="item in usageStore.summary.unused"
-            :key="item.id"
-            class="list-item clickable"
-            @click="navigateToSkill(item.id)"
-          >
-            <span class="item-name">{{ item.name }}</span>
-          </div>
-          <div v-if="usageStore.summary.unused.length === 0" class="list-empty">
-            All skills have been used recently
-          </div>
-        </div>
-      </section>
-
-      <!-- Suggestions -->
-      <section v-if="usageStore.summary.suggestions.length > 0" class="usage-section">
-        <SSectionHeader title="Suggestions" />
-        <div class="grouped-list">
-          <div
-            v-for="(suggestion, idx) in usageStore.summary.suggestions"
-            :key="idx"
-            class="list-item suggestion"
-          >
-            <span class="suggestion-text">{{ suggestion }}</span>
-          </div>
-        </div>
-      </section>
-    </div>
+      <footer class="foot">
+        <SButton size="sm" @click="usageStore.fetchReport()">Reload log</SButton>
+      </footer>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.usage-view {
-  display: flex;
-  flex-direction: column;
+.usage {
   height: 100%;
   overflow-y: auto;
-  padding: var(--space-5) var(--space-6);
+  padding: var(--space-6) var(--space-6) var(--space-10);
+  max-width: 920px;
 }
 
-/* Page header */
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-5);
-  flex-shrink: 0;
+.head {
+  margin-bottom: var(--space-6);
 }
 
 .page-title {
-  font-family: var(--font-sans);
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
-  margin: 0;
+  margin: 0 0 var(--space-2);
 }
 
-.page-subtitle {
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
-/* Loading */
-.loading-state {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-8) 0;
-  justify-content: center;
-}
-
-.spinner {
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid var(--border-default);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 600ms linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.loading-label {
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
+.head-line {
+  font-size: var(--text-lg);
   color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 68ch;
+  text-wrap: pretty;
 }
 
-/* Content */
-.usage-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+.figure {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Sections */
-.usage-section {
-  display: flex;
-  flex-direction: column;
+/* ── Ranked list ────────────────────────────────────────── */
+
+.rows {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
 }
 
-/* Grouped list */
-.grouped-list {
-  background: var(--surface-panel);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.list-item {
-  display: flex;
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 19rem) minmax(3rem, 1fr) 3rem 7rem 8rem;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
-  min-height: var(--list-row-height);
-  font-family: var(--font-sans);
-  transition: background var(--duration-fast) var(--ease-default);
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
 }
 
-.list-item + .list-item {
-  border-top: 1px solid var(--border-subtle);
-}
-
-.list-item.clickable {
-  cursor: pointer;
-}
-
-.list-item.clickable:hover {
+.row:hover {
   background: var(--surface-hover);
 }
 
-.item-left {
+.row-name {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.rank {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--text-tertiary);
-  width: 18px;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.item-name {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
+  gap: var(--space-2);
   color: var(--text-primary);
-  white-space: nowrap;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.item-date {
-  font-size: var(--text-xs);
+.row-bar {
+  position: relative;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+
+.row:hover .row-bar {
+  background: var(--border-subtle);
+}
+
+.row-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  border-radius: inherit;
+  transform-origin: left center;
+}
+
+.stale .row-fill {
+  background: var(--text-tertiary);
+  opacity: 0.6;
+}
+
+.row-runs {
+  text-align: right;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.row-when,
+.row-where {
   color: var(--text-tertiary);
-  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.suggestion-text {
-  font-size: var(--text-sm);
+.stale .row-name {
   color: var(--text-secondary);
-  line-height: 1.5;
 }
 
-.list-empty {
-  padding: var(--space-4) var(--space-3);
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-  text-align: center;
+/* ── Never used ─────────────────────────────────────────── */
+
+.never {
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
 }
 
-/* Empty state */
-.empty-usage {
+.never-head {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: baseline;
   gap: var(--space-2);
-  padding: var(--space-10) var(--space-6);
-  text-align: center;
-  max-width: 340px;
+  margin-bottom: var(--space-2);
 }
 
-.empty-usage-title {
-  font-family: var(--font-sans);
-  font-size: var(--text-lg);
+.never-title {
+  font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
   margin: 0;
 }
 
-.empty-usage-desc {
-  font-family: var(--font-sans);
+.never-count {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.never-line {
   font-size: var(--text-sm);
   color: var(--text-secondary);
-  line-height: 1.5;
+  margin: 0 0 var(--space-3);
+  max-width: 68ch;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  list-style: none;
   margin: 0;
+  padding: 0;
+}
+
+.chips li {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--surface-hover);
+  border-radius: var(--radius-xs);
+  padding: 2px var(--space-2);
+}
+
+.foot {
+  padding-top: var(--space-6);
+}
+
+/* ── Skeleton ───────────────────────────────────────────── */
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.sk {
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  animation: pulse 1.4s var(--ease-default) infinite;
+}
+
+.sk-title {
+  height: 24px;
+  width: 40%;
+}
+.sk-row {
+  height: 40px;
+  width: 100%;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk {
+    animation: none;
+  }
 }
 </style>

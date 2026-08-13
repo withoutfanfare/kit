@@ -614,6 +614,40 @@ pub struct SessionLoadout {
     pub unreachable_overrides: Vec<String>,
 }
 
+/// How often one skill ran inside one project.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageProjectCount {
+    pub name: String,
+    pub runs: usize,
+}
+
+/// One skill's whole history, reduced to what a keep-or-drop decision needs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageSkillRow {
+    pub skill: String,
+    pub runs: usize,
+    pub last_used_at: Option<DateTime<Utc>>,
+    /// `false` for plugin and account skills, which the library does not hold.
+    pub in_library: bool,
+    pub projects: Vec<UsageProjectCount>,
+}
+
+/// The usage log, ranked and summarised.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageReport {
+    /// `false` when no logs were found — not the same as nothing being used.
+    pub available: bool,
+    pub event_count: usize,
+    pub recorded_since: Option<DateTime<Utc>>,
+    pub distinct_skills: usize,
+    pub rows: Vec<UsageSkillRow>,
+    /// Library skills with no recorded run at all.
+    pub never_used: Vec<String>,
+}
+
 /// One linked skill at a location, with how often it has actually been used.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -3,20 +3,20 @@ import { computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useLoadoutStore } from "@/stores/loadoutStore";
 import { useLocationsStore } from "@/stores/locationsStore";
-import { SBadge, SEmptyState } from "@stuntrocket/ui";
-import type { SkillOrigin } from "@/types";
+import { SBadge, SButton, SEmptyState } from "@stuntrocket/ui";
+import type { LoadoutGroup, SkillOrigin } from "@/types";
 
 const route = useRoute();
 const loadoutStore = useLoadoutStore();
 const locationsStore = useLocationsStore();
 
 /** Falls back to Global, which is the honest default: it always loads. */
-const activeLocationId = computed(
-  () =>
-    (route.params.locationId as string | undefined) ??
-    locationsStore.locationList[0]?.id ??
-    null
-);
+const activeLocationId = computed(() => {
+  const fromRoute = route.params.locationId as string | undefined;
+  if (fromRoute) return fromRoute;
+  const list = locationsStore.locationList;
+  return list.find((l) => l.kind === "global")?.id ?? list[0]?.id ?? null;
+});
 
 const originLabel: Record<SkillOrigin, string> = {
   global: "Every session",
@@ -25,253 +25,618 @@ const originLabel: Record<SkillOrigin, string> = {
   account: "Account",
 };
 
+/** Heaviest source first — the thing worth acting on leads. */
+const ranked = computed(() =>
+  [...loadoutStore.countedGroups].sort((a, b) => b.tokenEstimate - a.tokenEstimate)
+);
+
+const total = computed(() => loadoutStore.loadout?.tokenEstimate ?? 0);
+
+function share(group: LoadoutGroup): number {
+  if (!total.value) return 0;
+  return Math.round((group.tokenEstimate / total.value) * 100);
+}
+
+/**
+ * A segment is only useful if you can find its name in the key, so each group
+ * gets its own step. Global and the project keep the accent; the plugins walk
+ * down one neutral ramp in rank order, which stays restrained while remaining
+ * separable.
+ */
+function tint(group: LoadoutGroup, index: number): string {
+  if (group.origin === "global") return "var(--accent)";
+  if (group.origin === "project") return "var(--accent-hover)";
+  const step = Math.min(index, 5);
+  return `color-mix(in srgb, var(--text-tertiary) ${88 - step * 13}%, transparent)`;
+}
+
+/** Used / linked, as a proportion — the "is it earning its place" number. */
+const usedShare = computed(() => {
+  const u = loadoutStore.usage;
+  if (!u?.available || !u.linkedCount) return null;
+  return Math.round((u.usedHereCount / u.linkedCount) * 100);
+});
+
 function refresh() {
   const id = activeLocationId.value;
   if (id) loadoutStore.load(id);
 }
 
-onMounted(refresh);
+// Reachable straight from the sidebar, so the locations may not have been
+// fetched yet by the Locations view. Without this the page sits on its empty
+// state with nothing to select.
+onMounted(async () => {
+  if (locationsStore.locationList.length === 0) {
+    await locationsStore.fetchList();
+  }
+  refresh();
+});
 watch(activeLocationId, refresh);
 </script>
 
 <template>
-  <div class="loadout-view">
-    <div v-if="loadoutStore.isLoading" class="loadout-status">Working it out…</div>
+  <div class="loadout">
+    <!-- Skeleton rather than a spinner: the shape of the answer arrives first. -->
+    <div v-if="loadoutStore.isLoading" class="skeleton" aria-busy="true">
+      <div class="sk sk-title"></div>
+      <div class="sk sk-bar"></div>
+      <div class="sk sk-row"></div>
+      <div class="sk sk-row"></div>
+    </div>
 
     <SEmptyState
       v-else-if="!loadoutStore.loadout"
-      title="Nothing to show"
-      description="Select a location to see what loads into a session there."
+      title="Nothing loading yet"
+      description="Pick a location and Kit will work out which skills reach a session there, and what they cost."
     />
 
     <template v-else>
-      <header class="loadout-header">
-        <div>
-          <h2 class="loadout-title">
-            What loads in {{ loadoutStore.loadout.locationLabel }}
-          </h2>
-          <p class="loadout-subtitle">
-            {{ loadoutStore.loadout.modelFacingCount }} skills reach the model,
-            costing roughly
-            {{ loadoutStore.loadout.tokenEstimate.toLocaleString() }} tokens every
-            session.
-            <template v-if="loadoutStore.loadout.commandOnlyCount > 0">
-              A further {{ loadoutStore.loadout.commandOnlyCount }} are
-              slash-command only and cost nothing.
-            </template>
-          </p>
-        </div>
+      <header class="head">
+        <h1 class="page-title">{{ loadoutStore.loadout.locationLabel }}</h1>
+        <p class="head-line">
+          <strong class="figure">{{ loadoutStore.loadout.modelFacingCount }}</strong>
+          skills reach the model, costing about
+          <strong class="figure">{{ total.toLocaleString() }}</strong>
+          tokens of context every session.
+        </p>
+        <p v-if="loadoutStore.loadout.commandOnlyCount" class="head-aside">
+          {{ loadoutStore.loadout.commandOnlyCount }} more are slash-command only,
+          and cost nothing until you call them.
+        </p>
       </header>
 
-      <!-- Linked against actually used. The gap is the point. -->
-      <section v-if="loadoutStore.usage" class="loadout-usage">
+      <!-- The one decisive device: cost as proportion, not as a number. -->
+      <section class="budget" aria-label="Context cost by source">
+        <div class="budget-bar">
+          <span
+            v-for="(group, i) in ranked"
+            :key="`${group.origin}-${group.label}`"
+            class="seg"
+            :style="{
+              width: `${share(group)}%`,
+              background: tint(group, i),
+              animationDelay: `${i * 40}ms`,
+            }"
+            :title="`${group.label} — ${group.tokenEstimate.toLocaleString()} tokens`"
+          />
+        </div>
+        <ol class="budget-key">
+          <li v-for="(group, i) in ranked" :key="`k-${group.origin}-${group.label}`">
+            <span class="dot" :style="{ background: tint(group, i) }" />
+            <span class="key-name">{{ group.label }}</span>
+            <span class="key-share">{{ share(group) }}%</span>
+          </li>
+        </ol>
+      </section>
+
+      <!-- Is any of it earning its place. -->
+      <section v-if="loadoutStore.usage" class="earning">
         <template v-if="!loadoutStore.usage.available">
-          No usage logs found yet, so Kit can't say what's earning its place
-          here. That's missing data, not zero use.
+          <p class="earning-none">
+            No usage logs found yet, so Kit can't say what's earning its place.
+            That's missing data, not zero use.
+          </p>
         </template>
-        <template v-else-if="loadoutStore.usage.linkedCount > 0">
-          <strong>
-            {{ loadoutStore.usage.usedHereCount }} of
-            {{ loadoutStore.usage.linkedCount }}
-          </strong>
-          skills linked here have actually been used here, across
-          {{ loadoutStore.usage.eventCount.toLocaleString() }} recorded
-          invocations.
+        <template v-else-if="usedShare !== null">
+          <div class="earning-row">
+            <div class="meter" :style="{ '--pct': usedShare / 100 }">
+              <span class="meter-fill" />
+            </div>
+            <p class="earning-text">
+              <strong class="figure">{{ loadoutStore.usage.usedHereCount }}</strong>
+              of {{ loadoutStore.usage.linkedCount }} skills linked here have
+              actually been used here, across
+              {{ loadoutStore.usage.eventCount.toLocaleString() }} recorded runs.
+            </p>
+          </div>
         </template>
       </section>
 
-      <!-- The failure this view exists to catch. -->
-      <section v-if="loadoutStore.conflictCount > 0" class="loadout-alert">
-        <strong>
-          {{ loadoutStore.conflictCount }}
-          {{ loadoutStore.conflictCount === 1 ? "skill is" : "skills are" }}
-          linked here but switched off globally
-        </strong>
-        <p>
+      <!-- Conflicts: named, counted, and collapsed so they don't become a wall. -->
+      <details v-if="loadoutStore.conflictCount > 0" class="flag flag-warn">
+        <summary>
+          <span class="flag-count">{{ loadoutStore.conflictCount }}</span>
+          <span class="flag-headline">
+            linked here, but switched off globally
+          </span>
+          <span class="flag-more">Show</span>
+        </summary>
+        <p class="flag-body">
           A <code>skillOverrides</code> entry beats every symlink, so these look
-          active and are not. Unlinking them instead keeps per-project tailoring
+          active and are not. Unlink them instead and per-project tailoring keeps
           working.
         </p>
-        <ul class="loadout-conflicts">
+        <ul class="chips">
           <li v-for="skill in loadoutStore.loadout.vetoed" :key="skill.path">
             {{ skill.folderName }}
           </li>
         </ul>
-      </section>
+      </details>
 
-      <section v-if="loadoutStore.hasOverrideProblems" class="loadout-alert muted">
-        <p v-if="loadoutStore.loadout.deadOverrides.length">
-          <strong>Overrides pointing at nothing:</strong>
-          {{ loadoutStore.loadout.deadOverrides.join(", ") }} — no such skill
-          exists, so these entries do nothing.
+      <details v-if="loadoutStore.hasOverrideProblems" class="flag">
+        <summary>
+          <span class="flag-count">
+            {{
+              loadoutStore.loadout.deadOverrides.length +
+              loadoutStore.loadout.unreachableOverrides.length
+            }}
+          </span>
+          <span class="flag-headline">overrides that aren't doing what you think</span>
+          <span class="flag-more">Show</span>
+        </summary>
+        <p v-if="loadoutStore.loadout.deadOverrides.length" class="flag-body">
+          <strong>Pointing at nothing.</strong> No skill by these names exists, so
+          the entries do nothing at all.
         </p>
-        <p v-if="loadoutStore.loadout.unreachableOverrides.length">
-          <strong>Overrides that can't bite:</strong>
-          {{ loadoutStore.loadout.unreachableOverrides.join(", ") }} — these exist
-          only under a <code>plugin:skill</code> name, which a bare-name override
-          never matches. They are still loading.
+        <ul v-if="loadoutStore.loadout.deadOverrides.length" class="chips">
+          <li v-for="name in loadoutStore.loadout.deadOverrides" :key="name">{{ name }}</li>
+        </ul>
+        <p v-if="loadoutStore.loadout.unreachableOverrides.length" class="flag-body">
+          <strong>Can't bite.</strong> These exist only under a
+          <code>plugin:skill</code> name, which a bare-name override never matches.
+          They are still loading.
         </p>
-      </section>
+        <ul v-if="loadoutStore.loadout.unreachableOverrides.length" class="chips">
+          <li v-for="name in loadoutStore.loadout.unreachableOverrides" :key="name">
+            {{ name }}
+          </li>
+        </ul>
+      </details>
 
       <section
-        v-for="group in loadoutStore.countedGroups"
-        :key="`${group.origin}-${group.label}`"
-        class="loadout-group"
+        v-for="group in ranked"
+        :key="`g-${group.origin}-${group.label}`"
+        class="group"
       >
         <div class="group-head">
-          <span class="group-label">{{ group.label }}</span>
+          <span class="dot" :style="{ background: tint(group, ranked.indexOf(group)) }" />
+          <h3 class="group-name">{{ group.label }}</h3>
           <SBadge>{{ originLabel[group.origin] }}</SBadge>
           <span class="group-cost">
-            {{ group.modelFacingCount }} skills · ~{{
-              group.tokenEstimate.toLocaleString()
-            }}
-            tokens
+            {{ group.modelFacingCount }} skills
+            <span class="sep">·</span>
+            {{ group.tokenEstimate.toLocaleString() }} tokens
           </span>
         </div>
-        <ul class="group-skills">
+        <ul class="skills">
           <li
             v-for="skill in group.skills.filter((s) => !s.vetoedBy)"
             :key="skill.path"
-            :class="{ 'command-only': !skill.modelFacing }"
+            :class="{ quiet: !skill.modelFacing }"
           >
-            {{ skill.id }}
-            <span v-if="!skill.modelFacing" class="hint">command only</span>
+            <span class="skill-name">{{ skill.id }}</span>
+            <span v-if="!skill.modelFacing" class="skill-tag">command</span>
           </li>
         </ul>
       </section>
 
-      <section v-if="loadoutStore.uncountedGroups.length" class="loadout-group">
+      <section v-if="loadoutStore.uncountedGroups.length" class="group group-muted">
         <div class="group-head">
-          <span class="group-label">Account packs</span>
+          <span class="dot dot-unknown" />
+          <h3 class="group-name">Account packs</h3>
           <SBadge variant="warning">Not counted</SBadge>
         </div>
-        <p class="group-caveat">
-          {{ loadoutStore.uncountedGroups[0].caveat }}
-        </p>
-        <ul class="group-skills">
+        <p class="group-caveat">{{ loadoutStore.uncountedGroups[0].caveat }}</p>
+        <ul class="packs">
           <li v-for="group in loadoutStore.uncountedGroups" :key="group.label">
-            {{ group.label }}
-            <span class="hint">{{ group.modelFacingCount }} skills cached</span>
+            <span class="pack-name">{{ group.label }}</span>
+            <span class="pack-count">{{ group.modelFacingCount }}</span>
           </li>
         </ul>
       </section>
+
+      <footer class="foot">
+        <SButton size="sm" @click="refresh">Rescan</SButton>
+      </footer>
     </template>
   </div>
 </template>
 
 <style scoped>
-.loadout-view {
-  padding: var(--space-4);
-  overflow-y: auto;
+.loadout {
   height: 100%;
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-6) var(--space-10);
+  max-width: 920px;
 }
 
-.loadout-status {
-  padding: var(--space-6);
-  color: var(--text-tertiary);
-  font-size: var(--text-sm);
+/* ── Header ─────────────────────────────────────────────── */
+
+.head {
+  margin-bottom: var(--space-6);
 }
 
-.loadout-header {
-  margin-bottom: var(--space-4);
-}
-
-.loadout-title {
-  font-size: var(--text-base);
+.page-title {
+  font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.head-line {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-normal);
+  color: var(--text-secondary);
+  line-height: 1.5;
   margin: 0;
+  max-width: 68ch;
+  text-wrap: pretty;
 }
 
-.loadout-subtitle {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  margin: var(--space-1) 0 0;
+.figure {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
 }
 
-.loadout-usage {
+.head-aside {
   font-size: var(--text-sm);
-  color: var(--text-secondary);
-  padding: var(--space-2) var(--space-3);
+  color: var(--text-tertiary);
+  margin: var(--space-2) 0 0;
+  max-width: 60ch;
+}
+
+/* ── Budget bar ─────────────────────────────────────────── */
+
+.budget {
+  margin-bottom: var(--space-6);
+}
+
+.budget-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
   margin-bottom: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-hover);
 }
 
-.loadout-alert {
-  border: 1px solid var(--border-warning, var(--border-default));
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
-  margin-bottom: var(--space-4);
+.seg {
+  border-radius: var(--radius-full);
+  min-width: 3px;
+  transform-origin: left center;
+  animation: grow var(--duration-normal) var(--ease-out) both;
 }
 
-.loadout-alert.muted {
-  border-color: var(--border-default);
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
-.loadout-alert p {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  margin: var(--space-1) 0 0;
+@media (prefers-reduced-motion: reduce) {
+  .seg {
+    animation: none;
+  }
 }
 
-.loadout-conflicts {
+.budget-key {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: var(--space-2) 0 0;
-  padding: 0;
+  gap: var(--space-1) var(--space-4);
   list-style: none;
-  font-size: var(--text-xs);
+  margin: 0;
+  padding: 0;
+}
+
+.budget-key li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.dot-unknown {
+  background: var(--border-strong);
+}
+
+.key-share {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Earning its place ──────────────────────────────────── */
+
+.earning {
+  margin-bottom: var(--space-6);
+}
+
+.earning-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.meter {
+  position: relative;
+  width: 64px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--surface-hover);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.meter-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--color-success);
+  border-radius: inherit;
+  /* scaleX rather than width: no layout work on a value that animates. */
+  transform: scaleX(var(--pct));
+  transform-origin: left center;
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.earning-text,
+.earning-none {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 62ch;
+}
+
+/* ── Flags ──────────────────────────────────────────────── */
+
+.flag {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  background: var(--surface-panel);
+}
+
+.flag-warn {
+  border-color: color-mix(in srgb, var(--color-warning) 45%, transparent);
+}
+
+.flag summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: default;
+  list-style: none;
+}
+
+.flag summary::-webkit-details-marker {
+  display: none;
+}
+
+.flag-count {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.5em;
+}
+
+.flag-warn .flag-count {
+  color: var(--color-warning);
+}
+
+.flag-headline {
+  flex: 1;
+  font-size: var(--text-md);
+  color: var(--text-primary);
+}
+
+.flag-more {
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
 
-.loadout-group {
-  margin-bottom: var(--space-4);
+.flag[open] .flag-more {
+  color: var(--accent);
+}
+
+.flag-body {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: var(--space-3) 0 var(--space-2);
+  max-width: 68ch;
+}
+
+.flag code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--text-primary);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+}
+
+.chips li {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--surface-hover);
+  border-radius: var(--radius-xs);
+  padding: 2px var(--space-2);
+}
+
+/* ── Groups ─────────────────────────────────────────────── */
+
+.group {
+  margin-bottom: var(--space-6);
 }
 
 .group-head {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-3);
 }
 
-.group-label {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
+.group-name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
   color: var(--text-primary);
+  margin: 0;
 }
 
 .group-cost {
   margin-left: auto;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
-.group-caveat {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  margin: 0 0 var(--space-2);
+.sep {
+  opacity: 0.5;
+  margin: 0 2px;
 }
 
-.group-skills {
+.skills {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--space-1) var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-1) var(--space-4);
+  list-style: none;
   margin: 0;
   padding: 0;
-  list-style: none;
+}
+
+.skills li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  min-width: 0;
+}
+
+.skill-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skills li.quiet .skill-name {
+  color: var(--text-tertiary);
+}
+
+.skill-tag {
   font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.group-muted .group-name {
   color: var(--text-secondary);
 }
 
-.group-skills .command-only {
+.group-caveat {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  margin: 0 0 var(--space-3);
+  max-width: 68ch;
+}
+
+.packs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--space-1) var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.packs li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
 
-.hint {
-  color: var(--text-tertiary);
-  font-size: var(--text-xs);
+.pack-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Foot & skeleton ────────────────────────────────────── */
+
+.foot {
+  padding-top: var(--space-2);
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.sk {
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  animation: pulse 1.4s var(--ease-default) infinite;
+}
+
+.sk-title {
+  height: 24px;
+  width: 40%;
+}
+.sk-bar {
+  height: 10px;
+  width: 100%;
+}
+.sk-row {
+  height: 56px;
+  width: 100%;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk {
+    animation: none;
+  }
 }
 </style>
