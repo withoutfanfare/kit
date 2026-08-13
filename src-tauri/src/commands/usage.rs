@@ -76,6 +76,26 @@ pub async fn get_usage_summary(state: State<'_, SharedState>) -> Result<UsageSum
     })
 }
 
+/// The whole usage log, ranked: how often each skill ran, how recently, and
+/// where — plus the library skills that have never run at all.
+#[tauri::command]
+pub async fn get_usage_report(state: State<'_, SharedState>) -> Result<UsageReport, AppError> {
+    let prefs = {
+        let guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;
+        guard.preferences().clone()
+    };
+
+    let library_root = PathBuf::from(&prefs.library_root);
+    let index = UsageIndex::load(&library_root);
+    let library: Vec<String> = scanner::scan_library_skills(&library_root)
+        .into_iter()
+        .filter(|s| !s.archived)
+        .map(|s| s.folder_name)
+        .collect();
+
+    Ok(index.report(&library))
+}
+
 /// What is linked into one location, set against what has actually been used
 /// there. The gap between the two is the reason this view exists.
 #[tauri::command]

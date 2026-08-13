@@ -20,13 +20,16 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Duration, Utc};
 use serde::Deserialize;
 
-use crate::domain::SkillUsage;
+use crate::domain::{SkillUsage, UsageProjectCount, UsageReport, UsageSkillRow};
 
 #[derive(Debug, Deserialize)]
 struct RawEvent {
     skill: Option<String>,
     timestamp: Option<DateTime<Utc>>,
     cwd: Option<String>,
+    /// The folder the run happened in, as the hook recorded it. Good enough to
+    /// label a row; `cwd` is what attribution actually matches on.
+    project: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +37,7 @@ pub struct UsageEvent {
     pub skill: String,
     pub at: DateTime<Utc>,
     pub cwd: Option<PathBuf>,
+    pub project: Option<String>,
 }
 
 /// Every recorded invocation, ready to be queried.
@@ -89,6 +93,7 @@ impl UsageIndex {
                     skill,
                     at,
                     cwd: raw.cwd.map(PathBuf::from),
+                    project: raw.project,
                 });
             }
         }
@@ -171,6 +176,64 @@ impl UsageIndex {
             .collect();
         rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
         rows
+    }
+
+    /// Every skill that has ever run, ranked, with where it ran.
+    ///
+    /// This is the whole log reduced to the shape a decision needs: how often,
+    /// how recently, and in which project.
+    pub fn report(&self, library_skills: &[String]) -> UsageReport {
+        let mut by_skill: HashMap<&str, Vec<&UsageEvent>> = HashMap::new();
+        for event in &self.events {
+            by_skill.entry(event.skill.as_str()).or_default().push(event);
+        }
+
+        let mut rows: Vec<UsageSkillRow> = by_skill
+            .iter()
+            .map(|(skill, events)| {
+                let mut per_project: HashMap<&str, usize> = HashMap::new();
+                for e in events {
+                    let label = e.project.as_deref().unwrap_or("elsewhere");
+                    *per_project.entry(label).or_default() += 1;
+                }
+                let mut projects: Vec<UsageProjectCount> = per_project
+                    .into_iter()
+                    .map(|(name, runs)| UsageProjectCount {
+                        name: name.to_string(),
+                        runs,
+                    })
+                    .collect();
+                projects.sort_by(|a, b| b.runs.cmp(&a.runs).then_with(|| a.name.cmp(&b.name)));
+
+                UsageSkillRow {
+                    skill: (*skill).to_string(),
+                    runs: events.len(),
+                    last_used_at: events.iter().map(|e| e.at).max(),
+                    in_library: library_skills.iter().any(|s| s == *skill),
+                    projects,
+                }
+            })
+            .collect();
+        rows.sort_by(|a, b| b.runs.cmp(&a.runs).then_with(|| a.skill.cmp(&b.skill)));
+
+        // A library skill with no event at all is the list worth acting on.
+        let ever_used: std::collections::HashSet<&str> =
+            by_skill.keys().copied().collect();
+        let mut never_used: Vec<String> = library_skills
+            .iter()
+            .filter(|s| !ever_used.contains(s.as_str()))
+            .cloned()
+            .collect();
+        never_used.sort();
+
+        UsageReport {
+            available: self.available,
+            event_count: self.events.len(),
+            recorded_since: self.earliest(),
+            distinct_skills: rows.len(),
+            rows,
+            never_used,
+        }
     }
 }
 

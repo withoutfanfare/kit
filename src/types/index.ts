@@ -90,6 +90,28 @@ export type SessionLoadout = {
   unreachableOverrides: string[];
 };
 
+export type UsageProjectCount = { name: string; runs: number };
+
+export type UsageSkillRow = {
+  skill: string;
+  runs: number;
+  lastUsedAt: string | null;
+  /** False for plugin and account skills, which the library doesn't hold. */
+  inLibrary: boolean;
+  projects: UsageProjectCount[];
+};
+
+export type UsageReport = {
+  /** False when no logs were found — not the same as nothing being used. */
+  available: boolean;
+  eventCount: number;
+  recordedSince: string | null;
+  distinctSkills: number;
+  rows: UsageSkillRow[];
+  /** Library skills with no recorded run at all. */
+  neverUsed: string[];
+};
+
 export type LocationUsageRow = {
   skillId: SkillId;
   name: string;
