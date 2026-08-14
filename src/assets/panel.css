@@ -593,15 +593,6 @@
    deliberately desaturated: a categorical chart needs its categories told
    apart, but six fully-saturated hues read as a rainbow rather than as data.
    Six steps, each distinguishable from its neighbour at 8px tall. */
-.dark {
-  --load-1: #E08A5F;
-  --load-2: #D4A855;
-  --load-3: #6FA98A;
-  --load-4: #6690B0;
-  --load-5: #8A85B8;
-  --load-6: #5A5F68;
-}
-
 :root {
   --load-1: #B5622F;
   --load-2: #9A7420;
@@ -609,6 +600,15 @@
   --load-4: #416E8C;
   --load-5: #635E96;
   --load-6: #8A8F98;
+}
+
+.dark {
+  --load-1: #E08A5F;
+  --load-2: #D4A855;
+  --load-3: #6FA98A;
+  --load-4: #6690B0;
+  --load-5: #8A85B8;
+  --load-6: #5A5F68;
 }
 
 /* — Meter ——————————————————————————————————————

@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { useAppStore } from "@/stores/appStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -6,11 +8,26 @@ const router = createRouter({
     {
       // Honours the Default view preference. It used to hard-redirect, which
       // made the setting in Settings a control that changed nothing.
+      //
+      // A guard rather than a `redirect`, because a record's redirect is
+      // resolved before any guard runs and so cannot wait for anything. The
+      // component is never rendered: the guard always sends the navigation on.
       path: "/",
-      redirect: () => {
+      name: "root",
+      component: () => import("@/views/PanelView.vue"),
+      beforeEnter: async () => {
+        // localStorage is only a mirror of the preference, written during
+        // bootstrap. Warm, it answers instantly and the window paints at once.
         const stored = localStorage.getItem("kit.defaultView");
-        if (stored === "locations" || stored === "skills") return `/${stored}`;
-        return "/panel";
+        if (stored === "panel" || stored === "locations" || stored === "skills") {
+          return `/${stored}`;
+        }
+        // Cold — first run after upgrading, or storage cleared. Guessing here
+        // would ignore a saved default and open the wrong view, so wait for the
+        // real one the once. If bootstrap fails, Panel is the safe landing.
+        const app = useAppStore();
+        const ok = await app.ensureBootstrapped();
+        return ok ? `/${usePreferencesStore().defaultView}` : "/panel";
       },
     },
     {

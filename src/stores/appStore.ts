@@ -37,6 +37,19 @@ export const useAppStore = defineStore("app", () => {
     toasts.value = toasts.value.filter((t) => t.id !== id);
   }
 
+  // Bootstrap is wanted in two places now — App on mount, and the root route,
+  // which cannot pick a default view until the saved preference has arrived.
+  // Sharing the in-flight promise keeps that to one round trip.
+  let inFlight: Promise<boolean> | null = null;
+
+  async function ensureBootstrapped(): Promise<boolean> {
+    if (isBootstrapped.value) return true;
+    inFlight ??= bootstrap().finally(() => {
+      inFlight = null;
+    });
+    return inFlight;
+  }
+
   async function bootstrap(): Promise<boolean> {
     isLoading.value = true;
     try {
@@ -89,6 +102,7 @@ export const useAppStore = defineStore("app", () => {
     needsSetup,
     toasts,
     bootstrap,
+    ensureBootstrapped,
     clearError,
     openGlobalSearch,
     closeGlobalSearch,

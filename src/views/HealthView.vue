@@ -396,7 +396,7 @@ onMounted(() => {
   margin-right: 0;
 }
 
-.filter .rating {
+.filter .num {
   font-size: var(--text-lg);
   color: var(--text-primary);
 }
@@ -405,8 +405,8 @@ onMounted(() => {
   font-size: var(--text-sm);
 }
 
-.filter:hover .rating,
-.filter.active .rating {
+.filter:hover .num,
+.filter.active .num {
   color: var(--accent);
 }
 
@@ -420,13 +420,13 @@ onMounted(() => {
   align-self: center;
 }
 
-.filter.is-warning:hover .rating,
-.filter.is-warning.active .rating {
+.filter.is-warning:hover .num,
+.filter.is-warning.active .num {
   color: var(--warning);
 }
 
-.filter.is-error:hover .rating,
-.filter.is-error.active .rating {
+.filter.is-error:hover .num,
+.filter.is-error.active .num {
   color: var(--danger);
 }
 
@@ -448,15 +448,15 @@ onMounted(() => {
   color: var(--text-tertiary);
 }
 
-.count .rating {
+.count .num {
   color: var(--text-secondary);
 }
 
-.count.is-error .rating {
+.count.is-error .num {
   color: var(--danger);
 }
 
-.count.is-warning .rating {
+.count.is-warning .num {
   color: var(--warning);
 }
 

@@ -21,6 +21,7 @@ import type {
   LocationComparison,
   LocationDetail,
   LocationUsage,
+  Preferences,
   SavedLocationSummary,
   SessionLoadout,
   SetDetail,
@@ -543,8 +544,31 @@ const bootstrap: AppBootstrap = {
   counts: { skills: skillSeeds.length, sets: sets.length, archivedSkills: 2, brokenLinks: 1 },
 };
 
+/** The preferences as fixture mode currently holds them. Mutated by
+ *  `update_preferences`, so Settings behaves rather than throwing. */
+const preferences: Preferences = {
+  libraryRoot: LIBRARY,
+  editorCommand: bootstrap.editorCommand,
+  defaultView: bootstrap.defaultView,
+  showArchived: bootstrap.showArchived,
+  trackSkillVersions: false,
+};
+
 const handlers: Record<string, (a: any) => unknown> = {
   get_app_bootstrap: () => bootstrap,
+  // Not a no-op: the store reads the updated preferences straight off the
+  // result, so returning nothing threw the moment anything was changed.
+  update_preferences: (a): Preferences => {
+    Object.assign(preferences, a?.prefs ?? {});
+    // A real backend persists, so the next bootstrap has to agree — otherwise
+    // anything that reads the saved preference on start-up, like the default
+    // view, silently reverts.
+    bootstrap.libraryRoot = preferences.libraryRoot;
+    bootstrap.editorCommand = preferences.editorCommand;
+    bootstrap.defaultView = preferences.defaultView;
+    bootstrap.showArchived = preferences.showArchived;
+    return { ...preferences };
+  },
   list_locations: () => locations,
   // The real command takes `id`; the loadout and usage ones take `locationId`.
   get_location_detail: (a) => detailFor(a?.id ?? a?.locationId ?? "__global__"),
@@ -650,7 +674,7 @@ const handlers: Record<string, (a: any) => unknown> = {
 /** Commands that only mutate; the UI just needs them not to throw. */
 const noop = new Set([
   "add_location", "remove_location", "update_location", "sync_location",
-  "update_preferences", "start_library_watcher", "stop_library_watcher",
+  "start_library_watcher", "stop_library_watcher",
   "open_path_in_editor", "reveal_in_finder", "archive_skill", "unarchive_skill",
   "create_set", "update_set", "delete_set", "add_skill_to_set",
   "remove_skill_from_set", "update_manifest_entry", "toggle_skill_activation",
