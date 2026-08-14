@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from "@/components/base/EmptyState.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useSetsStore } from "@/stores/setsStore";
 import { useLocationsStore } from "@/stores/locationsStore";
@@ -7,7 +8,7 @@ import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import SetRow from "@/components/domain/SetRow.vue";
 import SetInspector from "@/components/domain/SetInspector.vue";
 import LibraryTabs from "@/components/domain/LibraryTabs.vue";
-import { SSearchInput, SSegmentedControl, SButton, SEmptyState } from "@stuntrocket/ui";
+import { SSearchInput, SSegmentedControl, SButton } from "@stuntrocket/ui";
 import type { SetScope, SetSummary } from "@/types";
 import { setKeyFromSummary } from "@/utils/setKey";
 
@@ -132,20 +133,22 @@ watch(
           </div>
         </div>
         <div v-if="setsStore.items.length > 0" class="sidebar-footer">
-          <SButton variant="primary" @click="openNewSetDialog">New Set</SButton>
+          <SButton variant="primary" @click="openNewSetDialog">New set</SButton>
         </div>
       </div>
     </template>
     <template #main>
       <router-view v-if="setsStore.selectedSetKey" />
-      <SEmptyState
+      <EmptyState
+        icon="library"
         v-else-if="setsStore.items.length === 0 && !setsStore.isLoading"
         title="No sets yet"
         description="Sets group related skills for assignment to projects."
         action-label="Create Set"
         @action="openNewSetDialog"
       />
-      <SEmptyState
+      <EmptyState
+        icon="library"
         v-else-if="!setsStore.isLoading"
         title="Select a set"
         description="Choose a set from the sidebar to view its skills and manage assignments."
@@ -168,7 +171,7 @@ watch(
         @click.self="showNewSetDialog = false"
       >
         <div class="dialog" role="dialog" aria-modal="true">
-          <h3 class="dialog-title">New Set</h3>
+          <h3 class="dialog-title">New set</h3>
           <div class="dialog-form">
             <div class="form-field">
               <label class="form-label" for="set-name">Name</label>

@@ -72,7 +72,7 @@ onMounted(() => {
   <div class="health-view">
     <div class="page-header">
       <div class="header-left">
-        <h1 class="page-title">Health Check</h1>
+        <h1 class="page-title">Health check</h1>
         <SBadge v-if="healthStore.result" variant="count">
           {{ healthStore.result.locationCount }} locations scanned
         </SBadge>

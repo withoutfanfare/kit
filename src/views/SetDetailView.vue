@@ -342,7 +342,7 @@ watch(setKey, loadDetail);
       <!-- Assigned Locations section -->
       <div class="detail-section">
         <SSectionHeader
-          title="Assigned Locations"
+          title="Assigned locations"
           :count="detail.assignedLocations.length"
         />
         <div v-if="detail.assignedLocations.length > 0" class="section-group">

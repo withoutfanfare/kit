@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import EmptyState from "@/components/base/EmptyState.vue";
 import { onMounted, watch } from "vue";
 import { useChangelogStore } from "@/stores/changelogStore";
-import { SSearchInput, SSegmentedControl, SEmptyState } from "@stuntrocket/ui";
+import { SSearchInput, SSegmentedControl } from "@stuntrocket/ui";
 
 const store = useChangelogStore();
 
@@ -57,7 +58,8 @@ onMounted(() => {
     <div v-if="store.isLoading" class="changelog-loading">Loading modified skills…</div>
 
     <div v-else-if="store.filteredEntries.length === 0" class="changelog-empty">
-      <SEmptyState
+      <EmptyState
+        icon="changelog"
         title="No modified skills"
         description="Modified skills will appear here."
       />

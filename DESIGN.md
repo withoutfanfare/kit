@@ -62,39 +62,22 @@ descendant selector was silently dropped by the CSS pipeline once already.
 
 ## Status
 
-Built and carrying the world:
+Every screen now carries the system: Panel, Locations (+ detail), Library
+(+ skill detail), Loadout, Usage, Sets (+ detail), Health, Compare, Settings,
+Help, Onboarding, Changelog, plus the shell and the shared components.
 
-- `panel.css` (incl. the shared section/row vocabulary), `global.css`,
-  `index.html` (direction contract)
-- `PanelIcon`, `LinkStateMark`, `SkillStatusLegend`
-- `SidebarNav` (the bus), `WindowToolbar` (rating plate + watcher lamp)
-- `PanelView` (new; the front door), `LoadoutView` (the schedule)
-- `LocationRow`, `LocationList`, `SkillRow`, `SkillList`, `SetRow`, `SetList`
-- `LocationDetailView` (data plate), `SkillsView` (schedule rows, one state mark
-  instead of seven pills), `HealthView` (filter strip, plate causes),
-  `UsageView` (column heads), `ChangelogView`, `HelpView`, `OnboardingView`,
-  `SettingsView`
-- `SkillDetailView`, `SetDetailView` and the three inspectors
-  (`SkillInspector`, `SetInspector`, `LocationInspector`)
+Conventions applied throughout:
 
-Uppercase section labels were normalised to the plate treatment across fifteen
-files, so the app has one heading voice rather than sixteen hand-rolled ones.
-
-**The inspector rule.** An inspector carries only what the main pane cannot:
-where the thing physically lives, its state, and the actions that act on the
-file itself. It previously repeated the summary, linked locations, sets and
-usage that the main pane already showed in full, so every detail screen said
-everything twice and neither copy was authoritative.
-
-Inheriting the world but not structurally reworked — they take the palette,
-type scale, spacing and heading treatment, and read consistently, but their
-composition is the previous design:
-
-`CompareLocationsView`, `AssignmentSheet`, `SelectionPreview`, `IssueList`,
-`LocationOverviewCard`, `LocationHeader`, `SkillPeekPanel`, `BulkAssignModal`,
-`SkillDiffModal`, `GlobalSearchResults`, `ShortcutHelpOverlay`,
-`ManifestEntryEditor`, `LibraryTabs`, `LinkedLocationsList`,
-`UsageSummaryPanel`.
+- **Sentence case** for every heading, label and button. Title Case reads as
+  marketing chrome in a product UI.
+- **Primary buttons are rare.** One per screen at most; everything else is
+  secondary or ghost. Two solid accent buttons on one screen is a hierarchy
+  failure, not emphasis.
+- **Empty states teach.** `EmptyState.vue` is Kit's own, because the shared
+  library's draws a filled 20px glyph where every other icon is a 16px stroke.
+- **Inspectors carry only what the main pane cannot** — where the thing lives,
+  its state, and the actions on the file itself.
+- **Reading surfaces cap their measure** (Help at 860px).
 
 ## One backend change
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import EmptyState from "@/components/base/EmptyState.vue";
 import { computed, onMounted, ref } from "vue";
 import { useUsageStore } from "@/stores/usageStore";
-import { SButton, SEmptyState } from "@stuntrocket/ui";
+import { SButton } from "@stuntrocket/ui";
 import type { UsageSkillRow } from "@/types";
 
 const usageStore = useUsageStore();
@@ -58,7 +59,8 @@ onMounted(() => usageStore.fetchReport());
       <div class="sk sk-row"></div>
     </div>
 
-    <SEmptyState
+    <EmptyState
+      icon="usage"
       v-else-if="usageStore.report && !usageStore.report.available"
       title="No usage logs yet"
       description="Kit reads the log the Skill hook writes into your library. Nothing has been recorded there yet, so there's nothing to judge — that's missing data, not zero use."
@@ -130,7 +132,7 @@ onMounted(() => usageStore.fetchReport());
       </section>
 
       <footer class="foot">
-        <SButton size="sm" @click="usageStore.fetchReport()">Reload log</SButton>
+        <SButton size="sm" variant="secondary" @click="usageStore.fetchReport()">Reload log</SButton>
       </footer>
     </template>
   </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from "@/components/base/EmptyState.vue";
 import { ref, computed, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocationsStore } from "@/stores/locationsStore";
@@ -10,7 +11,7 @@ import {
   linkStateBadgeVariant,
   linkStateLabels,
 } from "@/utils/statusLabels";
-import { SButton, SBadge, SEmptyState } from "@stuntrocket/ui";
+import { SButton, SBadge } from "@stuntrocket/ui";
 import type { LocationComparison, LocationId } from "@/types";
 
 const locationsStore = useLocationsStore();
@@ -125,7 +126,7 @@ onMounted(async () => {
 <template>
   <div class="compare-view">
     <div class="page-header">
-      <h1 class="page-title">Compare Locations</h1>
+      <h1 class="page-title">Compare locations</h1>
       <div v-if="comparison" class="header-actions">
         <SButton variant="secondary" size="sm" @click="exportComparison">
           Copy as Markdown
@@ -191,7 +192,8 @@ onMounted(async () => {
       <span class="loading-label">Comparing locations...</span>
     </div>
 
-    <SEmptyState
+    <EmptyState
+      icon="compare"
       v-else-if="!comparison"
       title="Select two locations to compare"
       description="See which skills each location has, which are shared, and which differ."

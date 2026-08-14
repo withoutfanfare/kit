@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from "@/components/base/EmptyState.vue";
 import { onMounted, ref, computed, watch } from "vue";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useLocationsStore } from "@/stores/locationsStore";
@@ -9,7 +10,7 @@ import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import SkillInspector from "@/components/domain/SkillInspector.vue";
 import PanelIcon from "@/components/base/PanelIcon.vue";
 import LibraryTabs from "@/components/domain/LibraryTabs.vue";
-import { SBadge, SSearchInput, SEmptyState } from "@stuntrocket/ui";
+import { SBadge, SSearchInput } from "@stuntrocket/ui";
 
 const libraryStore = useLibraryStore();
 const locationsStore = useLocationsStore();
@@ -261,12 +262,14 @@ watch(
     </template>
     <template #main>
       <router-view v-if="libraryStore.selectedSkillId" />
-      <SEmptyState
+      <EmptyState
+        icon="library"
         v-else-if="libraryStore.items.length === 0 && !libraryStore.isLoading"
         title="No skills in library"
         description="Set your skill library root in Settings to browse and manage skills."
       />
-      <SEmptyState
+      <EmptyState
+        icon="library"
         v-else-if="!libraryStore.isLoading"
         title="Select a skill"
         description="Choose a skill from the sidebar to see where it's used and manage it."

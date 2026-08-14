@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from "@/components/base/EmptyState.vue";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useRoute, useRouter } from "vue-router";
@@ -10,7 +11,7 @@ import LocationList from "@/components/domain/LocationList.vue";
 import LocationInspector from "@/components/domain/LocationInspector.vue";
 import { pendingRemoval } from "@/composables/useRemoveLocation";
 import { useAppStore } from "@/stores/appStore";
-import { SConfirmDialog, SEmptyState } from "@stuntrocket/ui";
+import { SConfirmDialog } from "@stuntrocket/ui";
 
 const locationsStore = useLocationsStore();
 const appStore = useAppStore();
@@ -178,14 +179,16 @@ onUnmounted(() => {
       </template>
       <template #main>
         <router-view v-if="route.params.locationId" />
-        <SEmptyState
+        <EmptyState
+          icon="location"
           v-else-if="locationsStore.locationList.length === 0"
           title="No projects yet"
           description="Kit will scan the location for skills and issues."
           action-label="Add Location"
           @action="addLocation"
         />
-        <SEmptyState
+        <EmptyState
+          icon="location"
           v-else
           title="Select a location"
           description="Review its skills, sets and health."

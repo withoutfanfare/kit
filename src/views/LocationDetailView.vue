@@ -212,7 +212,7 @@ watch(
         class="recommendations-section"
       >
         <div class="section-header-row">
-          <span class="section-title">Recommended Skills</span>
+          <span class="section-title">Recommended skills</span>
           <SBadge variant="count">{{ visibleRecommendations.length }}</SBadge>
           <div v-if="visibleRecommendations.length > 0" class="recommendation-actions">
             <SButton variant="secondary" size="sm" @click="selectAllRecommendations">
@@ -284,7 +284,7 @@ watch(
 
       <SkillList
         :skills="linkedSkills"
-        title="Assigned Skills"
+        title="Assigned skills"
         show-link-state
         show-legend
         @select-skill="peekSkill"

@@ -6,7 +6,7 @@ import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useAppStore } from "@/stores/appStore";
 import type { SkillsRepoStatus, RepoState, BackupResult, RestorePreview, RestoreResult } from "@/types";
-import { SButton, SBadge, SSegmentedControl } from "@stuntrocket/ui";
+import { SButton, SSegmentedControl } from "@stuntrocket/ui";
 import { useTheme, type ThemePreference } from "@/composables/useTheme";
 
 const { theme, setTheme } = useTheme();
@@ -381,7 +381,7 @@ function formatChecked(iso: string | null): string {
 
     <!-- Skills Repository -->
     <section class="settings-section">
-      <h2 class="section-title">Skills Repository</h2>
+      <h2 class="section-title">Skills repository</h2>
       <div class="settings-group">
         <div class="setting-row">
           <div class="setting-label">
@@ -396,7 +396,7 @@ function formatChecked(iso: string | null): string {
           <div class="setting-label">
             <span class="label-text">Branch</span>
           </div>
-          <SBadge variant="accent">{{ repoStatus.branch }}</SBadge>
+          <span class="badge">{{ repoStatus.branch }}</span>
         </div>
 
         <!-- Status -->
@@ -455,19 +455,19 @@ function formatChecked(iso: string | null): string {
         <div class="setting-row repo-actions-row">
           <div class="repo-actions">
             <SButton variant="secondary" size="sm" @click="revealRepo">Reveal</SButton>
-            <SButton variant="secondary" size="sm" @click="openRepoInEditor">Open in Editor</SButton>
+            <SButton variant="secondary" size="sm" @click="openRepoInEditor">Open in editor</SButton>
             <SButton
               variant="secondary"
               size="sm"
               :loading="isCheckingRepo"
               @click="recheckRepoStatus"
-            >Check for Updates</SButton>
+            >Check for updates</SButton>
             <SButton
               v-if="repoStatus && repoStatus.behindBy > 0"
               variant="secondary"
               size="sm"
               @click="copyPullCommand"
-            >Copy Pull Command</SButton>
+            >Copy pull command</SButton>
           </div>
         </div>
       </div>
@@ -492,7 +492,7 @@ function formatChecked(iso: string | null): string {
 
     <!-- Library Backup -->
     <section class="settings-section">
-      <h2 class="section-title">Library Backup</h2>
+      <h2 class="section-title">Library backup</h2>
       <div class="settings-group">
         <div class="setting-row">
           <div class="setting-label">

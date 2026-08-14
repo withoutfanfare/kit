@@ -57,9 +57,9 @@ async function confirmDelete() {
     </div>
 
     <div class="actions">
-      <SButton variant="secondary" size="sm" @click="openInEditor">Open in Editor</SButton>
+      <SButton variant="secondary" size="sm" @click="openInEditor">Open in editor</SButton>
       <SButton variant="secondary" size="sm" @click="revealInFinder">Reveal in Finder</SButton>
-      <SButton variant="secondary" size="sm" @click="showDeleteConfirm = true">Delete Set</SButton>
+      <SButton variant="secondary" size="sm" @click="showDeleteConfirm = true">Delete set</SButton>
     </div>
   </InspectorPanel>
 

@@ -180,7 +180,7 @@ watch(
             </div>
 
             <div class="peek-actions">
-              <SButton variant="secondary" size="sm" @click="openInEditor">Open in Editor</SButton>
+              <SButton variant="secondary" size="sm" @click="openInEditor">Open in editor</SButton>
               <SButton variant="secondary" size="sm" @click="revealInFinder">Reveal in Finder</SButton>
             </div>
           </template>
