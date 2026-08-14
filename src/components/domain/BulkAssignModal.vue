@@ -105,11 +105,12 @@ function resultFor(id: string) {
 }
 
 .label {
+  font-family: var(--font-plate);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.13em;
 }
 
 .skill-summary {

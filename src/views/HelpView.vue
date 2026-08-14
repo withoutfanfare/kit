@@ -10,6 +10,10 @@ import { linkStateLabels } from "@/utils/statusLabels";
     <section class="settings-section">
       <h2 class="section-title">Start here</h2>
       <nav class="settings-group start-links" aria-label="Start here">
+        <RouterLink to="/panel" class="start-link">
+          <span class="help-title">Panel</span>
+          <span class="help-description">What loads, and what it costs</span>
+        </RouterLink>
         <RouterLink to="/locations" class="start-link">
           <span class="help-title">Locations</span>
           <span class="help-description">Add and review projects</span>
@@ -34,6 +38,16 @@ import { linkStateLabels } from "@/utils/statusLabels";
       <h2 class="section-title">Getting started</h2>
       <div class="settings-group">
         <div class="help-row">
+          <span class="help-title">The Panel</span>
+          <p class="help-description">
+            The screen Kit opens on. It reads your Global folder, the project
+            you're in, and your installed plugins, applies the same rules a
+            session does, and shows what will actually load and roughly what it
+            costs in context. Anything Kit can't verify — account packs, for
+            instance — is listed below the total and deliberately left out of it.
+          </p>
+        </div>
+        <div class="setting-row help-row">
           <span class="help-title">What is Kit?</span>
           <p class="help-description">
             Kit is a skill loadout manager for Claude Code. It helps you see which
@@ -204,12 +218,13 @@ import { linkStateLabels } from "@/utils/statusLabels";
 }
 
 .section-title {
+  font-family: var(--font-plate);
   font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.13em;
   margin: 0 0 var(--space-2);
 }
 

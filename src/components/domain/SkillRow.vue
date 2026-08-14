@@ -1,10 +1,15 @@
 <script setup lang="ts">
+/**
+ * One circuit on a location's schedule.
+ *
+ * The state symbol leads, because that is the column you scan; the name
+ * follows; the switch sits at the end where your hand goes. The old row put a
+ * coloured pill first and drew its controls with unicode play/pause
+ * characters, which are neither icons nor the same weight as anything else.
+ */
 import type { SkillAssignment } from "@/types";
-import {
-  linkStateBadgeVariant,
-  linkStateLabels,
-} from "@/utils/statusLabels";
-import { SBadge } from "@stuntrocket/ui";
+import LinkStateMark from "./LinkStateMark.vue";
+import PanelIcon from "@/components/base/PanelIcon.vue";
 
 defineProps<{
   skill: SkillAssignment;
@@ -15,41 +20,49 @@ defineEmits<{
   toggleActivation: [];
   viewDiff: [];
 }>();
-
-function sourceBadgeVariant(source: string): "default" | "accent" {
-  return source === "library" ? "accent" : "default";
-}
 </script>
 
 <template>
-  <div class="skill-row" :class="{ archived: skill.archived, disabled: skill.disabled }" @click="$emit('select')">
-    <SBadge :variant="linkStateBadgeVariant(skill.linkState)">
-      {{ linkStateLabels[skill.linkState] }}
-    </SBadge>
+  <div
+    class="skill-row"
+    :class="{ archived: skill.archived, off: skill.disabled }"
+    @click="$emit('select')"
+  >
+    <LinkStateMark :state="skill.linkState" compact />
+
     <span class="skill-name">{{ skill.name }}</span>
-    <SBadge v-if="skill.disabled" variant="count">disabled</SBadge>
-    <SBadge v-else-if="skill.archived" variant="count">archived</SBadge>
-    <SBadge :variant="sourceBadgeVariant(skill.source)">
-      {{ skill.source }}
-    </SBadge>
-    <button
-      v-if="skill.linkState === 'linked'"
-      class="action-btn"
-      :title="`View content changes for ${skill.name}`"
-      :aria-label="`View content changes for ${skill.name}`"
-      @click.stop="$emit('viewDiff')"
-    >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-    </button>
-    <button
-      v-if="skill.linkState === 'linked'"
-      class="action-btn"
-      :title="`${skill.disabled ? 'Enable' : 'Disable'} ${skill.name}`"
-      :aria-label="`${skill.disabled ? 'Enable' : 'Disable'} ${skill.name}`"
-      @click.stop="$emit('toggleActivation')"
-    >
-      {{ skill.disabled ? '&#9654;' : '&#10074;&#10074;' }}
-    </button>
+
+    <span v-if="skill.source === 'local'" class="plate row-plate">Local</span>
+    <span v-if="skill.archived" class="plate row-plate">Archived</span>
+
+    <span class="row-actions">
+      <button
+        v-if="skill.linkState === 'linked'"
+        class="action"
+        :title="`View content changes for ${skill.name}`"
+        :aria-label="`View content changes for ${skill.name}`"
+        @click.stop="$emit('viewDiff')"
+      >
+        <PanelIcon name="changelog" :size="13" />
+      </button>
+
+      <!-- The breaker. Thrown left it is off; the handle moves, the track
+           doesn't, and the label says which state it is in. -->
+      <button
+        v-if="skill.linkState === 'linked'"
+        class="breaker"
+        :class="{ thrown: skill.disabled }"
+        role="switch"
+        :aria-checked="!skill.disabled"
+        :title="skill.disabled ? `Switch ${skill.name} on here` : `Switch ${skill.name} off here`"
+        @click.stop="$emit('toggleActivation')"
+      >
+        <span class="breaker-handle" aria-hidden="true" />
+        <span class="sr-only">
+          {{ skill.disabled ? "Switched off in this location" : "On in this location" }}
+        </span>
+      </button>
+    </span>
   </div>
 </template>
 
@@ -57,33 +70,56 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
 .skill-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  height: var(--list-row-height);
-  padding: 0 var(--space-3);
+  gap: var(--space-3);
+  min-height: 30px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-default);
   user-select: none;
+  transition: background var(--duration-fast) var(--ease-default);
 }
 
 .skill-row:hover {
   background: var(--surface-hover);
 }
 
-.skill-row.archived,
-.skill-row.disabled {
-  opacity: 0.6;
-}
-
 .skill-name {
   flex: 1;
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
-.action-btn {
+/* Switched off here: struck through, not merely faded. Opacity alone reads as
+   "loading" as often as it reads as "off". */
+.skill-row.off .skill-name {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--border-strong);
+}
+
+.skill-row.archived .skill-name {
+  color: var(--text-tertiary);
+}
+
+.row-plate {
+  font-size: 9px;
+  padding: 1px var(--space-2) 0;
+  flex-shrink: 0;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.action {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -93,20 +129,60 @@ function sourceBadgeVariant(source: string): "default" | "accent" {
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-tertiary);
-  font-size: 8px;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: background var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default);
 }
 
-.action-btn:hover {
+.skill-row:hover .action,
+.skill-row:focus-within .action {
+  opacity: 1;
+}
+
+.action:hover {
   background: var(--surface-hover);
   color: var(--text-primary);
 }
 
-.action-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+/* ── The breaker ──────────────────────────────────────────── */
+
+/* A breaker is a housing with a handle in it. The housing stays quiet — a
+   column of saturated blocks down a list is the loudest thing on the screen
+   and says nothing that the handle's position doesn't already say. */
+.breaker {
+  position: relative;
+  width: 24px;
+  height: 13px;
+  flex-shrink: 0;
+  padding: 0;
+  cursor: pointer;
+  background: var(--surface-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xs);
+  transition: border-color var(--duration-normal) var(--ease-default);
+}
+
+.breaker:hover {
+  border-color: var(--border-strong);
+}
+
+.breaker-handle {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  right: 1px;
+  width: 9px;
+  background: var(--accent);
+  border-radius: 1px;
+  /* Damped, like a switch throwing — not a spring. */
+  transition: transform var(--duration-normal) var(--ease-default),
+    background var(--duration-normal) var(--ease-default);
+}
+
+/* Thrown: the handle moves to the off position and goes dead. */
+.breaker.thrown .breaker-handle {
+  transform: translateX(-11px);
+  background: var(--border-strong);
 }
 </style>

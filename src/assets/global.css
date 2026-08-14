@@ -1,41 +1,24 @@
 @import "tailwindcss";
 @import "@stuntrocket/ui/tokens.css";
+
+/* Self-hosted: a desktop app must not depend on a font CDN, and the plates
+   need a face with engraved character rather than the platform sans. */
+@import "@fontsource/archivo-narrow/latin-400.css";
+@import "@fontsource/archivo-narrow/latin-500.css";
+@import "@fontsource/archivo-narrow/latin-600.css";
+@import "@fontsource/archivo-narrow/latin-700.css";
+
+/* Kit's own world. Loaded after the shared tokens so it redefines them for
+   this app only — @stuntrocket/ui itself is never modified. */
+@import "./panel.css";
+
 @source "../";
 @source "../../node_modules/@stuntrocket/ui/dist";
 
 /* ═══════════════════════════════════════════════════
-   Kit Accent Override — Slate Blue
-   ═══════════════════════════════════════════════════ */
-
-:root {
-  --color-accent: #5b7a94;
-  --color-accent-hover: #4d6a82;
-  --color-accent-subtle: rgba(91, 122, 148, 0.10);
-
-  /* Kit-specific layout tokens */
-  --toolbar-height: 52px;
-  --titlebar-height: 28px;
-
-  /* Scrollbar — slate-blue tinted */
-  --scrollbar-thumb: rgba(91, 122, 148, 0.38);
-  --scrollbar-thumb-hover: rgba(91, 122, 148, 0.58);
-  --scrollbar-thumb-active: rgba(91, 122, 148, 0.75);
-}
-
-.dark {
-  --color-accent: #7a9ab4;
-  --color-accent-hover: #8aaac4;
-  --color-accent-subtle: rgba(122, 154, 180, 0.14);
-
-  --scrollbar-thumb: rgba(122, 154, 180, 0.45);
-  --scrollbar-thumb-hover: rgba(122, 154, 180, 0.66);
-  --scrollbar-thumb-active: rgba(122, 154, 180, 0.8);
-}
-
-/* ═══════════════════════════════════════════════════
-   Compatibility Aliases — Kit's old token names
-   Maps var(--xxx) to var(--color-xxx) for components
-   that still use the legacy token convention.
+   Aliases — the short token names Kit's components use.
+   Maps var(--xxx) to the var(--color-xxx) layer that
+   panel.css redefines.
    ═══════════════════════════════════════════════════ */
 
 :root {
@@ -69,17 +52,13 @@
   --danger: var(--color-danger);
   --danger-subtle: var(--color-danger-subtle);
 
-  /* Typography — uses library Poppins font via --font-sans from @stuntrocket/ui */
-  --text-xs: 11px;
-  --text-sm: 12px;
-  --text-md: 13px;
-  --text-lg: 15px;
-  --text-xl: 20px;
+  /* The panel's own roles */
+  --bus: var(--color-bus);
+  --bus-glow: var(--color-bus-glow);
+  --unsurveyed: var(--color-unsurveyed);
 
-  /* Font weights */
-  --weight-normal: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
+  /* Type scale, spacing, motion and the panel parts all live in panel.css so
+     the world is described in one file. Nothing is redeclared here. */
 }
 
 
@@ -92,6 +71,22 @@ body,
 #app {
   height: 100%;
   overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: var(--text-primary);
+  background: var(--surface-app);
+  /* A Mac app renders text the way Mac apps do. */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numerals are read in columns everywhere in Kit — ratings, counts, positions.
+   Proportional figures would make them impossible to compare down a list. */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Drag region for macOS title bar */
@@ -159,6 +154,6 @@ body,
 
 @media (max-width: 1120px) {
   :root {
-    --sidebar-width: 64px;
+    --sidebar-width: 52px;
   }
 }

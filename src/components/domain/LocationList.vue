@@ -56,8 +56,11 @@ async function addLocation() {
 
 <template>
   <div class="location-list">
+    <!-- A schedule names its columns. The count on the right is otherwise a
+         bare number, and a bare number in a list is a guess. -->
     <div class="list-header">
-      <span class="list-title">Locations</span>
+      <span class="plate-bare">Locations</span>
+      <span class="plate-bare list-col">Skills</span>
     </div>
     <div class="list-items">
       <LocationRow
@@ -109,16 +112,18 @@ async function addLocation() {
 }
 
 .list-header {
-  padding: var(--space-3) var(--space-3) var(--space-2);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--border-default);
+  margin: 0 var(--space-1);
   flex-shrink: 0;
 }
 
-.list-title {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.list-col {
+  flex-shrink: 0;
 }
 
 .list-items {
@@ -148,13 +153,14 @@ async function addLocation() {
 }
 
 .discovered-title {
+  font-family: var(--font-plate);
   display: block;
   padding: 0 var(--space-2) var(--space-1);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.13em;
 }
 
 .discovered-row {

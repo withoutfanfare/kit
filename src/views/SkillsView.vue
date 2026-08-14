@@ -7,7 +7,7 @@ import { useRoute, useRouter } from "vue-router";
 import { invoke } from "@tauri-apps/api/core";
 import SplitPaneLayout from "@/components/layout/SplitPaneLayout.vue";
 import SkillInspector from "@/components/domain/SkillInspector.vue";
-import SkillStatusLegend from "@/components/domain/SkillStatusLegend.vue";
+import PanelIcon from "@/components/base/PanelIcon.vue";
 import LibraryTabs from "@/components/domain/LibraryTabs.vue";
 import { SBadge, SSearchInput, SEmptyState } from "@stuntrocket/ui";
 
@@ -135,7 +135,6 @@ onMounted(() => {
               <span>Unused only</span>
               <SBadge variant="warning" compact>{{ libraryStore.unusedCount }} unused</SBadge>
             </label>
-            <SkillStatusLegend />
           </div>
         </div>
         <div class="sidebar-items">
@@ -152,41 +151,48 @@ onMounted(() => {
               <div class="row-content">
                 <span class="row-name">{{ item.name }}</span>
                 <span v-if="item.summary" class="row-summary">{{ item.summary }}</span>
-                <div v-if="item.tags.length > 0" class="row-tags">
-                  <SBadge v-for="tag in item.tags" :key="tag" variant="default" compact>{{ tag }}</SBadge>
-                </div>
               </div>
+
+              <!-- One state mark, not a rank of pills. A row can only be in
+                   one condition worth flagging, and the worst one wins. -->
               <div class="row-meta">
-                <SBadge v-if="item.useCount30d > 0" variant="count" compact>
-                  {{ item.useCount30d }} uses
-                </SBadge>
-                <SBadge
-                  v-if="item.kind === 'skill' && item.useCount30d === 0 && item.isUnusedEverywhere"
-                  variant="warning"
-                  compact
-                >Unused</SBadge>
-                <SBadge
+                <span
                   v-if="item.validationIssues.some((i: any) => i.severity === 'error')"
-                  variant="error"
-                  compact
+                  class="mark mark-bad"
                   :title="item.validationIssues.filter((i: any) => i.severity === 'error').map((i: any) => i.message).join(', ')"
-                >error</SBadge>
-                <SBadge
+                >
+                  <PanelIcon name="caution" :size="12" />
+                  <span class="sr-only">Has an error</span>
+                </span>
+                <span
+                  v-else-if="item.kind === 'set' && item.brokenSkillCount > 0"
+                  class="mark mark-bad"
+                  :title="`${item.brokenSkillCount} skill(s) in this set are missing from the library`"
+                >
+                  <PanelIcon name="broken" :size="12" />
+                  <span class="sr-only">{{ item.brokenSkillCount }} skills missing</span>
+                </span>
+                <span
                   v-else-if="item.validationIssues.some((i: any) => i.severity === 'warning')"
-                  variant="warning"
-                  compact
+                  class="mark mark-warn"
                   :title="item.validationIssues.filter((i: any) => i.severity === 'warning').map((i: any) => i.message).join(', ')"
-                >warning</SBadge>
-                <SBadge
-                  v-if="item.kind === 'set' && item.brokenSkillCount > 0"
-                  variant="error"
-                  compact
-                  :title="`${item.brokenSkillCount} referenced skill(s) not found in library`"
-                >{{ item.brokenSkillCount }} missing</SBadge>
-                <SBadge v-if="item.archived" variant="default" compact>archived</SBadge>
-                <SBadge :variant="item.kind === 'skill' ? 'accent' : 'default'" compact>
-                  {{ item.kind }}
-                </SBadge>
+                >
+                  <PanelIcon name="caution" :size="12" />
+                  <span class="sr-only">Has a warning</span>
+                </span>
+
+                <span v-if="item.archived" class="plate row-plate">Archived</span>
+                <span v-if="item.kind === 'set'" class="plate row-plate">Set</span>
+
+                <!-- Never run anywhere: the fact this screen exists to surface. -->
+                <span
+                  v-if="item.kind === 'skill' && item.isUnusedEverywhere"
+                  class="row-unused"
+                  title="No recorded run anywhere"
+                >never run</span>
+                <span v-else class="row-uses rating tabular" title="Runs in the last 30 days">
+                  {{ item.useCount30d }}
+                </span>
               </div>
             </div>
             <div v-if="item.kind === 'skill'" class="row-actions">
@@ -306,6 +312,8 @@ onMounted(() => {
 }
 
 .library-row {
+  position: relative;
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-sm);
@@ -325,15 +333,15 @@ onMounted(() => {
   background: var(--surface-selected-strong);
 }
 
-.library-row.archived {
-  opacity: 0.6;
+.library-row.archived .row-name {
+  color: var(--text-tertiary);
 }
 
 .row-main {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-3);
+  padding: var(--space-3);
   cursor: default;
   flex: 1;
 }
@@ -347,7 +355,7 @@ onMounted(() => {
 }
 
 .row-name {
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   font-weight: var(--weight-medium);
   color: var(--text-primary);
   white-space: nowrap;
@@ -366,15 +374,71 @@ onMounted(() => {
 .row-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
+.row-plate {
+  font-size: 9px;
+  padding: 1px var(--space-2) 0;
+}
+
+/* The state mark is a glyph, not a pill; the title says it in words and the
+   screen-reader text says it again. */
+.mark {
+  display: inline-flex;
+  align-items: center;
+}
+
+.mark-bad {
+  color: var(--danger);
+}
+
+.mark-warn {
+  color: var(--warning);
+}
+
+/* Runs in the last 30 days, right-aligned so the column reads down the list. */
+.row-uses {
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  min-width: 2.5ch;
+  text-align: right;
+}
+
+/* "Never run" is a word, not a zero: a zero here would read as a measurement
+   when it is really the absence of one. */
+.row-unused {
+  font-family: var(--font-plate);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--warning);
+  white-space: nowrap;
+}
+
+/* Actions sit over the right of the row on hover. A permanent second line of
+   buttons per row cost more vertical space than the content it served. */
 .row-actions {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 0 var(--space-3) var(--space-1);
+  padding: 2px;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.library-row:hover .row-actions,
+.library-row:focus-within .row-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .preview-button,
@@ -441,12 +505,8 @@ onMounted(() => {
   padding: var(--space-2);
 }
 
-.row-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin-top: 2px;
-}
+/* Tags were dropped from the row: a third line of chips inside a source
+   list is noise, and the search field already matches on them. */
 
 .list-empty {
   display: flex;

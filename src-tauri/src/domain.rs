@@ -46,6 +46,9 @@ pub enum LibraryItemKind {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum DefaultView {
+    /// The board at a glance. The default: it answers "what is the state of
+    /// things" before you have to decide where to look.
+    Panel,
     Locations,
     Skills,
 }

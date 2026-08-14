@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, watch } from "vue";
 import { useChangelogStore } from "@/stores/changelogStore";
-import { SSearchInput, SSegmentedControl, SBadge, SEmptyState } from "@stuntrocket/ui";
+import { SSearchInput, SSegmentedControl, SEmptyState } from "@stuntrocket/ui";
 
 const store = useChangelogStore();
 
@@ -72,15 +72,14 @@ onMounted(() => {
       >
         <div class="row-left">
           <span class="row-name">{{ entry.name }}</span>
-          <span class="row-summary">SKILL.md edited</span>
         </div>
         <div class="row-right">
-          <SBadge v-if="entry.assignedLocations.length > 0" variant="accent" compact>
+          <span v-if="entry.assignedLocations.length > 0" class="plate row-where">
             {{ entry.assignedLocations.slice(0, 2).map((location) => location.label).join(", ") }}
             <span v-if="entry.assignedLocations.length > 2">
-              +{{ entry.assignedLocations.length - 2 }} more
+              +{{ entry.assignedLocations.length - 2 }}
             </span>
-          </SBadge>
+          </span>
           <span class="row-size">{{ formatSize(entry.sizeBytes) }}</span>
           <time class="row-time" :datetime="entry.modifiedAt">{{ formatModifiedAt(entry.modifiedAt) }}</time>
           <span class="row-action">Open skill</span>

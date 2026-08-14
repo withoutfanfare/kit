@@ -4,8 +4,20 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
+      // Honours the Default view preference. It used to hard-redirect, which
+      // made the setting in Settings a control that changed nothing.
       path: "/",
-      redirect: "/locations",
+      redirect: () => {
+        const stored = localStorage.getItem("kit.defaultView");
+        if (stored === "locations" || stored === "skills") return `/${stored}`;
+        return "/panel";
+      },
+    },
+    {
+      // The board at a glance: what loads, what it costs, what needs attention.
+      path: "/panel",
+      name: "panel",
+      component: () => import("@/views/PanelView.vue"),
     },
     {
       path: "/locations",

@@ -334,6 +334,7 @@ watch(
 }
 
 .group-label {
+  font-family: var(--font-plate);
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -342,7 +343,7 @@ watch(
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.13em;
   padding: var(--space-2) var(--space-2) var(--space-1);
 }
 

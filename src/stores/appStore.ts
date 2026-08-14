@@ -46,6 +46,7 @@ export const useAppStore = defineStore("app", () => {
       prefs.libraryRoot = data.libraryRoot;
       prefs.editorCommand = data.editorCommand;
       prefs.defaultView = data.defaultView;
+      localStorage.setItem("kit.defaultView", data.defaultView);
       prefs.showArchived = data.showArchived;
 
       const locations = useLocationsStore();

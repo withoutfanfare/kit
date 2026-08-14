@@ -56,7 +56,7 @@ impl Default for PersistedState {
             preferences: Preferences {
                 library_root,
                 editor_command: String::from("code"),
-                default_view: DefaultView::Locations,
+                default_view: DefaultView::Panel,
                 show_archived: false,
                 track_skill_versions: true,
             },

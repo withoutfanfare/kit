@@ -12,6 +12,7 @@ import LocationOverviewCard from "@/components/domain/LocationOverviewCard.vue";
 import SetList from "@/components/domain/SetList.vue";
 import SkillList from "@/components/domain/SkillList.vue";
 import IssueList from "@/components/domain/IssueList.vue";
+import PanelIcon from "@/components/base/PanelIcon.vue";
 import { SBadge, SButton } from "@stuntrocket/ui";
 import type { SkillId, SkillRecommendation } from "@/types";
 
@@ -98,34 +99,10 @@ const localOnlySkills = computed(
   () => detail.value?.skills.filter((s) => s.linkState === "local_only") ?? []
 );
 
-const healthStatus = computed(() => {
-  if (!detail.value) return "unknown";
-  if (detail.value.issues.some((i) => i.kind === "broken_link")) return "error";
-  if (detail.value.issues.length > 0) return "warning";
-  return "healthy";
-});
-
-const healthLabel = computed(() => {
-  switch (healthStatus.value) {
-    case "error": return "Issues found";
-    case "warning": return "Warnings";
-    default: return "Healthy";
-  }
-});
-
 const healthActionLabel = computed(() => {
   const count = detail.value?.issues.length ?? 0;
   return `Resolve ${count} issue${count === 1 ? "" : "s"}`;
 });
-
-function healthBadgeVariant(status: string): "success" | "warning" | "error" | "default" {
-  switch (status) {
-    case "error": return "error";
-    case "warning": return "warning";
-    case "healthy": return "success";
-    default: return "default";
-  }
-}
 
 function formatScanTime(iso: string | null): string {
   if (!iso) return "Never scanned";
@@ -190,48 +167,43 @@ watch(
   <div v-if="detail" class="location-detail">
     <LocationHeader :detail="detail" />
 
-    <!-- Dashboard summary header -->
-    <div class="dashboard-header">
-      <div class="dashboard-stat">
-        <span class="stat-value">{{ detail.skills.length }}</span>
-        <span class="stat-label">Skills</span>
+    <!-- The data plate. A board carries its facts on one stamped line, not as
+         a row of tiles: label above, figure below, ruled between. -->
+    <dl class="data-plate">
+      <div class="fact">
+        <dt class="plate-bare">Skills</dt>
+        <dd class="rating tabular">{{ detail.skills.length }}</dd>
       </div>
-      <div class="dashboard-stat">
-        <span class="stat-value">{{ detail.issues.length }}</span>
-        <span class="stat-label">Issues</span>
+
+      <div class="fact">
+        <dt class="plate-bare">Issues</dt>
+        <dd class="rating tabular" :class="{ bad: detail.issues.length > 0 }">
+          {{ detail.issues.length }}
+        </dd>
       </div>
+
+      <div class="fact">
+        <dt class="plate-bare">Last scan</dt>
+        <dd class="fact-text">{{ formatScanTime(detail.lastScannedAt) }}</dd>
+      </div>
+
+      <div v-if="detail.detectedProjectTypes.length > 0" class="fact">
+        <dt class="plate-bare">Detected</dt>
+        <dd class="fact-text">
+          {{ detail.detectedProjectTypes.map((t) => t.name).join(" · ") }}
+        </dd>
+      </div>
+
       <button
         v-if="detail.issues.length > 0"
         type="button"
-        class="dashboard-stat health-action"
+        class="fix"
         @click="navigateToHealth"
       >
-        <SBadge :variant="healthBadgeVariant(healthStatus)" compact>
-          {{ healthLabel }}
-        </SBadge>
-        <span class="stat-label">{{ healthActionLabel }}</span>
+        <PanelIcon name="caution" :size="13" />
+        {{ healthActionLabel }}
       </button>
-      <div v-else class="dashboard-stat">
-        <SBadge :variant="healthBadgeVariant(healthStatus)" compact>
-          {{ healthLabel }}
-        </SBadge>
-        <span class="stat-label">Health</span>
-      </div>
-      <div class="dashboard-stat">
-        <span class="stat-value-sm">{{ formatScanTime(detail.lastScannedAt) }}</span>
-        <span class="stat-label">Last scan</span>
-      </div>
-      <div v-if="detail.detectedProjectTypes.length > 0" class="dashboard-types">
-        <SBadge
-          v-for="pt in detail.detectedProjectTypes"
-          :key="pt.name"
-          variant="accent"
-          compact
-        >
-          {{ pt.name }}
-        </SBadge>
-      </div>
-    </div>
+    </dl>
 
     <div class="detail-content">
       <!-- Skill recommendations -->
@@ -314,6 +286,7 @@ watch(
         :skills="linkedSkills"
         title="Assigned Skills"
         show-link-state
+        show-legend
         @select-skill="peekSkill"
         @toggle-activation="handleToggleActivation"
         @view-diff="openDiff"
@@ -363,66 +336,69 @@ watch(
   container-type: inline-size;
 }
 
-.dashboard-header {
+/* The data plate: one stamped line of facts, ruled between, rather than a row
+   of stat tiles. Label above in plate lettering, figure below, tabular. */
+.data-plate {
   display: flex;
-  align-items: center;
-  gap: var(--space-4);
+  align-items: stretch;
+  gap: 0;
+  margin: 0;
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--surface-panel);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
-.dashboard-stat {
+.fact {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 2px;
+  gap: 1px;
+  padding: 0 var(--space-5) 0 0;
+  margin-right: var(--space-5);
+  border-right: 1px solid var(--border-subtle);
 }
 
-.health-action {
-  padding: 0;
-  font: inherit;
-  background: none;
-  border: 0;
+.fact:last-of-type {
+  border-right: 0;
+  margin-right: 0;
+}
+
+.fact dd {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+}
+
+.fact dd.bad {
+  color: var(--warning);
+}
+
+.fact-text {
+  font-size: var(--text-md) !important;
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary) !important;
+  padding-top: 2px;
+}
+
+.fix {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--warning);
+  background: var(--warning-subtle);
+  border: 1px solid color-mix(in srgb, var(--warning) 38%, transparent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
 }
 
-.health-action:hover {
-  opacity: 0.8;
-}
-
-.health-action:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-.stat-value {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.stat-value-sm {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  color: var(--text-primary);
-}
-
-.stat-label {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.dashboard-types {
-  display: flex;
-  gap: var(--space-1);
-  margin-left: auto;
-  flex-wrap: wrap;
+.fix:hover {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
 }
 
 .detail-content {
@@ -467,11 +443,12 @@ watch(
 }
 
 .section-title {
+  font-family: var(--font-plate);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.13em;
 }
 
 .section-group {

@@ -11,7 +11,7 @@ export type LinkState =
 export type AppBootstrap = {
   libraryRoot: string;
   editorCommand: string;
-  defaultView: "locations" | "skills";
+  defaultView: "panel" | "locations" | "skills";
   showArchived: boolean;
   locations: SavedLocationSummary[];
   counts: {
@@ -286,7 +286,7 @@ export type UsageSummary = {
 export type Preferences = {
   libraryRoot: string;
   editorCommand: string;
-  defaultView: "locations" | "skills";
+  defaultView: "panel" | "locations" | "skills";
   showArchived: boolean;
   trackSkillVersions: boolean;
 };
