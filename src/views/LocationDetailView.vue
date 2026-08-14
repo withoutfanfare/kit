@@ -343,7 +343,7 @@ watch(
   align-items: stretch;
   gap: 0;
   margin: 0;
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-5) var(--space-7);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--surface-panel);
   flex-shrink: 0;
@@ -404,23 +404,23 @@ watch(
 .detail-content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-6) var(--space-7) var(--space-9);
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-7);
 }
 
 .recommendations-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-4);
 }
 
 .section-header-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
 }
 
 .recommendation-actions {
@@ -432,11 +432,11 @@ watch(
 .recommendation-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .recommendation-group-title {
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-4);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   color: var(--text-secondary);
@@ -458,7 +458,7 @@ watch(
 .recommendation-row {
   display: flex;
   align-items: center;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   transition: background var(--duration-fast) var(--ease-default);
 }
 

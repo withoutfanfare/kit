@@ -67,7 +67,7 @@ function navigateToLocation(id: string) {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-default);
   user-select: none;
@@ -115,7 +115,7 @@ function navigateToLocation(id: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-4);
+  padding: var(--space-7);
 }
 
 .list-empty-text {

@@ -625,7 +625,7 @@ function formatChecked(iso: string | null): string {
   width: 100%;
   margin: 0 auto;
   overflow-y: auto;
-  padding: var(--space-5) var(--space-6);
+  padding: var(--space-9) var(--space-9) var(--space-12);
 }
 
 .page-title {
@@ -633,20 +633,20 @@ function formatChecked(iso: string | null): string {
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
-  margin: 0 0 var(--space-6);
+  margin: 0 0 var(--space-8);
 }
 
 /* Sections */
 .settings-section {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-9);
 }
 
 .section-title {
-    font-family: var(--font-sans);
+  font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-4);
 }
 
 /* Grouped settings */
@@ -661,9 +661,9 @@ function formatChecked(iso: string | null): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  gap: var(--space-4);
-  min-height: 44px;
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-6);
+  min-height: 52px;
 }
 
 .setting-row + .setting-row {
@@ -702,8 +702,8 @@ function formatChecked(iso: string | null): string {
 
 /* Select */
 .setting-select {
-  height: 28px;
-  padding: 0 var(--space-6) 0 var(--space-2);
+  height: var(--control-md);
+  padding: 0 var(--space-8) 0 var(--space-4);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--text-primary);
@@ -776,14 +776,14 @@ function formatChecked(iso: string | null): string {
 .editor-input-group {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   flex-shrink: 0;
 }
 
 .setting-input {
-  height: 28px;
-  width: 120px;
-  padding: 0 var(--space-2);
+  height: var(--control-md);
+  width: 140px;
+  padding: 0 var(--space-4);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--text-primary);

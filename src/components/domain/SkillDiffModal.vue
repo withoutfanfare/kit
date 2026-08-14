@@ -127,7 +127,7 @@ function handleBackdropClick(event: MouseEvent) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-5) var(--space-6);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -143,8 +143,8 @@ function handleBackdropClick(event: MouseEvent) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--control-sm);
+  height: var(--control-sm);
   border: none;
   background: transparent;
   color: var(--text-tertiary);
@@ -191,7 +191,7 @@ function handleBackdropClick(event: MouseEvent) {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -200,7 +200,7 @@ function handleBackdropClick(event: MouseEvent) {
   font-size: var(--text-xs);
   font-family: ui-monospace, "SF Mono", SFMono-Regular, monospace;
   color: var(--text-secondary);
-  padding: var(--space-3);
+  padding: var(--space-5);
   margin: 0;
   overflow: auto;
   white-space: pre-wrap;
@@ -212,7 +212,7 @@ function handleBackdropClick(event: MouseEvent) {
 .diff-footer {
   display: flex;
   justify-content: flex-end;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-5) var(--space-6);
   border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }

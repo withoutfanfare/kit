@@ -204,28 +204,28 @@ import { linkStateLabels } from "@/utils/statusLabels";
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
-  margin: 0 0 var(--space-1);
+  margin: 0 0 var(--space-2);
 }
 
 .page-subtitle {
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--text-secondary);
-  margin: 0 0 var(--space-6);
+  margin: 0 0 var(--space-8);
   line-height: 1.5;
 }
 
 /* Sections — mirrors SettingsView */
 .settings-section {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-9);
 }
 
 .section-title {
-    font-family: var(--font-sans);
+  font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-4);
 }
 
 .settings-group {
@@ -238,13 +238,13 @@ import { linkStateLabels } from "@/utils/statusLabels";
 .start-links {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
+  gap: var(--space-2);
   background: var(--border-subtle);
 }
 
 .start-link {
   min-width: 0;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-5);
   background: var(--surface-panel);
   text-decoration: none;
 }
@@ -261,7 +261,7 @@ import { linkStateLabels } from "@/utils/statusLabels";
 
 /* Help rows */
 .help-row {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-5);
 }
 
 .help-row + .help-row {

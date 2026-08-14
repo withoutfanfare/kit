@@ -142,12 +142,12 @@ onMounted(() => usageStore.fetchReport());
 .usage {
   height: 100%;
   overflow-y: auto;
-  padding: var(--space-6) var(--space-6) var(--space-10);
+  padding: var(--space-9) var(--space-9) var(--space-12);
   max-width: 920px;
 }
 
 .head {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-8);
 }
 
 .page-title {
@@ -187,7 +187,7 @@ onMounted(() => usageStore.fetchReport());
   grid-template-columns: minmax(0, 19rem) minmax(3rem, 1fr) 3rem 7rem 8rem;
   align-items: baseline;
   gap: var(--space-3);
-  padding: 0 var(--space-2) var(--space-2);
+  padding: 0 var(--space-4) var(--space-3);
   border-bottom: 1px solid var(--border-default);
   margin-bottom: var(--space-2);
 }
@@ -207,7 +207,7 @@ onMounted(() => usageStore.fetchReport());
   grid-template-columns: minmax(0, 19rem) minmax(3rem, 1fr) 3rem 7rem 8rem;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
 }

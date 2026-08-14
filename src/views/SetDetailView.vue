@@ -497,8 +497,8 @@ watch(setKey, loadDetail);
 .detail-header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-4) var(--space-5);
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-7);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -545,16 +545,16 @@ watch(setKey, loadDetail);
 .detail-content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-6) var(--space-7) var(--space-9);
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-7);
 }
 
 .detail-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-4);
 }
 
 .section-header-row {
@@ -576,7 +576,7 @@ watch(setKey, loadDetail);
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   transition: background var(--duration-fast) var(--ease-default);
 }
 
@@ -643,7 +643,7 @@ watch(setKey, loadDetail);
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-default);
   user-select: none;

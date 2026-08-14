@@ -803,7 +803,10 @@ pub fn scan_location(
                             .map(|m| m.name.clone())
                             .unwrap_or_else(|| entry_name.clone());
 
-                        if !declared && in_library {
+                        // A missing declaration is only an issue where a
+                        // manifest exists. Global loads its symlinks directly
+                        // and deliberately has no writable manifest.
+                        if manifest_path.is_some() && !declared && in_library {
                             issues.push(LocationIssue {
                                 kind: IssueKind::LinkedUndeclared,
                                 skill_name: entry_name.clone(),
@@ -1731,12 +1734,13 @@ mod tests {
     }
 
     /// End-to-end on the real filesystem: a Global-shaped folder (skills sitting
-    /// directly inside it, symlinked to the library) is scanned as linked skills.
+    /// directly inside it, symlinked to the library) is scanned as linked skills
+    /// without demanding declarations from a manifest that Global cannot have.
     /// Scanning the same folder as a Project finds nothing, which is precisely
     /// the bug this kind exists to prevent.
     #[cfg(unix)]
     #[test]
-    fn scan_location_reads_skills_directly_inside_a_global_location() {
+    fn scan_location_reads_global_skills_without_manifest_issues() {
         use std::os::unix::fs::symlink;
 
         let base = std::env::temp_dir().join(format!("kit-global-scan-{}", std::process::id()));
@@ -1766,6 +1770,13 @@ mod tests {
         assert_eq!(as_global.skills[0].skill_id, "alpha");
         assert_eq!(as_global.skills[0].link_state, LinkState::Linked);
         assert_eq!(as_global.manifest_path, None);
+        assert!(
+            !as_global
+                .issues
+                .iter()
+                .any(|issue| issue.kind == IssueKind::LinkedUndeclared),
+            "Global loads linked skills without manifest declarations"
+        );
 
         let as_project = scan_location(
             &global,

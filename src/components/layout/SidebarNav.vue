@@ -2,7 +2,7 @@
 /**
  * The source list.
  *
- * A standard app sidebar, detailed properly: 28px rows, 6px radius, an icon
+ * A standard app sidebar, detailed properly: comfortable rows, 6px radius, an icon
  * that takes the accent when active, and a full set of interaction states.
  * The previous version ran a decorative copper "bus" down the edge and hid
  * every label below 1120px while leaving the icons aria-hidden — which left
@@ -78,7 +78,7 @@ function isActive(to: string): boolean {
   flex-shrink: 0;
   background: var(--k-bg);
   border-right: 1px solid var(--k-line);
-  padding: var(--space-5) var(--space-4) var(--space-5);
+  padding: var(--space-5) var(--space-4);
 }
 
 .nav {
@@ -87,7 +87,7 @@ function isActive(to: string): boolean {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--space-2);
 }
 
 .nav-foot {
@@ -98,7 +98,7 @@ function isActive(to: string): boolean {
   display: flex;
   align-items: center;
   gap: var(--space-5);
-  height: var(--control-md);
+  height: var(--control-lg);
   padding: 0 var(--space-4);
   border-radius: var(--radius-md);
   color: var(--k-text-3);
@@ -148,7 +148,7 @@ function isActive(to: string): boolean {
    named, which is the bug the previous version shipped with. */
 @media (max-width: 1120px) {
   .sidebar {
-    width: 52px;
+    width: 60px;
     padding-left: var(--space-3);
     padding-right: var(--space-3);
   }

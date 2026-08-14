@@ -128,7 +128,7 @@ onBeforeUnmount(() => {
 }
 
 .split-sidebar {
-  width: 240px;
+  width: var(--master-pane-width);
   flex-shrink: 0;
   border-right: 1px solid var(--border-subtle);
   overflow-y: auto;
@@ -148,7 +148,7 @@ onBeforeUnmount(() => {
   border-left: 1px solid var(--border-subtle);
   overflow-y: auto;
   background: var(--surface-panel);
-  padding: var(--space-4);
+  padding: var(--space-6);
 }
 
 .compact-toolbar,
@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: space-between;
     gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-5);
     border-bottom: 1px solid var(--border-subtle);
     background: var(--surface-app);
   }
@@ -197,7 +197,7 @@ onBeforeUnmount(() => {
   .inspector-close-row {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-5);
   }
 }
 </style>

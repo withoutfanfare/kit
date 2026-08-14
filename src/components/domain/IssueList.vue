@@ -14,6 +14,20 @@ const props = defineProps<{
 const locationsStore = useLocationsStore();
 const appStore = useAppStore();
 
+function manifestErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+  return "Failed to update manifest";
+}
+
 type IssueGroup = {
   kind: LocationIssue["kind"];
   label: string;
@@ -61,8 +75,8 @@ async function addToManifest(skillId: string) {
     });
     await locationsStore.fetchDetail(props.locationId);
     appStore.toast(`Added '${skillId}' to manifest`, "success");
-  } catch {
-    appStore.toast("Failed to update manifest", "error");
+  } catch (error) {
+    appStore.toast(manifestErrorMessage(error), "error");
   }
 }
 
@@ -75,8 +89,8 @@ async function removeFromManifest(skillId: string) {
     });
     await locationsStore.fetchDetail(props.locationId);
     appStore.toast(`Removed '${skillId}' from manifest`, "success");
-  } catch {
-    appStore.toast("Failed to update manifest", "error");
+  } catch (error) {
+    appStore.toast(manifestErrorMessage(error), "error");
   }
 }
 
@@ -162,7 +176,7 @@ async function syncLocation() {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
 }
 
 .section-title {
@@ -179,14 +193,14 @@ async function syncLocation() {
 }
 
 .issue-group + .issue-group {
-  margin-top: var(--space-2);
+  margin-top: var(--space-4);
 }
 
 .group-banner {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
 }
@@ -213,7 +227,7 @@ async function syncLocation() {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--border-subtle);
 }
 

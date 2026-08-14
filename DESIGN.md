@@ -50,8 +50,13 @@ sizes or they read loose. Tabular numerals wherever figures are compared.
 
 ### Space, radius, motion
 
-4px base. Radius 3/4/6/8/12 — 6px for controls, 8px for panels. Transitions
-120–240ms; motion conveys state, never decoration.
+Comfortable 4px base. The 2px and 4px steps are reserved for optical
+corrections inside a component; structural layout begins at 8px. Controls use
+28/32/36px heights, primary content begins with 40px page insets, and dense
+master/detail surfaces use 16–24px internal insets. This preserves a desktop
+app's scanability without compressing every group into one band. Radius
+3/4/6/8/12 — 6px for controls, 8px for panels. Transitions 120–240ms; motion
+conveys state, never decoration.
 
 ### Primitives
 

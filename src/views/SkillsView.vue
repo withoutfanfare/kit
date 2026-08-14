@@ -294,8 +294,8 @@ watch(
 .sidebar-controls {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  gap: var(--space-4);
+  padding: var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -325,7 +325,7 @@ watch(
 .sidebar-items {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-1);
+  padding: var(--space-2) var(--space-2) var(--space-4);
 }
 
 .library-row {
@@ -358,7 +358,7 @@ watch(
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3);
+  padding: var(--space-4) var(--space-5);
   cursor: default;
   flex: 1;
 }
@@ -494,7 +494,7 @@ watch(
 
 /* Inline preview */
 .inline-preview {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--border-subtle);
   max-height: 200px;
   overflow-y: auto;
@@ -529,7 +529,7 @@ watch(
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-6);
+  padding: var(--space-8);
 }
 
 .list-empty-text {

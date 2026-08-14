@@ -175,7 +175,7 @@ function addSkills() {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-6) var(--space-7);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -183,7 +183,7 @@ function addSkills() {
 .header-info {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   min-width: 0;
   flex: 1;
 }
@@ -210,9 +210,9 @@ function addSkills() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-1);
-  height: 28px;
-  padding: 0 var(--space-3);
+  gap: var(--space-2);
+  height: var(--control-md);
+  padding: 0 var(--space-4);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);

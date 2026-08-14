@@ -316,7 +316,7 @@ onMounted(async () => {
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
-  padding: var(--space-5) var(--space-6);
+  padding: var(--space-9) var(--space-9) var(--space-12);
 }
 
 .page-header {
@@ -345,7 +345,7 @@ onMounted(async () => {
 .selector-row {
   display: flex;
   align-items: flex-end;
-  gap: var(--space-3);
+  gap: var(--space-5);
   margin-bottom: var(--space-5);
   flex-shrink: 0;
 }
@@ -353,7 +353,7 @@ onMounted(async () => {
 .selector-col {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   flex: 1;
 }
 
@@ -365,8 +365,8 @@ onMounted(async () => {
 }
 
 .location-select {
-  height: 32px;
-  padding: 0 var(--space-6) 0 var(--space-2);
+  height: var(--control-md);
+  padding: 0 var(--space-8) 0 var(--space-4);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--text-primary);
@@ -422,14 +422,14 @@ onMounted(async () => {
 .comparison-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-7);
   flex: 1;
   min-height: 0;
 }
 
 .summary-row {
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-5);
   flex-shrink: 0;
 }
 
@@ -439,7 +439,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-3);
+  padding: var(--space-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-panel);
@@ -469,7 +469,7 @@ onMounted(async () => {
 /* Columns */
 .columns {
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-5);
   flex: 1;
   min-height: 0;
 }
@@ -493,7 +493,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -529,7 +529,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
 }
 

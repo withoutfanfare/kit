@@ -280,7 +280,7 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
-  padding: var(--space-5) var(--space-6);
+  padding: var(--space-9) var(--space-9) var(--space-12);
 }
 
 .page-header,
@@ -296,7 +296,7 @@ onMounted(() => {
 
 .page-header {
   justify-content: space-between;
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-8);
 }
 
 .header-left,
@@ -363,7 +363,7 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.health-content { gap: var(--space-5); }
+.health-content { gap: var(--space-8); }
 .location-groups,
 .preview-content { gap: var(--space-3); }
 
@@ -381,7 +381,7 @@ onMounted(() => {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-5) var(--space-3) 0;
+  padding: var(--space-4) var(--space-6) var(--space-4) 0;
   margin-right: var(--space-5);
   border: 0;
   border-right: 1px solid var(--border-subtle);
@@ -506,7 +506,7 @@ onMounted(() => {
 
 .location-header {
   min-height: 44px;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -531,7 +531,7 @@ onMounted(() => {
 }
 
 .issue-row {
-  padding: var(--space-3);
+  padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -555,7 +555,7 @@ onMounted(() => {
   font-size: var(--text-xs);
 }
 
-.healthy-row { padding: var(--space-3); }
+.healthy-row { padding: var(--space-4) var(--space-5); }
 
 .modal-title {
   font-size: var(--text-lg);

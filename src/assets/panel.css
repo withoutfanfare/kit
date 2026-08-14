@@ -170,19 +170,21 @@
   --lh-snug: 1.4;
   --lh-normal: 1.55;
 
-  /* 4px base. Every gap in the app is one of these. */
+  /* Comfortable 4px base. The 2px and 4px steps are optical corrections;
+     structural layout starts at 8px so the interface never collapses into a
+     continuous band of controls and dividers. */
   --space-1: 2px;
   --space-2: 4px;
-  --space-3: 6px;
-  --space-4: 8px;
-  --space-5: 12px;
-  --space-6: 16px;
-  --space-7: 20px;
-  --space-8: 24px;
-  --space-9: 32px;
-  --space-10: 40px;
-  --space-11: 56px;
-  --space-12: 72px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+  --space-9: 40px;
+  --space-10: 48px;
+  --space-11: 64px;
+  --space-12: 80px;
 
   --radius-xs: 3px;
   --radius-sm: 4px;
@@ -191,12 +193,14 @@
   --radius-xl: 12px;  /* sheets */
   --radius-full: 9999px;
 
-  --control-sm: 24px;
-  --control-md: 28px;
-  --control-lg: 32px;
+  --control-sm: 28px;
+  --control-md: 32px;
+  --control-lg: 36px;
 
-  --toolbar-height: 44px;
-  --sidebar-width: 216px;
+  --toolbar-height: 52px;
+  --sidebar-width: 220px;
+  --master-pane-width: 264px;
+  --inspector-width: 280px;
 
   /* 150–250ms. Users are in a task; they should not wait for choreography. */
   --duration-fast: 120ms;

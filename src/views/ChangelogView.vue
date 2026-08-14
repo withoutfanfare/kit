@@ -103,7 +103,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-6) var(--space-7);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -151,7 +151,7 @@ onMounted(() => {
 .changelog-list {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-2);
+  padding: var(--space-4);
 }
 
 .changelog-row {
@@ -159,7 +159,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   color: inherit;
   text-decoration: none;

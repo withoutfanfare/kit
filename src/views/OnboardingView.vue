@@ -332,7 +332,7 @@ async function completeSetup() {
 .onboarding-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-5);
   width: 100%;
   max-width: 540px;
   padding: var(--space-8) var(--space-8) var(--space-7);
@@ -394,7 +394,7 @@ async function completeSetup() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   gap: var(--space-3);
 }
 
@@ -431,7 +431,7 @@ async function completeSetup() {
 .icon-yes {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   color: var(--success);
 }
 
@@ -466,7 +466,7 @@ async function completeSetup() {
 .validation-issues {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .validation-issue {
@@ -487,7 +487,7 @@ async function completeSetup() {
 .optional-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .optional-label {
@@ -503,9 +503,9 @@ async function completeSetup() {
 }
 
 .setting-input {
-  height: 28px;
+  height: var(--control-md);
   width: 100%;
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-4);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--text-primary);
@@ -541,7 +541,7 @@ async function completeSetup() {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-2);
-  padding-top: var(--space-2);
+  gap: var(--space-3);
+  padding-top: var(--space-4);
 }
 </style>

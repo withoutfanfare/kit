@@ -116,7 +116,7 @@ async function addLocation() {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-3) var(--space-2);
+  padding: var(--space-6) var(--space-5) var(--space-4);
   border-bottom: 1px solid var(--border-default);
   margin: 0 var(--space-1);
   flex-shrink: 0;
@@ -129,14 +129,14 @@ async function addLocation() {
 .list-items {
   flex: 1;
   overflow-y: auto;
-  padding: 0 var(--space-1);
+  padding: 0 var(--space-2) var(--space-4);
 }
 
 .list-note {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   margin: var(--space-2) var(--space-1) 0;
   border-radius: var(--radius-sm);
   background: var(--surface-hover);
@@ -149,12 +149,12 @@ async function addLocation() {
 }
 
 .list-discovered {
-  margin: var(--space-3) var(--space-1) 0;
+  margin: var(--space-5) var(--space-2) 0;
 }
 
 .discovered-title {
-    display: block;
-  padding: 0 var(--space-2) var(--space-1);
+  display: block;
+  padding: 0 var(--space-4) var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
@@ -165,7 +165,7 @@ async function addLocation() {
   width: 100%;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -206,7 +206,7 @@ async function addLocation() {
 
 .list-footer {
   flex-shrink: 0;
-  padding: var(--space-3);
+  padding: var(--space-5);
   border-top: 1px solid var(--border-subtle);
   display: flex;
 }

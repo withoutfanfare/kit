@@ -100,7 +100,7 @@ function resultFor(id: string) {
 .bulk-modal {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-6);
   min-width: 380px;
 }
 
@@ -113,7 +113,7 @@ function resultFor(id: string) {
 .skill-summary {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .skill-badges {
@@ -150,19 +150,19 @@ function resultFor(id: string) {
 .location-list {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--space-2);
   max-height: 280px;
   overflow-y: auto;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: var(--space-1);
+  padding: var(--space-2);
 }
 
 .location-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-default);
@@ -217,8 +217,8 @@ function resultFor(id: string) {
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: var(--space-2);
-  padding-top: var(--space-2);
+  gap: var(--space-3);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -227,7 +227,8 @@ function resultFor(id: string) {
   font-family: inherit;
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  padding: var(--space-2) var(--space-3);
+  min-height: var(--control-md);
+  padding: 0 var(--space-5);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-default);

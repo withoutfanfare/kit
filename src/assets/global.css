@@ -153,6 +153,6 @@ body {
 
 @media (max-width: 1120px) {
   :root {
-    --sidebar-width: 52px;
+    --sidebar-width: 60px;
   }
 }

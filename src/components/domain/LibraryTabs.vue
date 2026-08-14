@@ -8,14 +8,14 @@
 <style scoped>
 .library-tabs {
   display: flex;
-  padding: var(--space-2) var(--space-3) 0;
+  padding: var(--space-4) var(--space-5) 0;
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .library-tab {
   flex: 1;
-  padding: var(--space-2);
+  padding: var(--space-3) var(--space-2);
   border-bottom: 2px solid transparent;
   color: var(--text-secondary);
   font-size: var(--text-sm);

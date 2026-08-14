@@ -71,8 +71,8 @@ defineEmits<{
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-height: 30px;
-  padding: var(--space-2) var(--space-3);
+  min-height: var(--control-lg);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
   user-select: none;

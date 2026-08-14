@@ -91,7 +91,7 @@ defineProps<{
 .selection-preview {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-6);
   height: 100%;
 }
 
@@ -138,7 +138,7 @@ defineProps<{
 }
 
 .section-label {
-    display: flex;
+  display: flex;
   align-items: center;
   gap: var(--space-2);
   font-family: var(--font-sans);
@@ -160,7 +160,7 @@ defineProps<{
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
@@ -198,7 +198,7 @@ defineProps<{
 }
 
 .warning-item {
-  padding: var(--space-2);
+  padding: var(--space-4);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--warning);

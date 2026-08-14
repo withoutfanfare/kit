@@ -62,8 +62,8 @@ function close() {
 .shortcut-groups {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  padding: var(--space-2) 0;
+  gap: var(--space-7);
+  padding: var(--space-4) 0;
 }
 
 .group-title {
@@ -76,7 +76,7 @@ function close() {
 .shortcut-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .shortcut-row {
@@ -84,7 +84,7 @@ function close() {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-1) 0;
+  padding: var(--space-2) 0;
 }
 
 .shortcut-keys {

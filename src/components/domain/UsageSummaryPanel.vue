@@ -52,7 +52,7 @@ const lastUsedDisplay = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   font-size: var(--text-sm);
 }
 

@@ -256,13 +256,13 @@ onUnmounted(() => document.removeEventListener("pointerdown", handlePointerDown)
 <style scoped>
 .global-search {
   position: relative;
-  width: 280px;
+  width: 320px;
 }
 
 .search-icon {
   position: absolute;
-  top: 6px;
-  left: var(--space-2);
+  top: 8px;
+  left: var(--space-3);
   z-index: 1;
   width: 16px;
   height: 16px;
@@ -272,8 +272,8 @@ onUnmounted(() => document.removeEventListener("pointerdown", handlePointerDown)
 
 .global-search-input {
   width: 100%;
-  height: 28px;
-  padding: 0 42px 0 28px;
+  height: var(--control-md);
+  padding: 0 46px 0 34px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   outline: none;
@@ -300,8 +300,8 @@ onUnmounted(() => document.removeEventListener("pointerdown", handlePointerDown)
 
 .shortcut-hint {
   position: absolute;
-  top: 6px;
-  right: var(--space-2);
+  top: 8px;
+  right: var(--space-3);
   color: var(--text-tertiary);
   font-family: inherit;
   font-size: var(--text-xs);
@@ -313,10 +313,10 @@ onUnmounted(() => document.removeEventListener("pointerdown", handlePointerDown)
   top: calc(100% + var(--space-2));
   left: 0;
   z-index: 60;
-  width: 360px;
+  width: 400px;
   max-height: min(480px, calc(100vh - 72px));
   overflow-y: auto;
-  padding: var(--space-1);
+  padding: var(--space-2);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--surface-panel);
@@ -328,7 +328,7 @@ onUnmounted(() => document.removeEventListener("pointerdown", handlePointerDown)
 }
 
 .group-label {
-    padding: var(--space-2) var(--space-2) var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-2);
   color: var(--text-tertiary);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
@@ -339,7 +339,7 @@ onUnmounted(() => document.removeEventListener("pointerdown", handlePointerDown)
   width: 100%;
   flex-direction: column;
   gap: 1px;
-  padding: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;

@@ -282,7 +282,7 @@ watch(
   display: flex;
   align-items: baseline;
   gap: var(--space-3);
-  padding: var(--space-5) var(--space-5) var(--space-3);
+  padding: var(--space-6) var(--space-7) var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -318,7 +318,7 @@ watch(
 }
 
 .library-search {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -326,7 +326,7 @@ watch(
 .library-list {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
 }
 
 .list-group {
@@ -334,21 +334,21 @@ watch(
 }
 
 .group-label {
-    display: flex;
+  display: flex;
   align-items: center;
   gap: var(--space-2);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
-  padding: var(--space-2) var(--space-2) var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-2);
 }
 
 .library-item {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-default);
@@ -437,7 +437,7 @@ watch(
 .preview-panel {
   width: 280px;
   flex-shrink: 0;
-  padding: var(--space-4);
+  padding: var(--space-6);
   overflow-y: auto;
 }
 
@@ -445,8 +445,8 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--control-sm);
+  height: var(--control-sm);
   border: none;
   background: transparent;
   color: var(--text-tertiary);
@@ -466,8 +466,8 @@ watch(
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-7);
   border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }

@@ -91,7 +91,7 @@ function onRowAction(action: string) {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-3);
+  padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-sm);
   cursor: default;
   user-select: none;

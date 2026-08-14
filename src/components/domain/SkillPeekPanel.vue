@@ -203,26 +203,26 @@ watch(
   top: 0;
   right: 0;
   bottom: 0;
-  width: 320px;
+  width: 360px;
   background: var(--surface-panel);
   box-shadow: var(--shadow-sheet);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--space-5);
+  padding: var(--space-7);
   overflow-y: auto;
   outline: none;
 }
 
 .close-button {
   position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
+  top: var(--space-5);
+  right: var(--space-5);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--control-sm);
+  height: var(--control-sm);
   border: none;
   background: transparent;
   color: var(--text-tertiary);
@@ -275,7 +275,7 @@ watch(
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding-right: var(--space-6);
+  padding-right: var(--space-8);
 }
 
 .peek-name {
@@ -298,7 +298,7 @@ watch(
 .peek-section {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-2);
 }
 
 .section-label {
@@ -317,7 +317,7 @@ watch(
 .compact-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-2);
 }
 
 .compact-item {
@@ -357,9 +357,9 @@ watch(
 .peek-actions {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
   margin-top: auto;
-  padding-top: var(--space-3);
+  padding-top: var(--space-5);
 }
 
 .peek-actions :deep(button) {
