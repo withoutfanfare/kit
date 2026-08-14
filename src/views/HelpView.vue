@@ -144,7 +144,7 @@ import { linkStateLabels } from "@/utils/statusLabels";
 
     <!-- Managing Skills -->
     <section class="settings-section">
-      <h2 class="section-title">Managing Skills</h2>
+      <h2 class="section-title">Managing skills</h2>
       <div class="settings-group">
         <div class="help-row">
           <span class="help-title">Adding skills to a project</span>
@@ -166,7 +166,7 @@ import { linkStateLabels } from "@/utils/statusLabels";
 
     <!-- Keyboard & Tips -->
     <section class="settings-section">
-      <h2 class="section-title">Keyboard &amp; Tips</h2>
+      <h2 class="section-title">Keyboard and tips</h2>
       <div class="settings-group">
         <div class="help-row">
           <span class="help-title">Keyboard shortcuts</span>
@@ -188,12 +188,15 @@ import { linkStateLabels } from "@/utils/statusLabels";
 </template>
 
 <style scoped>
+/* A reading surface: the measure is capped so lines stay scannable. Prose at
+   the full width of a 1400px window is unreadable however well it is set. */
 .help-view {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
-  padding: var(--space-5) var(--space-6);
+  padding: var(--space-9) var(--space-9) var(--space-12);
+  max-width: 860px;
 }
 
 .page-title {
@@ -218,13 +221,10 @@ import { linkStateLabels } from "@/utils/statusLabels";
 }
 
 .section-title {
-  font-family: var(--font-plate);
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
+    font-family: var(--font-sans);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
   margin: 0 0 var(--space-2);
 }
 

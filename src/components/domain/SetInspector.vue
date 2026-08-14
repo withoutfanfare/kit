@@ -45,21 +45,21 @@ async function confirmDelete() {
          The skills, assigned locations and description are all in full there,
          and repeating them made neither copy authoritative. -->
     <div class="field">
-      <span class="plate-bare">On disk</span>
+      <span class="label">On disk</span>
       <span class="path">{{ detail.path }}</span>
     </div>
 
     <div class="field">
-      <span class="plate-bare">Scope</span>
-      <span class="plate">
+      <span class="label">Scope</span>
+      <span class="badge">
         {{ detail.scope === "global" ? "Everywhere" : "This project" }}
       </span>
     </div>
 
     <div class="actions">
-      <SButton variant="secondary" size="sm" @click="openInEditor">Open in Editor</SButton>
+      <SButton variant="secondary" size="sm" @click="openInEditor">Open in editor</SButton>
       <SButton variant="secondary" size="sm" @click="revealInFinder">Reveal in Finder</SButton>
-      <SButton variant="secondary" size="sm" @click="showDeleteConfirm = true">Delete Set</SButton>
+      <SButton variant="secondary" size="sm" @click="showDeleteConfirm = true">Delete set</SButton>
     </div>
   </InspectorPanel>
 

@@ -1,14 +1,13 @@
 <script setup lang="ts">
 /**
- * The Panel — Kit's front door.
+ * Panel — the overview Kit opens on.
  *
- * The one screen that answers "what is the state of things" before you decide
- * anything. It is a panel schedule: a rated capacity strip showing what the
- * session draws and where from, the circuits themselves, and — kept firmly
- * below the total — the sources Kit cannot verify.
+ * The concept survives from the previous pass: what loads here, what it costs,
+ * what needs attention, and what Kit could not verify. The drawing is new.
  *
- * The load figure is deliberately the only large type in the app. Everything
- * else on this screen exists to qualify it.
+ * Two things it must never do: present a figure as definitive when the
+ * settings that determine it could not be read, and let a stale loadout sit
+ * under a newly-chosen location's name.
  */
 import { computed, onMounted, ref, watch } from "vue";
 import { useLoadoutStore } from "@/stores/loadoutStore";
@@ -21,7 +20,6 @@ const loadout = useLoadoutStore();
 const locations = useLocationsStore();
 const health = useHealthStore();
 
-/** Which sub-panel the schedule is showing. Global is the honest default. */
 const activeId = ref<string | null>(null);
 
 const activeLocation = computed(
@@ -41,29 +39,18 @@ watch(activeId, (id) => {
   if (id) loadout.load(id);
 });
 
-/** Counted groups, heaviest first: the thing worth acting on leads. */
 const counted = computed(() =>
   [...loadout.countedGroups].sort((a, b) => b.tokenEstimate - a.tokenEstimate)
 );
-
 const unverified = computed(() => loadout.uncountedGroups);
-
 const total = computed(() => loadout.loadout?.tokenEstimate ?? 0);
-
 const unverifiedTotal = computed(() =>
   unverified.value.reduce((n, g) => n + g.tokenEstimate, 0)
 );
 
-function share(group: LoadoutGroup): number {
-  if (!total.value) return 0;
-  return (group.tokenEstimate / total.value) * 100;
-}
+/** True when the totals below rest on settings Kit could not read. */
+const uncertain = computed(() => loadout.loadout?.settingsUnreadable === true);
 
-/**
- * Global is always ramp 1 and the project you are in is always copper, so those
- * two never move whatever the sort order. Everything else walks down the ramp
- * in rank order, which keeps adjacent segments distinguishable.
- */
 const tints = computed(() => {
   const map = new Map<string, string>();
   let step = 3;
@@ -76,392 +63,383 @@ const tints = computed(() => {
   return map;
 });
 
-function tint(group: LoadoutGroup): string {
-  return tints.value.get(`${group.origin}-${group.label}`) ?? "var(--load-6)";
-}
+const tint = (g: LoadoutGroup) =>
+  tints.value.get(`${g.origin}-${g.label}`) ?? "var(--load-6)";
+
+const share = (g: LoadoutGroup) =>
+  total.value ? (g.tokenEstimate / total.value) * 100 : 0;
 
 const conflicts = computed(() => loadout.loadout?.vetoed ?? []);
-
 const issueCount = computed(
   () => (health.result?.errorCount ?? 0) + (health.result?.warningCount ?? 0)
 );
+
+const originLabel: Record<string, string> = {
+  global: "Every session",
+  project: "This project",
+  plugin: "Plugin",
+  account: "Account pack",
+};
 </script>
 
 <template>
-  <div class="panel-view">
-    <!-- ── Rating plate: which board, and what it draws ───────────── -->
-    <header class="board">
-      <div class="board-id">
-        <label class="picker">
-          <span class="sr-only">Sub-panel</span>
-          <select v-model="activeId" class="picker-select">
+  <div class="view">
+    <div class="wrap">
+      <header class="head">
+        <div class="picker-wrap">
+          <select v-model="activeId" class="picker" aria-label="Location">
             <option v-for="l in locations.locationList" :key="l.id" :value="l.id">
               {{ l.label }}
             </option>
           </select>
-        </label>
-        <p class="board-path" :title="activeLocation?.path">
+          <PanelIcon name="chevron" :size="13" class="picker-chevron" />
+        </div>
+        <p class="path" :title="activeLocation?.path">
           {{ activeLocation?.path ?? "—" }}
         </p>
+      </header>
+
+      <div v-if="loadout.isLoading" class="loading" aria-busy="true">
+        <div class="skeleton sk-figure"></div>
+        <div class="skeleton sk-meter"></div>
+        <div class="skeleton sk-row"></div>
+        <div class="skeleton sk-row"></div>
+        <div class="skeleton sk-row"></div>
       </div>
 
-      <div class="draw">
-        <span class="rating draw-figure tabular">{{ total.toLocaleString() }}</span>
-        <span class="draw-unit">
-          <span class="plate-bare">tokens / session</span>
-          <span class="draw-note">
-            {{ loadout.loadout?.modelFacingCount ?? 0 }} skills reach the model
-            <template v-if="loadout.loadout?.commandOnlyCount">
-              · {{ loadout.loadout.commandOnlyCount }} command-only
-            </template>
-          </span>
-        </span>
-      </div>
-    </header>
-
-    <div v-if="loadout.isLoading" class="loading" aria-busy="true">
-      <span class="plate-bare">Reading the board…</span>
-    </div>
-
-    <template v-else-if="loadout.loadout">
-      <!-- ── The capacity strip ──────────────────────────────────── -->
-      <section class="strip-block" aria-label="Load by source">
-        <div class="strip">
-          <span
-            v-for="g in counted"
-            :key="`${g.origin}-${g.label}`"
-            class="seg"
-            :style="{ width: `${share(g)}%`, background: tint(g) }"
-            :title="`${g.label} — ${g.tokenEstimate.toLocaleString()} tokens`"
-          />
-        </div>
-
-        <ol class="legend">
-          <li v-for="g in counted" :key="`k-${g.origin}-${g.label}`">
-            <span class="swatch" :style="{ background: tint(g) }" aria-hidden="true" />
-            <span class="legend-name">{{ g.label }}</span>
-            <span class="legend-load rating tabular">{{ g.tokenEstimate.toLocaleString() }}</span>
-          </li>
-        </ol>
-      </section>
-
-      <!-- ── What needs attention. Only shown when it exists. ─────── -->
-      <section v-if="conflicts.length || issueCount" class="attention">
-        <RouterLink v-if="conflicts.length" to="/loadout" class="flag flag-caution">
-          <PanelIcon name="caution" />
-          <span class="flag-body">
-            <strong class="rating tabular">{{ conflicts.length }}</strong>
-            linked here but switched off globally — they look active and are not.
-          </span>
-          <PanelIcon name="chevron" :size="13" class="flag-go" />
-        </RouterLink>
-
-        <RouterLink v-if="issueCount" to="/health" class="flag">
-          <PanelIcon name="health" />
-          <span class="flag-body">
-            <strong class="rating tabular">{{ issueCount }}</strong>
-            {{ issueCount === 1 ? "issue" : "issues" }} across your locations —
-            broken links and declarations that don't match.
-          </span>
-          <PanelIcon name="chevron" :size="13" class="flag-go" />
-        </RouterLink>
-      </section>
-
-      <!-- ── The schedule ─────────────────────────────────────────── -->
-      <section class="schedule">
-        <div class="schedule-head">
-          <h2 class="schedule-title">Circuits</h2>
-          <RouterLink :to="`/loadout/${activeId}`" class="schedule-link">
-            Full schedule
-            <PanelIcon name="chevron" :size="12" />
-          </RouterLink>
-        </div>
-
-        <ol class="circuits">
-          <li
-            v-for="(g, i) in counted"
-            :key="`c-${g.origin}-${g.label}`"
-            class="circuit"
-          >
-            <span class="position tabular">{{ String(i + 1).padStart(2, "0") }}</span>
-            <span class="swatch" :style="{ background: tint(g) }" aria-hidden="true" />
-            <span class="circuit-name">{{ g.label }}</span>
-            <span class="plate circuit-origin">{{ g.origin }}</span>
-            <span class="circuit-count tabular">
-              {{ g.modelFacingCount }}
-              <span class="circuit-count-unit">{{ g.modelFacingCount === 1 ? "skill" : "skills" }}</span>
+      <template v-else-if="loadout.loadout">
+        <section class="figure-block" :class="{ uncertain }">
+          <div class="figure-row">
+            <span class="figure num">
+              <template v-if="uncertain">—</template>
+              <template v-else>{{ total.toLocaleString() }}</template>
             </span>
-            <span class="circuit-load rating tabular">
-              {{ g.tokenEstimate.toLocaleString() }}
+            <span class="figure-side">
+              <span class="figure-unit">tokens per session</span>
+              <span class="figure-sub">
+                <template v-if="uncertain">Can't be calculated right now</template>
+                <template v-else>
+                  {{ loadout.loadout.modelFacingCount }} skills reach the model<template
+                    v-if="loadout.loadout.commandOnlyCount"
+                  >
+                    · {{ loadout.loadout.commandOnlyCount }} command-only</template>
+                </template>
+              </span>
             </span>
-          </li>
-        </ol>
-      </section>
+          </div>
 
-      <!-- ── Below the total, and hatched, because it is not in it ── -->
-      <section v-if="unverified.length" class="unverified unsurveyed">
-        <div class="unverified-head">
-          <span class="plate">Not counted</span>
-          <p class="unverified-why">
-            Kit can read these but cannot tell whether they are switched on, so
-            they are outside every figure above.
+          <p v-if="uncertain" class="uncertain-note">
+            <PanelIcon name="caution" :size="14" />
+            <span>
+              Kit couldn't read <code>~/.claude/settings.json</code>, so it can't
+              tell which skills you've switched off. The sources below are what's
+              on disk — not necessarily what loads.
+            </span>
           </p>
-          <span class="unverified-load rating tabular">
-            ~{{ unverifiedTotal.toLocaleString() }}
-          </span>
-        </div>
-        <ul class="packs">
-          <li v-for="g in unverified" :key="`u-${g.label}`">
-            <span class="pack-name">{{ g.label }}</span>
-            <span class="pack-count tabular">{{ g.modelFacingCount }}</span>
-          </li>
-        </ul>
-      </section>
-    </template>
+
+          <div
+            v-else
+            class="meter"
+            role="img"
+            :aria-label="`Load by source, ${total} tokens in total`"
+          >
+            <span
+              v-for="g in counted"
+              :key="`${g.origin}-${g.label}`"
+              class="meter-seg"
+              :style="{ width: `${share(g)}%`, background: tint(g) }"
+              :title="`${g.label} — ${g.tokenEstimate.toLocaleString()} tokens`"
+            ></span>
+          </div>
+        </section>
+
+        <section v-if="conflicts.length || issueCount" class="alerts">
+          <RouterLink v-if="conflicts.length" to="/loadout" class="alert alert-warn">
+            <PanelIcon name="caution" :size="15" />
+            <span class="alert-text">
+              <strong>{{ conflicts.length }} linked here but switched off globally</strong>
+              They look active and aren't loading.
+            </span>
+            <PanelIcon name="chevron" :size="14" class="alert-go" />
+          </RouterLink>
+
+          <RouterLink v-if="issueCount" to="/health" class="alert">
+            <PanelIcon name="health" :size="15" />
+            <span class="alert-text">
+              <strong>
+                {{ issueCount }} {{ issueCount === 1 ? "issue" : "issues" }} to resolve
+              </strong>
+              Broken links and declarations that don't match.
+            </span>
+            <PanelIcon name="chevron" :size="14" class="alert-go" />
+          </RouterLink>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2 class="section-title">Sources</h2>
+            <span class="section-count">{{ counted.length }}</span>
+            <RouterLink :to="`/loadout/${activeId}`" class="section-aside link">
+              Full loadout
+              <PanelIcon name="chevron" :size="12" />
+            </RouterLink>
+          </div>
+
+          <ul class="rows">
+            <li v-for="g in counted" :key="`c-${g.origin}-${g.label}`" class="row src">
+              <span class="swatch" :style="{ background: tint(g) }" aria-hidden="true"></span>
+              <span class="src-name">{{ g.label }}</span>
+              <span class="badge">{{ originLabel[g.origin] }}</span>
+              <span class="src-skills num">{{ g.modelFacingCount }}</span>
+              <span class="src-tokens num">{{ g.tokenEstimate.toLocaleString() }}</span>
+            </li>
+          </ul>
+        </section>
+
+        <section v-if="unverified.length" class="section">
+          <div class="section-head">
+            <h2 class="section-title">Not counted</h2>
+            <span class="section-count">~{{ unverifiedTotal.toLocaleString() }} tokens</span>
+          </div>
+          <p class="note">
+            Kit can see these but can't tell whether they're switched on, so
+            they're left out of the figure above.
+          </p>
+          <ul class="packs">
+            <li v-for="g in unverified" :key="`u-${g.label}`">
+              <span class="pack-name">{{ g.label }}</span>
+              <span class="pack-count num">{{ g.modelFacingCount }}</span>
+            </li>
+          </ul>
+        </section>
+      </template>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.panel-view {
+.view {
   height: 100%;
   overflow-y: auto;
-  padding: var(--space-6) var(--space-7) var(--space-9);
-  max-width: 1080px;
 }
 
-/* ── Rating plate ─────────────────────────────────────────── */
-
-.board {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-6);
-  padding-bottom: var(--space-5);
-  border-bottom: 1px solid var(--border-default);
+.wrap {
+  max-width: 880px;
+  padding: var(--space-9) var(--space-9) var(--space-12);
 }
 
-.board-id {
-  min-width: 0;
+.head {
+  margin-bottom: var(--space-9);
 }
 
-.picker-select {
+.picker-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: -6px;
+}
+
+.picker {
+  appearance: none;
   font-family: var(--font-sans);
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
-  color: var(--text-primary);
+  letter-spacing: var(--track-tight);
+  color: var(--k-text);
   background: transparent;
   border: 0;
-  padding: 0;
-  margin: 0 0 2px -2px;
+  border-radius: var(--radius-md);
+  padding: 2px 26px 2px 6px;
   cursor: pointer;
-  max-width: 42ch;
+  transition: background var(--duration-fast) var(--ease-inout);
 }
 
-.board-path {
+.picker:hover {
+  background: var(--k-layer-2);
+}
+
+.picker-chevron {
+  position: absolute;
+  right: 7px;
+  color: var(--k-text-4);
+  pointer-events: none;
+  transform: rotate(90deg);
+}
+
+.path {
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--k-text-4);
+  margin: var(--space-2) 0 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 52ch;
-}
-
-.draw {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  flex-shrink: 0;
-}
-
-.draw-figure {
-  font-size: var(--text-rating);
-  line-height: 1;
-  letter-spacing: -0.02em;
-}
-
-.draw-unit {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  padding-bottom: 2px;
-}
-
-.draw-note {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
 }
 
 .loading {
-  padding: var(--space-7) 0;
-}
-
-/* ── Capacity strip ───────────────────────────────────────── */
-
-.strip-block {
-  margin-top: var(--space-6);
-}
-
-.strip {
   display: flex;
-  gap: 1.5px;
-  height: 14px;
-  margin-bottom: var(--space-4);
+  flex-direction: column;
+  gap: var(--space-6);
 }
 
-.seg {
-  min-width: 2px;
-  transform-origin: left center;
-  animation: throw var(--duration-slow) var(--ease-out) both;
+.sk-figure {
+  height: 40px;
+  width: 220px;
 }
 
-/* The one authored moment: the strip energises left to right, the way a
-   panel comes up. Damped, not bouncy — a switch throws, it does not spring. */
-@keyframes throw {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
+.sk-meter {
+  height: 8px;
+  width: 100%;
 }
 
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-6);
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.sk-row {
+  height: 32px;
+  width: 100%;
 }
 
-.legend li {
+.figure-block {
+  margin-bottom: var(--space-9);
+}
+
+.figure-row {
   display: flex;
   align-items: baseline;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.figure {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--track-tight);
+  line-height: 1;
+  color: var(--k-text);
+}
+
+.uncertain .figure {
+  color: var(--k-text-4);
+}
+
+.figure-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.figure-unit {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--k-text-2);
+}
+
+.figure-sub {
+  font-size: var(--text-md);
+  color: var(--k-text-4);
+}
+
+.uncertain-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--k-warn-quiet);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k-warn) 30%, transparent);
+  font-size: var(--text-md);
+  line-height: var(--lh-snug);
+  color: var(--k-text-2);
+  max-width: 68ch;
+}
+
+.uncertain-note :deep(.icon) {
+  color: var(--k-warn);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--k-text);
+}
+
+.alerts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-9);
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--k-layer-1);
+  box-shadow: inset 0 0 0 1px var(--k-line);
+  text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-inout),
+    box-shadow var(--duration-fast) var(--ease-inout);
+}
+
+.alert:hover {
+  background: var(--k-layer-2);
+  box-shadow: inset 0 0 0 1px var(--k-line-strong);
+}
+
+.alert :deep(.icon) {
+  color: var(--k-text-4);
+  flex-shrink: 0;
+}
+
+.alert-warn :deep(.icon) {
+  color: var(--k-warn);
+}
+
+.alert-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-md);
+  color: var(--k-text-4);
+}
+
+.alert-text strong {
+  font-weight: var(--weight-medium);
+  color: var(--k-text);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--k-text-3);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--k-accent);
+}
+
+.src {
+  cursor: default;
 }
 
 .swatch {
-  width: 7px;
-  height: 7px;
-  flex-shrink: 0;
-  align-self: center;
-}
-
-.legend-load {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-}
-
-/* ── Attention ────────────────────────────────────────────── */
-
-.attention {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-top: var(--space-7);
-}
-
-.flag {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--surface-panel);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: var(--text-sm);
-  transition: border-color var(--duration-fast) var(--ease-default),
-    background var(--duration-fast) var(--ease-default);
-}
-
-.flag:hover {
-  background: var(--surface-hover);
-  border-color: var(--border-default);
-}
-
-.flag-caution {
-  border-color: color-mix(in srgb, var(--warning) 38%, transparent);
-  color: var(--text-primary);
-}
-
-.flag-caution :deep(.icon) {
-  color: var(--warning);
-}
-
-.flag-body {
-  flex: 1;
-  text-wrap: pretty;
-}
-
-.flag-body strong {
-  color: var(--text-primary);
-  margin-right: 2px;
-}
-
-.flag-go {
-  color: var(--text-tertiary);
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
-/* ── Schedule ─────────────────────────────────────────────── */
-
-.schedule {
-  margin-top: var(--space-8);
-}
-
-.schedule-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--border-default);
-}
-
-.schedule-title {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.schedule-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.schedule-link:hover {
-  text-decoration: underline;
-}
-
-.circuits {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.circuit {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-2);
-  border-bottom: 1px solid var(--border-subtle);
-  font-size: var(--text-md);
-}
-
-.circuit-name {
-  color: var(--text-primary);
+.src-name {
+  color: var(--k-text);
   font-weight: var(--weight-medium);
   min-width: 0;
   overflow: hidden;
@@ -469,64 +447,31 @@ const issueCount = computed(
   white-space: nowrap;
 }
 
-.circuit-origin {
-  font-size: 9.5px;
-  opacity: 0.85;
-}
-
-.circuit-count {
+.src-skills {
   margin-left: auto;
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
+  color: var(--k-text-4);
   flex-shrink: 0;
 }
 
-.circuit-count-unit {
-  margin-left: 2px;
-}
-
-.circuit-load {
-  font-size: var(--text-md);
+.src-tokens {
+  color: var(--k-text-2);
   min-width: 6ch;
   text-align: right;
   flex-shrink: 0;
 }
 
-/* ── Not counted ──────────────────────────────────────────── */
-
-.unverified {
-  margin-top: var(--space-8);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-4) var(--space-5) var(--space-5);
-}
-
-.unverified-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-4);
-}
-
-.unverified-why {
-  flex: 1;
-  min-width: 24ch;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  margin: 0;
-  text-wrap: pretty;
-}
-
-.unverified-load {
-  font-size: var(--text-lg);
-  color: var(--unsurveyed);
+.note {
+  font-size: var(--text-md);
+  color: var(--k-text-4);
+  margin: 0 0 var(--space-5);
+  max-width: 64ch;
+  line-height: var(--lh-snug);
 }
 
 .packs {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: var(--space-2) var(--space-5);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-2) var(--space-6);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -536,18 +481,14 @@ const issueCount = computed(
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-  border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 2px;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  font-size: var(--text-md);
+  color: var(--k-text-3);
+  border-bottom: 1px solid var(--k-line);
 }
 
-@media (max-width: 900px) {
-  .board {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-4);
-  }
+.pack-count {
+  color: var(--k-text-4);
 }
 </style>

@@ -164,7 +164,7 @@ async function completeSetup() {
   <div class="onboarding-backdrop">
     <div class="onboarding-card">
       <template v-if="step === 'library'">
-        <span class="plate onboarding-plate">Kit</span>
+        <span class="badge onboarding-plate">Kit</span>
         <h1 class="onboarding-title">Point Kit at your skills library</h1>
         <p class="onboarding-description">
           Your <strong>library</strong> is one folder holding every skill you

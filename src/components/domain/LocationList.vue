@@ -59,8 +59,8 @@ async function addLocation() {
     <!-- A schedule names its columns. The count on the right is otherwise a
          bare number, and a bare number in a list is a guess. -->
     <div class="list-header">
-      <span class="plate-bare">Locations</span>
-      <span class="plate-bare list-col">Skills</span>
+      <span class="label">Locations</span>
+      <span class="label list-col">Skills</span>
     </div>
     <div class="list-items">
       <LocationRow
@@ -81,7 +81,7 @@ async function addLocation() {
           {{ locationsStore.missingLocations.length === 1 ? "location has" : "locations have" }}
           moved or been deleted.
         </span>
-        <SButton size="sm" @click="clearMissing">Forget them</SButton>
+        <SButton size="sm" variant="secondary" @click="clearMissing">Forget them</SButton>
       </div>
 
       <!-- Projects on disk keeping skills that Kit doesn't track yet. -->
@@ -99,7 +99,7 @@ async function addLocation() {
       </div>
     </div>
     <div v-if="locationsStore.locationList.length > 0" class="list-footer">
-      <SButton @click="addLocation">Add Location</SButton>
+      <SButton variant="secondary" @click="addLocation">Add location</SButton>
     </div>
   </div>
 </template>
@@ -153,14 +153,11 @@ async function addLocation() {
 }
 
 .discovered-title {
-  font-family: var(--font-plate);
-  display: block;
+    display: block;
   padding: 0 var(--space-2) var(--space-1);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
 }
 
 .discovered-row {

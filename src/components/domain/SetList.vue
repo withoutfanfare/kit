@@ -19,10 +19,10 @@ defineProps<{
       <span class="section-count">{{ sets.length }}</span>
     </div>
     <ul class="rows">
-      <li v-for="set in sets" :key="set.setId">
+      <li v-for="set in sets" :key="set.setId" class="row">
         <span class="set-name">{{ set.name }}</span>
-        <span class="set-count rating tabular">{{ set.skillCount }}</span>
-        <span class="rating-unit">{{ set.skillCount === 1 ? "skill" : "skills" }}</span>
+        <span class="set-count num">{{ set.skillCount }}</span>
+        <span class="set-unit">{{ set.skillCount === 1 ? "skill" : "skills" }}</span>
       </li>
       <li v-if="sets.length === 0" class="row-empty">No sets installed here.</li>
     </ul>
@@ -45,8 +45,9 @@ defineProps<{
   flex-shrink: 0;
 }
 
-.rating-unit {
-  margin-left: 0;
+.set-unit {
+  font-size: var(--text-md);
+  color: var(--k-text-4);
   flex-shrink: 0;
 }
 </style>

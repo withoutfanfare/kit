@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import EmptyState from "@/components/base/EmptyState.vue";
 import { computed, onMounted, ref } from "vue";
 import { useUsageStore } from "@/stores/usageStore";
-import { SButton, SEmptyState } from "@stuntrocket/ui";
+import { SButton } from "@stuntrocket/ui";
 import type { UsageSkillRow } from "@/types";
 
 const usageStore = useUsageStore();
@@ -58,7 +59,8 @@ onMounted(() => usageStore.fetchReport());
       <div class="sk sk-row"></div>
     </div>
 
-    <SEmptyState
+    <EmptyState
+      icon="usage"
       v-else-if="usageStore.report && !usageStore.report.available"
       title="No usage logs yet"
       description="Kit reads the log the Skill hook writes into your library. Nothing has been recorded there yet, so there's nothing to judge — that's missing data, not zero use."
@@ -83,18 +85,18 @@ onMounted(() => usageStore.fetchReport());
         <!-- Column heads: three unlabelled columns of numbers and dates left
              the reader guessing which was which. -->
         <div class="col-heads" aria-hidden="true">
-          <span class="plate-bare">Skill</span>
+          <span class="label">Skill</span>
           <span />
-          <span class="plate-bare col-runs">Runs</span>
-          <span class="plate-bare">Last run</span>
-          <span class="plate-bare">Most in</span>
+          <span class="label col-runs">Runs</span>
+          <span class="label">Last run</span>
+          <span class="label">Most in</span>
         </div>
 
         <ol class="rows">
           <li v-for="row in rows" :key="row.skill" class="row" :class="{ stale: isStale(row) }">
             <span class="row-name" :title="row.skill">
               {{ row.skill }}
-              <span v-if="row.skill.includes(':')" class="plate row-plate">Plugin</span>
+              <span v-if="row.skill.includes(':')" class="badge row-plate">Plugin</span>
             </span>
             <span class="row-bar">
               <span
@@ -130,7 +132,7 @@ onMounted(() => usageStore.fetchReport());
       </section>
 
       <footer class="foot">
-        <SButton size="sm" @click="usageStore.fetchReport()">Reload log</SButton>
+        <SButton size="sm" variant="secondary" @click="usageStore.fetchReport()">Reload log</SButton>
       </footer>
     </template>
   </div>

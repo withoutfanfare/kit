@@ -72,7 +72,7 @@ onMounted(() => {
   <div class="health-view">
     <div class="page-header">
       <div class="header-left">
-        <h1 class="page-title">Health Check</h1>
+        <h1 class="page-title">Health check</h1>
         <SBadge v-if="healthStore.result" variant="count">
           {{ healthStore.result.locationCount }} locations scanned
         </SBadge>
@@ -120,7 +120,7 @@ onMounted(() => {
           :aria-pressed="healthStore.severityFilter === 'healthy'"
           @click="healthStore.setSeverityFilter('healthy')"
         >
-          <span class="rating tabular">{{ healthStore.result.healthyCount }}</span>
+          <span class="num">{{ healthStore.result.healthyCount }}</span>
           <span class="filter-label">
             {{ healthStore.result.healthyCount === 1 ? "location is" : "locations are" }} clear
           </span>
@@ -133,7 +133,7 @@ onMounted(() => {
           @click="healthStore.setSeverityFilter('warning')"
         >
           <PanelIcon name="caution" :size="13" />
-          <span class="rating tabular">{{ healthStore.result.warningCount }}</span>
+          <span class="num">{{ healthStore.result.warningCount }}</span>
           <span class="filter-label">
             {{ healthStore.result.warningCount === 1 ? "warning" : "warnings" }}
           </span>
@@ -146,7 +146,7 @@ onMounted(() => {
           @click="healthStore.setSeverityFilter('error')"
         >
           <PanelIcon name="broken" :size="13" />
-          <span class="rating tabular">{{ healthStore.result.errorCount }}</span>
+          <span class="num">{{ healthStore.result.errorCount }}</span>
           <span class="filter-label">
             {{ healthStore.result.errorCount === 1 ? "error" : "errors" }}
           </span>
@@ -192,18 +192,18 @@ onMounted(() => {
             </RouterLink>
             <div class="location-counts">
               <span v-if="group.location.errorCount" class="count is-error">
-                <span class="rating tabular">{{ group.location.errorCount }}</span>
+                <span class="num">{{ group.location.errorCount }}</span>
                 {{ group.location.errorCount === 1 ? "error" : "errors" }}
               </span>
               <span v-if="group.location.warningCount" class="count is-warning">
-                <span class="rating tabular">{{ group.location.warningCount }}</span>
+                <span class="num">{{ group.location.warningCount }}</span>
                 {{ group.location.warningCount === 1 ? "warning" : "warnings" }}
               </span>
               <span v-if="group.location.infoCount" class="count">
-                <span class="rating tabular">{{ group.location.infoCount }}</span>
+                <span class="num">{{ group.location.infoCount }}</span>
                 to note
               </span>
-              <span v-if="group.issues.length === 0" class="plate">Clear</span>
+              <span v-if="group.issues.length === 0" class="badge">Clear</span>
             </div>
             <SButton
               v-if="group.location.brokenLinkCount > 0"
@@ -225,7 +225,7 @@ onMounted(() => {
               class="issue-row"
             >
               <span
-                class="plate issue-kind"
+                class="badge issue-kind"
                 :class="`is-${issue.severity}`"
               >{{ issueCause(issue.kind) }}</span>
               <div class="issue-content">

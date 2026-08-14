@@ -16,7 +16,7 @@ const states = Object.keys(linkStateLabels) as LinkState[];
 
 <template>
   <div class="legend">
-    <span class="plate-bare">Key</span>
+    <span class="label">Key</span>
     <LinkStateMark v-for="state in states" :key="state" :state="state" />
   </div>
 </template>

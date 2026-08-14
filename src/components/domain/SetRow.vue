@@ -20,10 +20,10 @@ defineProps<{
       <span class="row-name">{{ set.name }}</span>
       <span v-if="set.description" class="row-desc">{{ set.description }}</span>
     </div>
-    <span class="plate row-scope">
+    <span class="badge row-scope">
       {{ set.scope === "global" ? "Everywhere" : "This project" }}
     </span>
-    <span class="row-count rating tabular">{{ set.skillCount }}</span>
+    <span class="row-count num">{{ set.skillCount }}</span>
   </div>
 </template>
 

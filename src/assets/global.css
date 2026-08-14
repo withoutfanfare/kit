@@ -1,12 +1,10 @@
 @import "tailwindcss";
 @import "@stuntrocket/ui/tokens.css";
 
-/* Self-hosted: a desktop app must not depend on a font CDN, and the plates
-   need a face with engraved character rather than the platform sans. */
-@import "@fontsource/archivo-narrow/latin-400.css";
-@import "@fontsource/archivo-narrow/latin-500.css";
-@import "@fontsource/archivo-narrow/latin-600.css";
-@import "@fontsource/archivo-narrow/latin-700.css";
+/* Inter, self-hosted and variable: one family for the whole interface, and no
+   dependency on a font CDN in a desktop app. The variable axis is what makes
+   weight 510 and 590 available — real optical steps rather than 400/700 jumps. */
+@import "@fontsource-variable/inter/index.css";
 
 /* Kit's own world. Loaded after the shared tokens so it redefines them for
    this app only — @stuntrocket/ui itself is never modified. */
@@ -52,10 +50,7 @@
   --danger: var(--color-danger);
   --danger-subtle: var(--color-danger-subtle);
 
-  /* The panel's own roles */
-  --bus: var(--color-bus);
-  --bus-glow: var(--color-bus-glow);
-  --unsurveyed: var(--color-unsurveyed);
+  --unsurveyed: var(--k-unknown);
 
   /* Type scale, spacing, motion and the panel parts all live in panel.css so
      the world is described in one file. Nothing is redeclared here. */
@@ -76,11 +71,15 @@ body,
 body {
   font-family: var(--font-sans);
   font-size: var(--text-md);
-  color: var(--text-primary);
-  background: var(--surface-app);
-  /* A Mac app renders text the way Mac apps do. */
+  font-weight: var(--weight-normal);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--track-normal);
+  color: var(--k-text);
+  background: var(--k-bg);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 /* Numerals are read in columns everywhere in Kit — ratings, counts, positions.

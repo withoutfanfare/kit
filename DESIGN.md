@@ -5,157 +5,79 @@
 Recorded from the built interface, not from intentions. Where this disagrees
 with the code, the code is right and this file is stale.
 
-## The world: Panel Schedule
+## The system
 
-Kit is drawn as a distribution board. That is not a metaphor laid over the top —
-it is the artefact that already solves Kit's problem, and the mappings are
-structural:
+Built to the craft level of Linear, with Kit's own identity. The previous
+"Panel Schedule" world was discarded: it dressed the app in a metaphor and
+never detailed it. What replaced it is a product design system.
 
-| Panel | Kit |
-|---|---|
-| Main panel | Global (`~/.claude/skills`) — feeds every session |
-| Sub-panel | A project location |
-| Circuit | A skill |
-| Rated load | Token cost |
-| Panel capacity | The session's context budget |
-| Upstream breaker | `skillOverrides` — cuts the circuit whatever the sub-panel says |
-| Lock-out tag | A skill a hook runs from; must not be thrown |
-| Legend plate | Every label |
-| Schedule card | The Loadout view |
-| Hatched, off-schedule | Sources Kit cannot verify — outside every total |
+Four rules hold it together:
 
-**The one discipline:** take the panel's *grammar* (plate, rating, position,
-tag, bus), never its *textures*. No bevels, no brushed metal, no screws, no
-faux-industrial chrome. A reviewer who finds a gradient standing in for metal
-has found a defect.
+1. **One family.** Inter, everywhere. No display face in UI labels — that was
+   the single loudest wrong note in the previous pass.
+2. **Surfaces are alpha layers**, not solid greys. Every raised surface is the
+   ground plus a white (or black) overlay, so nesting stays coherent.
+3. **Every interactive thing has all its states**: default, hover, focus,
+   active, disabled, selected. Half a set is what makes an interface feel cheap.
+4. **Definition comes from rings and elevation**, not 1px hairlines everywhere.
 
-## Files
+### Colour
 
-- `src/assets/panel.css` — the whole world: palette (light + dark), type,
-  spacing, motion, and the panel's parts. Redefines the `--color-*` layer that
-  `@stuntrocket/ui` and every Kit component read.
-- `src/assets/global.css` — imports the above, plus short-name aliases.
-- `@stuntrocket/ui` is **never modified**; Kit overrides locally only.
-
-## Colour
-
-Restrained: neutrals plus one accent. The visitor came to operate.
+Kit's accent is the terracotta from its own app icon, so the app reads as
+itself rather than as a copy of the tools it learned its craft from.
 
 | Role | Light | Dark |
 |---|---|---|
-| Ground | `#D9DCD8` cool machine grey | `#141715` panel enamel |
-| Surface | `#E7E9E5` | `#1C201D` |
-| Accent (oxide green) | `#2F5D45` | `#6FA98A` |
-| Bus (copper) | `#8A5524` | `#C2793A` |
-| Caution / lock-out | `#8A6210` | `#D2A044` |
+| Ground | `#F7F7F8` | `#0A0B0D` |
+| Raised | `#FFFFFF` | `#101114` |
+| Accent | `#B5622F` | `#E08A5F` |
+| Text (4 steps) | `#16181C` → `#8B9098` | `#F2F3F5` → `#62666D` |
 
-**Never warm the ground.** Cream or paper tones read as stationery, not panel;
-the ground is deliberately cool in both themes.
+Warning is decisively yellower than the accent and danger decisively pinker,
+so neither can be mistaken for brand colour. Colour never carries meaning
+alone — every state has a glyph or a word.
 
-**Copper is structure, never decoration.** It appears on the sidebar bus, the
-Global main-panel mark, the watcher lamp, and the project's segment on the load
-strip. It is never a button, a link, or an accent for emphasis.
+**Light is declared before dark.** `:root` and `.dark` have the same
+specificity, so whichever is written last wins. Reversing that order silently
+disables dark mode.
 
-**The load ramp** (`--load-1` … `--load-6`) is hand-picked, not mixed: six
-sources sit side by side on one strip and a generated ramp collapses into mud in
-the middle. Global is always `--load-1` and the current project always
-`--load-2` (copper), so those two keep their identity across every screen
-whatever the sort order; everything else walks down the ramp in rank order.
+### Type
 
-**Colour never carries meaning alone.** Every state has a glyph or a word
-beside it. See `LinkStateMark.vue`.
+Inter Variable, self-hosted. Fixed scale at a 1.15–1.2 ratio (11/12/13/14/16/
+20/26/34), with 13px as the workhorse for rows, labels and controls. Variable
+weights (510, 590) rather than 400/700 jumps. Negative tracking on display
+sizes or they read loose. Tabular numerals wherever figures are compared.
 
-## Type
+### Space, radius, motion
 
-- **Interface:** the system face (`-apple-system` / SF). This has to read as a
-  Mac app; SF is what a Mac app is set in.
-- **Plates and ratings:** Archivo Narrow, self-hosted via `@fontsource`,
-  uppercase, tracked `0.13em`, small. This is how engraved legend plates and
-  rating stamps are lettered. No font CDN — a desktop app must not depend on one.
-- **Numerals are tabular everywhere.** Ratings, counts and positions are read
-  down columns and compared.
-- Scale is deliberately small (`--text-md` is 12.5px). A tool is read at arm's
-  length on a large display, and every extra pixel of leading costs a row.
-- `--text-rating` (38px) is the only genuinely large type in the app, used for
-  the session draw figure. Everything else on that screen qualifies it.
+4px base. Radius 3/4/6/8/12 — 6px for controls, 8px for panels. Transitions
+120–240ms; motion conveys state, never decoration.
 
-## The panel's parts
+### Primitives
 
-Defined in `panel.css`, used everywhere:
-
-- `.plate` — engraved legend plate: inset ink on a cut face. Not a bevel.
-- `.plate-bare` — the same lettering with no face, for quiet section markers.
-- `.rating` / `.rating-unit` — a load figure and its unit.
-- `.position` — the number stamped beside a breaker. A schedule's positions are
-  its addresses, so the sequence genuinely carries information (this is the one
-  earned exception to "no section numbers").
-- `.tag-lockout` — the one saturated element. Hung on a circuit that must not be
-  thrown.
-- `.bus` — copper spine.
-- `.unsurveyed` — diagonal hatching. Anything inside it is outside every total.
-- `.rule` / `.rule-strong` — hairlines at two weights.
-
-## Components
-
-- `PanelIcon.vue` — the whole icon set, one weight (1.25 stroke on a 16 grid),
-  one cap style. Each is the schematic symbol for its thing: the loadout icon is
-  a bus with branches, lock-out is a padlock on a hasp. No unicode glyphs, no
-  emoji, no mixed fills.
-- `LinkStateMark.vue` — how link state is drawn everywhere. Glyph is the signal,
-  colour agrees, label says it in words.
-- `SkillRow.vue` — carries the breaker: a quiet housing with a handle that moves.
-  The housing stays neutral; a column of saturated blocks is the loudest thing
-  on a screen and says nothing the handle's position doesn't.
-
-## Motion
-
-One authored moment per surface, damped and physical — the way a switch throws,
-never a spring. The load strip energises left to right on the Panel; the
-sidebar's branch tick draws when current reaches it. `--ease-default` and
-`--ease-out` only; **there is no overshoot easing in this system** and adding one
-is a defect. All motion is disabled under `prefers-reduced-motion`.
-
-## Corners and depth
-
-Corners are near-square (`--radius-md` is 3px): a panel is cut, not moulded.
-Panels sit flat. Only things that genuinely float — sheets, menus, toasts —
-cast a shadow, and shadows carry both offset and blur.
+`.btn` (primary/secondary/ghost/danger, all states), `.input`, `.badge`,
+`.row`, `.panel`, `.label`, `.meter`, `.skeleton`. Nothing in the app should
+roll its own button. Every list row carries `.row` explicitly — a `.rows > li`
+descendant selector was silently dropped by the CSS pipeline once already.
 
 ## Status
 
-Built and carrying the world:
+Every screen now carries the system: Panel, Locations (+ detail), Library
+(+ skill detail), Loadout, Usage, Sets (+ detail), Health, Compare, Settings,
+Help, Onboarding, Changelog, plus the shell and the shared components.
 
-- `panel.css` (incl. the shared section/row vocabulary), `global.css`,
-  `index.html` (direction contract)
-- `PanelIcon`, `LinkStateMark`, `SkillStatusLegend`
-- `SidebarNav` (the bus), `WindowToolbar` (rating plate + watcher lamp)
-- `PanelView` (new; the front door), `LoadoutView` (the schedule)
-- `LocationRow`, `LocationList`, `SkillRow`, `SkillList`, `SetRow`, `SetList`
-- `LocationDetailView` (data plate), `SkillsView` (schedule rows, one state mark
-  instead of seven pills), `HealthView` (filter strip, plate causes),
-  `UsageView` (column heads), `ChangelogView`, `HelpView`, `OnboardingView`,
-  `SettingsView`
-- `SkillDetailView`, `SetDetailView` and the three inspectors
-  (`SkillInspector`, `SetInspector`, `LocationInspector`)
+Conventions applied throughout:
 
-Uppercase section labels were normalised to the plate treatment across fifteen
-files, so the app has one heading voice rather than sixteen hand-rolled ones.
-
-**The inspector rule.** An inspector carries only what the main pane cannot:
-where the thing physically lives, its state, and the actions that act on the
-file itself. It previously repeated the summary, linked locations, sets and
-usage that the main pane already showed in full, so every detail screen said
-everything twice and neither copy was authoritative.
-
-Inheriting the world but not structurally reworked — they take the palette,
-type scale, spacing and heading treatment, and read consistently, but their
-composition is the previous design:
-
-`CompareLocationsView`, `AssignmentSheet`, `SelectionPreview`, `IssueList`,
-`LocationOverviewCard`, `LocationHeader`, `SkillPeekPanel`, `BulkAssignModal`,
-`SkillDiffModal`, `GlobalSearchResults`, `ShortcutHelpOverlay`,
-`ManifestEntryEditor`, `LibraryTabs`, `LinkedLocationsList`,
-`UsageSummaryPanel`.
+- **Sentence case** for every heading, label and button. Title Case reads as
+  marketing chrome in a product UI.
+- **Primary buttons are rare.** One per screen at most; everything else is
+  secondary or ghost. Two solid accent buttons on one screen is a hierarchy
+  failure, not emphasis.
+- **Empty states teach.** `EmptyState.vue` is Kit's own, because the shared
+  library's draws a filled 20px glyph where every other icon is a 16px stroke.
+- **Inspectors carry only what the main pane cannot** — where the thing lives,
+  its state, and the actions on the file itself.
+- **Reading surfaces cap their measure** (Help at 860px).
 
 ## One backend change
 
