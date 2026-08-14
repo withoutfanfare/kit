@@ -50,39 +50,33 @@ const meaning = computed(() => linkStateMeaning(props.state));
 .mark {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-plate);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xs);
-  padding: 1px var(--space-2);
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--k-text-3);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-3);
   white-space: nowrap;
+  background: var(--k-layer-2);
 }
 
 .mark.compact {
-  border: 0;
   padding: 0;
   gap: 0;
+  background: transparent;
 }
 
 /* Colour agrees with the glyph; it never carries the meaning by itself. */
-.is-linked {
-  color: var(--success);
-  border-color: color-mix(in srgb, var(--success) 32%, transparent);
+.is-linked :deep(.icon) {
+  color: var(--k-ok);
 }
 
-.is-local_only,
-.is-declared_only {
-  color: var(--warning);
-  border-color: color-mix(in srgb, var(--warning) 32%, transparent);
+.is-local_only :deep(.icon),
+.is-declared_only :deep(.icon) {
+  color: var(--k-warn);
 }
 
-.is-broken_link {
-  color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 32%, transparent);
+.is-broken_link :deep(.icon) {
+  color: var(--k-danger);
 }
 </style>

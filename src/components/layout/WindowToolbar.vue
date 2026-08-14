@@ -1,23 +1,19 @@
 <script setup lang="ts">
 /**
- * The board's header.
+ * The window's top bar.
  *
- * Every distribution board carries a rating plate saying which board this is
- * and what feeds it. Kit's equivalent is the library root: the one fact that
- * determines what every other screen can possibly show. It was previously
- * buried in Settings, which meant the app never told you which library it was
- * reading — the first question anyone asks when the numbers look wrong.
+ * Carries the app identity, which library Kit is reading — the first question
+ * anyone asks when the numbers look wrong — and the search field. Previously
+ * this was an engraved "rating plate" with a pilot lamp; both were costume.
  */
 import { computed } from "vue";
 import GlobalSearchResults from "@/components/domain/GlobalSearchResults.vue";
-import PanelIcon from "@/components/base/PanelIcon.vue";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useWatcherStore } from "@/stores/watcherStore";
 
 const preferences = usePreferencesStore();
 const watcher = useWatcherStore();
 
-/** The library's own folder name; the full path is the title attribute. */
 const libraryName = computed(() => {
   const root = preferences.libraryRoot?.replace(/\/+$/, "") ?? "";
   if (!root) return "No library set";
@@ -28,42 +24,36 @@ const watching = computed(() => watcher.status === "active");
 </script>
 
 <template>
-  <header class="board-head titlebar-drag-region">
-    <div class="head-left">
-      <span class="plate board-plate" :title="preferences.libraryRoot || undefined">
-        <span class="board-mark">Kit</span>
-        <span class="board-sep" aria-hidden="true">/</span>
-        <span class="board-lib">{{ libraryName }}</span>
+  <header class="topbar titlebar-drag-region">
+    <div class="identity">
+      <span class="mark">Kit</span>
+      <span class="sep" aria-hidden="true">/</span>
+      <span class="library" :title="preferences.libraryRoot || undefined">
+        {{ libraryName }}
       </span>
       <span
-        class="watch"
+        class="dot"
         :class="{ live: watching }"
         :title="watching ? 'Watching the library for changes' : 'Not watching the library'"
       >
-        <span class="watch-lamp" aria-hidden="true" />
         <span class="sr-only">
           {{ watching ? "Watching the library for changes" : "Not watching the library" }}
         </span>
       </span>
     </div>
 
-    <div class="head-search">
+    <div class="search">
       <GlobalSearchResults />
     </div>
 
-    <div class="head-right">
-      <slot name="actions">
-        <span class="plate-bare head-hint">
-          <PanelIcon name="search" :size="12" />
-          <kbd>⌘K</kbd>
-        </span>
-      </slot>
+    <div class="actions">
+      <slot name="actions" />
     </div>
   </header>
 </template>
 
 <style scoped>
-.board-head {
+.topbar {
   position: fixed;
   top: 0;
   left: 0;
@@ -72,100 +62,72 @@ const watching = computed(() => watcher.status === "active");
   height: var(--toolbar-height);
   display: flex;
   align-items: center;
-  gap: var(--space-5);
+  gap: var(--space-7);
   /* Traffic lights own the first 76px. */
-  padding: 0 var(--space-5) 0 76px;
-  background: var(--surface-sidebar);
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 var(--space-6) 0 76px;
+  background: var(--k-bg);
+  border-bottom: 1px solid var(--k-line);
 }
 
-.head-left {
+.identity {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
   flex-shrink: 0;
+  min-width: 0;
 }
 
-/* The rating plate. Engraved, not a logo. */
-.board-plate {
-  gap: var(--space-2);
-  max-width: 260px;
-  overflow: hidden;
+.mark {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--track-snug);
+  color: var(--k-text);
 }
 
-.board-mark {
-  color: var(--plate-ink);
-  letter-spacing: 0.18em;
+.sep {
+  color: var(--k-text-4);
 }
 
-.board-sep {
-  color: var(--text-tertiary);
-  opacity: 0.6;
-}
-
-.board-lib {
-  color: var(--text-secondary);
-  font-weight: var(--weight-medium);
+.library {
+  font-size: var(--text-md);
+  color: var(--k-text-3);
+  max-width: 20ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* A pilot lamp: on when the watcher is running. Never colour alone — the
-   title and the screen-reader text both say which state this is. */
-.watch {
-  display: inline-flex;
-  align-items: center;
-}
-
-.watch-lamp {
+/* Watcher state. Colour plus a title and screen-reader text — never colour
+   on its own. */
+.dot {
   width: 6px;
   height: 6px;
   border-radius: var(--radius-full);
-  background: transparent;
-  border: 1px solid var(--border-strong);
-}
-
-.watch.live .watch-lamp {
-  background: var(--bus);
-  border-color: var(--bus);
-  box-shadow: 0 0 0 3px var(--bus-glow);
-}
-
-.head-search {
-  flex: 1;
-  min-width: 0;
-  max-width: 460px;
-}
-
-.head-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  background: var(--k-layer-4);
   flex-shrink: 0;
 }
 
-.head-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--text-tertiary);
+.dot.live {
+  background: var(--k-ok);
 }
 
-.head-hint kbd {
-  font-family: var(--font-plate);
-  font-size: var(--text-xs);
-  letter-spacing: 0.08em;
+.search {
+  flex: 1;
+  min-width: 0;
+  max-width: 420px;
+}
+
+.actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
 }
 
 @media (max-width: 1120px) {
-  .board-plate .board-sep,
-  .board-plate .board-lib {
-    display: none;
-  }
-
-  .head-hint {
+  .sep,
+  .library {
     display: none;
   }
 }

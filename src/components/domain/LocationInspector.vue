@@ -33,21 +33,21 @@ const manifestStatus = computed(() =>
   <InspectorPanel title="Location">
     <div class="inspector-section">
       <div class="inspector-field">
-        <span class="plate-bare">Path</span>
+        <span class="label">Path</span>
         <span class="field-value path">{{ detail.path }}</span>
       </div>
       <div v-if="detail.kind !== 'global'" class="inspector-field">
-        <span class="plate-bare">Manifest</span>
+        <span class="label">Manifest</span>
         <span class="field-value" :class="{ muted: !detail.manifestPath }">
           {{ manifestStatus }}
         </span>
       </div>
       <div v-else class="inspector-field">
-        <span class="plate-bare">Scope</span>
+        <span class="label">Scope</span>
         <span class="field-value">Every session</span>
       </div>
       <div class="inspector-field">
-        <span class="plate-bare">Last synced</span>
+        <span class="label">Last synced</span>
         <span class="field-value">{{ lastSyncedDisplay }}</span>
       </div>
     </div>

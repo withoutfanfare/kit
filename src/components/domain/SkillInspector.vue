@@ -58,14 +58,14 @@ async function revealInFinder() {
 <template>
   <InspectorPanel title="Skill">
     <div class="field">
-      <span class="plate-bare">On disk</span>
+      <span class="label">On disk</span>
       <span class="path-parent">{{ parentPath }}/</span>
       <span class="path-name">{{ folderName }}</span>
     </div>
 
     <div class="field">
-      <span class="plate-bare">State</span>
-      <span v-if="detail.archived" class="plate">Archived</span>
+      <span class="label">State</span>
+      <span v-if="detail.archived" class="badge">Archived</span>
       <span v-else class="state-on">
         <PanelIcon name="check" :size="12" />
         In the library

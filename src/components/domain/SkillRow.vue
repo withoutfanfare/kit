@@ -32,8 +32,8 @@ defineEmits<{
 
     <span class="skill-name">{{ skill.name }}</span>
 
-    <span v-if="skill.source === 'local'" class="plate row-plate">Local</span>
-    <span v-if="skill.archived" class="plate row-plate">Archived</span>
+    <span v-if="skill.source === 'local'" class="badge row-plate">Local</span>
+    <span v-if="skill.archived" class="badge row-plate">Archived</span>
 
     <span class="row-actions">
       <button
@@ -46,18 +46,18 @@ defineEmits<{
         <PanelIcon name="changelog" :size="13" />
       </button>
 
-      <!-- The breaker. Thrown left it is off; the handle moves, the track
-           doesn't, and the label says which state it is in. -->
+      <!-- A standard switch. The previous version drew a bespoke "breaker",
+           which is an invented affordance for a task every user already knows. -->
       <button
         v-if="skill.linkState === 'linked'"
-        class="breaker"
-        :class="{ thrown: skill.disabled }"
+        class="switch"
+        :class="{ on: !skill.disabled }"
         role="switch"
         :aria-checked="!skill.disabled"
         :title="skill.disabled ? `Switch ${skill.name} on here` : `Switch ${skill.name} off here`"
         @click.stop="$emit('toggleActivation')"
       >
-        <span class="breaker-handle" aria-hidden="true" />
+        <span class="switch-knob" aria-hidden="true"></span>
         <span class="sr-only">
           {{ skill.disabled ? "Switched off in this location" : "On in this location" }}
         </span>
@@ -147,42 +147,55 @@ defineEmits<{
 
 /* ── The breaker ──────────────────────────────────────────── */
 
-/* A breaker is a housing with a handle in it. The housing stays quiet — a
-   column of saturated blocks down a list is the loudest thing on the screen
-   and says nothing that the handle's position doesn't already say. */
-.breaker {
+/* A switch, with its full state set. 26x16 with a 12px knob is the size every
+   OS uses, so it reads instantly. */
+.switch {
   position: relative;
-  width: 24px;
-  height: 13px;
+  width: 26px;
+  height: 16px;
   flex-shrink: 0;
   padding: 0;
+  border: 0;
   cursor: pointer;
-  background: var(--surface-input);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-xs);
-  transition: border-color var(--duration-normal) var(--ease-default);
+  border-radius: var(--radius-full);
+  background: var(--k-layer-3);
+  box-shadow: inset 0 0 0 1px var(--k-line);
+  transition: background var(--duration-normal) var(--ease-inout),
+    box-shadow var(--duration-normal) var(--ease-inout);
 }
 
-.breaker:hover {
-  border-color: var(--border-strong);
+.switch:hover {
+  background: var(--k-layer-4);
 }
 
-.breaker-handle {
+.switch.on {
+  background: var(--k-accent);
+  box-shadow: inset 0 0 0 1px transparent;
+}
+
+.switch.on:hover {
+  background: var(--k-accent-hover);
+}
+
+.switch:active .switch-knob {
+  width: 14px;
+}
+
+.switch-knob {
   position: absolute;
-  top: 1px;
-  bottom: 1px;
-  right: 1px;
-  width: 9px;
-  background: var(--accent);
-  border-radius: 1px;
-  /* Damped, like a switch throwing — not a spring. */
-  transition: transform var(--duration-normal) var(--ease-default),
-    background var(--duration-normal) var(--ease-default);
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform var(--duration-normal) var(--ease-inout),
+    width var(--duration-fast) var(--ease-inout);
 }
 
-/* Thrown: the handle moves to the off position and goes dead. */
-.breaker.thrown .breaker-handle {
-  transform: translateX(-11px);
-  background: var(--border-strong);
+.switch.on .switch-knob {
+  transform: translateX(10px);
 }
+
 </style>

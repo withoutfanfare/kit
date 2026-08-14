@@ -171,24 +171,24 @@ watch(
          a row of tiles: label above, figure below, ruled between. -->
     <dl class="data-plate">
       <div class="fact">
-        <dt class="plate-bare">Skills</dt>
-        <dd class="rating tabular">{{ detail.skills.length }}</dd>
+        <dt class="label">Skills</dt>
+        <dd class="num">{{ detail.skills.length }}</dd>
       </div>
 
       <div class="fact">
-        <dt class="plate-bare">Issues</dt>
-        <dd class="rating tabular" :class="{ bad: detail.issues.length > 0 }">
+        <dt class="label">Issues</dt>
+        <dd class="num" :class="{ bad: detail.issues.length > 0 }">
           {{ detail.issues.length }}
         </dd>
       </div>
 
       <div class="fact">
-        <dt class="plate-bare">Last scan</dt>
+        <dt class="label">Last scan</dt>
         <dd class="fact-text">{{ formatScanTime(detail.lastScannedAt) }}</dd>
       </div>
 
       <div v-if="detail.detectedProjectTypes.length > 0" class="fact">
-        <dt class="plate-bare">Detected</dt>
+        <dt class="label">Detected</dt>
         <dd class="fact-text">
           {{ detail.detectedProjectTypes.map((t) => t.name).join(" · ") }}
         </dd>
@@ -443,12 +443,9 @@ watch(
 }
 
 .section-title {
-  font-family: var(--font-plate);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
 }
 
 .section-group {

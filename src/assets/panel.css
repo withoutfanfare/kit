@@ -1,457 +1,634 @@
 /**
- * Panel Schedule — Kit's visual world.
- * =====================================
- * A distribution board is the artefact that already solves Kit's problem: many
- * circuits, each named on an engraved plate, each with a rated load, each
- * switchable, and a schedule card saying what every circuit actually feeds.
+ * Kit's design system.
+ * ====================
+ * Built to the craft level of Linear, with Kit's own identity.
  *
- * This file redefines the `--color-*` layer that @stuntrocket/ui and every Kit
- * component read. The shared library is untouched; the world is Kit's alone.
+ * The previous system failed for reasons worth writing down so they are not
+ * repeated: it used a condensed display face for every UI label, invented
+ * affordances (a hand-drawn "breaker" switch) where standard controls belong,
+ * shipped components with half their interaction states, and drew structure
+ * with hairlines instead of a real elevation system. Product UI's failure mode
+ * is strangeness without purpose; the bar is earned familiarity.
  *
- * Two rules hold the world together:
- *   1. Take the panel's GRAMMAR (plate, rating, position, tag, bus), never its
- *      TEXTURES. No bevels, no brushed metal, no screws, no drop-shadowed chrome.
- *   2. Colour never carries meaning alone. Every state has a glyph or a word.
+ * Four rules hold this together:
+ *
+ *   1. ONE FAMILY. Inter, everywhere. No display face in UI labels.
+ *   2. SURFACES ARE ALPHA LAYERS, not solid greys. Every raised surface is the
+ *      ground plus a white (or black) overlay, so nesting stays coherent and
+ *      nothing ever looks like a patch of the wrong grey.
+ *   3. EVERY INTERACTIVE THING HAS ALL ITS STATES: default, hover, focus,
+ *      active, disabled, selected. Half a set is why an interface feels cheap.
+ *   4. DEFINITION COMES FROM RINGS AND ELEVATION, not 1px hairlines everywhere.
+ *
+ * Kit's accent is the terracotta from its own app icon — warm against a cool
+ * near-black, so the app reads as itself rather than as a copy of the tools it
+ * learned its craft from.
  */
 
 /* ═══════════════════════════════════════════════════
-   1. Ground, ink and structure — light
-   The scene: a developer at a Mac in daylight, Kit in a second window beside
-   an editor. Light is the default because that is the room; dark follows the
-   system and is designed, not derived.
+   1. Palette — light (the base)
+   Declared first because `:root` and `.dark` have the SAME specificity — so
+   whichever is written last wins. Light is the base; dark overrides it.
    ═══════════════════════════════════════════════════ */
 
 :root {
-  /* Machine enamel, cool. Never cream — warmth reads as paper, not panel. */
-  --color-surface-app: #D9DCD8;
-  --color-surface: #E7E9E5;
-  --color-surface-secondary: #E1E4E0;
-  --color-sidebar: #CDD1CC;
-  --color-surface-raised: #EDEFEB;
-  --color-surface-overlay: rgba(23, 26, 24, 0.05);
-  --color-surface-input: #F1F3EF;
+  --k-bg: #F7F7F8;
+  --k-bg-raised: #FFFFFF;
 
-  /* Ink. Stamped, not printed. */
-  --color-text-primary: #171A18;
-  --color-text-secondary: #4C534E;
-  --color-text-tertiary: #6E756F;
-  --color-text-inverse: #EDEFEB;
+  --k-layer-1: rgba(9, 10, 12, 0.022);
+  --k-layer-2: rgba(9, 10, 12, 0.04);
+  --k-layer-3: rgba(9, 10, 12, 0.065);
+  --k-layer-4: rgba(9, 10, 12, 0.095);
 
-  /* Structure: hairlines at three weights, the way a schedule card is ruled. */
-  --color-border: #B4B9B3;
-  --color-border-subtle: rgba(23, 26, 24, 0.10);
-  --color-border-default: rgba(23, 26, 24, 0.18);
-  --color-border-strong: rgba(23, 26, 24, 0.32);
+  --k-line: rgba(9, 10, 12, 0.09);
+  --k-line-strong: rgba(9, 10, 12, 0.14);
+  --k-line-heavy: rgba(9, 10, 12, 0.22);
 
-  /* Oxide green: the one accent. Machinery enamel, not a UI blue. */
-  --color-accent: #2F5D45;
-  --color-accent-hover: #244936;
-  --color-accent-subtle: rgba(47, 93, 69, 0.12);
+  --k-text: #16181C;
+  --k-text-2: #3C4149;
+  --k-text-3: #62666D;
+  --k-text-4: #8B9098;
 
-  /* Copper: the live bus. Structure only — never a button, never a link. */
-  --color-bus: #8A5524;
-  --color-bus-glow: rgba(138, 85, 36, 0.16);
+  --k-accent: #B5622F;
+  --k-accent-hover: #9E5326;
+  --k-accent-press: #874518;
+  --k-accent-ink: #FFFFFF;
+  --k-accent-quiet: rgba(181, 98, 47, 0.10);
+  --k-accent-line: rgba(181, 98, 47, 0.32);
 
-  /* Status. Amber is caution and lock-out; it is never decoration. */
-  --color-success: #2F5D45;
-  --color-success-subtle: rgba(47, 93, 69, 0.12);
-  --color-warning: #8A6210;
-  --color-warning-subtle: rgba(138, 98, 16, 0.14);
-  --color-danger: #8F3226;
-  --color-danger-subtle: rgba(143, 50, 38, 0.12);
-  --color-info: #2F5D45;
-  --color-info-subtle: rgba(47, 93, 69, 0.12);
+  --k-ok: #2F7D57;
+  --k-ok-quiet: rgba(47, 125, 87, 0.10);
+  --k-warn: #8A6A12;
+  --k-warn-quiet: rgba(138, 106, 18, 0.12);
+  --k-danger: #C13236;
+  --k-danger-quiet: rgba(193, 50, 54, 0.10);
 
-  /* Unsurveyed: the band below the rated total. Deliberately colourless. */
-  --color-unsurveyed: #6B726C;
-  --color-unsurveyed-hatch: rgba(23, 26, 24, 0.07);
+  --k-unknown: #7A7F87;
 
-  /* The load ramp. Hand-picked rather than mixed, because six sources sitting
-     side by side on one strip have to be told apart at a glance — a generated
-     ramp collapses into mud in the middle. 1 is Global and 2 is the project
-     you are in; 3-6 walk down for everything else, in rank order. */
-  --load-1: #2F5D45;
-  --load-2: #8A5524;
-  --load-3: #4A7C64;
-  --load-4: #6D9A85;
-  --load-5: #94B4A4;
-  --load-6: #B7CBC0;
+  --k-ring: inset 0 0 0 1px rgba(9, 10, 12, 0.07);
+  --k-shadow-1: 0 1px 2px rgba(9, 10, 12, 0.06);
+  --k-shadow-2: 0 4px 12px rgba(9, 10, 12, 0.08), 0 1px 2px rgba(9, 10, 12, 0.05);
+  --k-shadow-3: 0 16px 48px rgba(9, 10, 12, 0.12), 0 2px 8px rgba(9, 10, 12, 0.06);
 
-  --color-surface-hover: rgba(23, 26, 24, 0.04);
-  --color-surface-selected: rgba(47, 93, 69, 0.10);
-  --color-surface-selected-strong: rgba(47, 93, 69, 0.16);
-
-  --color-code-surface: #E1E4E0;
-  --color-code-border: #B4B9B3;
-
-  /* Plates are engraved: the ground is cut away and the core shows through. */
-  --plate-face: #C6CAC5;
-  --plate-ink: #171A18;
-  --plate-edge: rgba(23, 26, 24, 0.22);
-
-  --scrollbar-thumb: rgba(47, 93, 69, 0.34);
-  --scrollbar-thumb-hover: rgba(47, 93, 69, 0.52);
-  --scrollbar-thumb-active: rgba(47, 93, 69, 0.68);
-  --scrollbar-track: rgba(23, 26, 24, 0.06);
-
-  /* Depth is offset and blur, never a coloured halo. Panels sit flat; only
-     things that genuinely float (sheets, menus, toasts) cast anything. */
-  --shadow-sm: 0 1px 1px rgba(23, 26, 24, 0.10);
-  --shadow-md: 0 2px 6px rgba(23, 26, 24, 0.12);
-  --shadow-lg: 0 6px 18px rgba(23, 26, 24, 0.16);
-  --shadow-sheet: 0 12px 40px rgba(23, 26, 24, 0.22);
-  --shadow-overlay: 0 12px 40px rgba(23, 26, 24, 0.22);
-  --shadow-xl: 0 10px 30px rgba(23, 26, 24, 0.20);
-  --shadow-focus: 0 0 0 3px rgba(47, 93, 69, 0.28);
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --k-selected: rgba(181, 98, 47, 0.09);
+  --k-selected-line: rgba(181, 98, 47, 0.26);
 }
 
 /* ═══════════════════════════════════════════════════
-   2. Dark — the panel with the lights off
-   Not the light palette inverted: enamel goes to graphite, the plates keep
-   their engraved contrast, and copper is the only thing that stays warm.
+   2. Palette — dark
+   Not the light palette inverted: the ground is near-black with a trace of
+   blue so it sits under warm accents without going muddy, and every surface
+   is a white overlay on it rather than another flat grey.
    ═══════════════════════════════════════════════════ */
 
 .dark {
-  --color-surface-app: #141715;
-  --color-surface: #1C201D;
-  --color-surface-secondary: #212623;
-  --color-sidebar: #101312;
-  --color-surface-raised: #242926;
-  --color-surface-overlay: rgba(255, 255, 255, 0.05);
-  --color-surface-input: #191D1B;
+  /* Ground: near-black with a trace of blue, so it sits under warm accents
+     without going muddy. */
+  --k-bg: #0A0B0D;
+  --k-bg-raised: #101114;
 
-  --color-text-primary: #E4E7E2;
-  --color-text-secondary: #9AA29B;
-  --color-text-tertiary: #737B75;
-  --color-text-inverse: #141715;
+  /* Surfaces are overlays on the ground. Nesting one inside another still
+     reads, because each adds light rather than swapping to another grey. */
+  --k-layer-1: rgba(255, 255, 255, 0.026);
+  --k-layer-2: rgba(255, 255, 255, 0.045);
+  --k-layer-3: rgba(255, 255, 255, 0.07);
+  --k-layer-4: rgba(255, 255, 255, 0.10);
 
-  --color-border: #333A35;
-  --color-border-subtle: rgba(228, 231, 226, 0.09);
-  --color-border-default: rgba(228, 231, 226, 0.15);
-  --color-border-strong: rgba(228, 231, 226, 0.26);
+  /* Lines. Alpha, so they sit correctly on any layer. */
+  --k-line: rgba(255, 255, 255, 0.07);
+  --k-line-strong: rgba(255, 255, 255, 0.12);
+  --k-line-heavy: rgba(255, 255, 255, 0.18);
 
-  --color-accent: #6FA98A;
-  --color-accent-hover: #86BC9E;
-  --color-accent-subtle: rgba(111, 169, 138, 0.15);
+  /* Four steps of text, which is all a product UI needs. */
+  --k-text: #F2F3F5;
+  --k-text-2: #C7CBD1;
+  --k-text-3: #8B9098;
+  --k-text-4: #62666D;
 
-  --color-bus: #C2793A;
-  --color-bus-glow: rgba(194, 121, 58, 0.20);
+  /* Kit's accent: terracotta, from the app icon. */
+  --k-accent: #E08A5F;
+  --k-accent-hover: #EC9A72;
+  --k-accent-press: #C9764D;
+  --k-accent-ink: #1A0F09;
+  --k-accent-quiet: rgba(224, 138, 95, 0.14);
+  --k-accent-line: rgba(224, 138, 95, 0.36);
 
-  --color-success: #6FA98A;
-  --color-success-subtle: rgba(111, 169, 138, 0.15);
-  --color-warning: #D2A044;
-  --color-warning-subtle: rgba(210, 160, 68, 0.16);
-  --color-danger: #D2705E;
-  --color-danger-subtle: rgba(210, 112, 94, 0.15);
-  --color-info: #6FA98A;
-  --color-info-subtle: rgba(111, 169, 138, 0.15);
+  /* Status. Warning is decisively yellower than the accent and danger is
+     decisively pinker, so neither can be mistaken for brand colour. */
+  --k-ok: #4CB782;
+  --k-ok-quiet: rgba(76, 183, 130, 0.14);
+  --k-warn: #E5C05B;
+  --k-warn-quiet: rgba(229, 192, 91, 0.14);
+  --k-danger: #E5484D;
+  --k-danger-quiet: rgba(229, 72, 77, 0.14);
 
-  --color-unsurveyed: #8A928B;
-  --color-unsurveyed-hatch: rgba(228, 231, 226, 0.06);
+  /* Unverified: no hue at all. Kit cannot vouch for it, so it gets no colour. */
+  --k-unknown: #6E737B;
 
-  --load-1: #6FA98A;
-  --load-2: #C2793A;
-  --load-3: #579073;
-  --load-4: #40725B;
-  --load-5: #325746;
-  --load-6: #294235;
+  /* Elevation. A ring holds the edge, a shadow lifts it off the ground. */
+  --k-ring: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --k-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --k-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --k-shadow-3: 0 16px 48px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
 
-  --color-surface-hover: rgba(228, 231, 226, 0.05);
-  --color-surface-selected: rgba(111, 169, 138, 0.12);
-  --color-surface-selected-strong: rgba(111, 169, 138, 0.19);
-
-  --color-code-surface: #191D1B;
-  --color-code-border: #333A35;
-
-  --plate-face: #2B312D;
-  --plate-ink: #E4E7E2;
-  --plate-edge: rgba(228, 231, 226, 0.18);
-
-  --scrollbar-thumb: rgba(111, 169, 138, 0.34);
-  --scrollbar-thumb-hover: rgba(111, 169, 138, 0.52);
-  --scrollbar-thumb-active: rgba(111, 169, 138, 0.68);
-  --scrollbar-track: rgba(228, 231, 226, 0.06);
-
-  --shadow-sm: 0 1px 1px rgba(0, 0, 0, 0.32);
-  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 6px 18px rgba(0, 0, 0, 0.48);
-  --shadow-sheet: 0 12px 40px rgba(0, 0, 0, 0.58);
-  --shadow-overlay: 0 12px 40px rgba(0, 0, 0, 0.58);
-  --shadow-xl: 0 10px 30px rgba(0, 0, 0, 0.52);
-  --shadow-focus: 0 0 0 3px rgba(111, 169, 138, 0.30);
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --k-selected: rgba(224, 138, 95, 0.13);
+  --k-selected-line: rgba(224, 138, 95, 0.30);
 }
 
 /* ═══════════════════════════════════════════════════
-   3. Type
-   Interface text is the system face: this must read as a Mac app, and SF is
-   what a Mac app is set in. The world's voice lives in the plates — Archivo
-   Narrow, uppercase, tracked, small — which is exactly how engraved legend
-   plates and rating stamps are lettered.
+   3. Type, space, radius, motion
    ═══════════════════════════════════════════════════ */
 
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  --font-plate: "Archivo Narrow", "SF Compact Text", var(--font-sans);
-  --font-mono: "SF Mono", ui-monospace, "Menlo", monospace;
+  --font-sans: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont,
+    "SF Pro Text", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
 
-  /* Mac-app density. These are deliberately small; a tool is read at arm's
-     length on a large display, and every extra pixel of leading costs a row. */
-  --text-xs: 10.5px;
-  --text-sm: 11.5px;
-  --text-md: 12.5px;
-  --text-lg: 15px;
-  --text-xl: 19px;
+  /* Fixed scale at a 1.15–1.2 ratio. Product UI has many type elements;
+     exaggerated contrast between them reads as noise, not hierarchy. */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;   /* the workhorse: rows, labels, controls */
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
   --text-2xl: 26px;
-  /* The rated-load figure. The only genuinely large type in the app. */
-  --text-rating: 38px;
+  --text-3xl: 34px;
 
+  /* Inter Variable, so these are real optical weights rather than jumps. */
   --weight-normal: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
-  --weight-bold: 700;
+  --weight-medium: 510;
+  --weight-semibold: 590;
+  --weight-bold: 680;
 
-  /* One spacing rhythm. More space above a heading than below it. */
-  --space-px: 1px;
+  /* Display sizes need negative tracking or they look loose. */
+  --track-tight: -0.022em;
+  --track-snug: -0.014em;
+  --track-normal: -0.006em;
+
+  --lh-tight: 1.25;
+  --lh-snug: 1.4;
+  --lh-normal: 1.55;
+
+  /* 4px base. Every gap in the app is one of these. */
   --space-1: 2px;
   --space-2: 4px;
-  --space-3: 8px;
-  --space-4: 12px;
-  --space-5: 16px;
-  --space-6: 20px;
-  --space-7: 28px;
-  --space-8: 36px;
-  --space-9: 48px;
-  --space-10: 64px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 40px;
+  --space-11: 56px;
+  --space-12: 72px;
 
-  /* Corners: a panel is cut, not moulded. Almost square throughout. */
-  --radius-xs: 1px;
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 4px;
-  --radius-full: 999px;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;   /* controls */
+  --radius-lg: 8px;   /* panels and cards */
+  --radius-xl: 12px;  /* sheets */
+  --radius-full: 9999px;
 
-  --toolbar-height: 46px;
-  --titlebar-height: 28px;
-  --sidebar-width: 188px;
+  --control-sm: 24px;
+  --control-md: 28px;
+  --control-lg: 32px;
 
-  /* Motion: damped and physical, the way a switch throws. Never bouncy. */
-  --duration-fast: 90ms;
-  --duration-normal: 160ms;
-  --duration-slow: 280ms;
-  --ease-default: cubic-bezier(0.32, 0.72, 0, 1);
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --toolbar-height: 44px;
+  --sidebar-width: 216px;
+
+  /* 150–250ms. Users are in a task; they should not wait for choreography. */
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --duration-slow: 240ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ═══════════════════════════════════════════════════
-   4. The panel's parts
-   Small, reusable, and used everywhere. These are what make a screen read as
-   Kit rather than as a generic table.
+   4. Compatibility layer
+   The rest of the app reads these names. Mapping them here means the whole
+   interface moves when the palette above changes, and nothing has to be
+   edited twice.
    ═══════════════════════════════════════════════════ */
 
-/* — Engraved legend plate ————————————————————————
-   The label on a distribution board: a laminate plate, engraved through to a
-   contrasting core. Rendered as inset ink on a cut face, never as a bevel. */
-.plate {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-plate);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--plate-ink);
-  background: var(--plate-face);
-  border: 1px solid var(--plate-edge);
-  border-radius: var(--radius-xs);
-  padding: 2px var(--space-3) 1px;
-  line-height: 1.5;
-  white-space: nowrap;
+:root,
+.dark {
+  --color-surface-app: var(--k-bg);
+  --color-surface: var(--k-bg-raised);
+  --color-surface-secondary: var(--k-layer-1);
+  --color-sidebar: var(--k-bg);
+  --color-surface-raised: var(--k-bg-raised);
+  --color-surface-overlay: var(--k-layer-2);
+  --color-surface-input: var(--k-layer-1);
+  --color-surface-hover: var(--k-layer-2);
+  --color-surface-selected: var(--k-selected);
+  --color-surface-selected-strong: var(--k-selected);
+
+  --color-text-primary: var(--k-text);
+  --color-text-secondary: var(--k-text-2);
+  --color-text-tertiary: var(--k-text-3);
+  --color-text-inverse: var(--k-accent-ink);
+
+  --color-border: var(--k-line);
+  --color-border-subtle: var(--k-line);
+  --color-border-default: var(--k-line-strong);
+  --color-border-strong: var(--k-line-heavy);
+
+  --color-accent: var(--k-accent);
+  --color-accent-hover: var(--k-accent-hover);
+  --color-accent-subtle: var(--k-accent-quiet);
+
+  --color-success: var(--k-ok);
+  --color-success-subtle: var(--k-ok-quiet);
+  --color-warning: var(--k-warn);
+  --color-warning-subtle: var(--k-warn-quiet);
+  --color-danger: var(--k-danger);
+  --color-danger-subtle: var(--k-danger-quiet);
+  --color-info: var(--k-accent);
+  --color-info-subtle: var(--k-accent-quiet);
+
+  --color-code-surface: var(--k-layer-1);
+  --color-code-border: var(--k-line);
+
+  --shadow-sm: var(--k-shadow-1);
+  --shadow-md: var(--k-shadow-2);
+  --shadow-lg: var(--k-shadow-2);
+  --shadow-xl: var(--k-shadow-3);
+  --shadow-sheet: var(--k-shadow-3);
+  --shadow-overlay: var(--k-shadow-3);
+  --shadow-inset: var(--k-ring);
+  --shadow-focus: 0 0 0 3px var(--k-accent-quiet);
+
+  --scrollbar-thumb: var(--k-layer-4);
+  --scrollbar-thumb-hover: var(--k-line-heavy);
+  --scrollbar-thumb-active: var(--k-line-heavy);
+  --scrollbar-track: transparent;
+
+  --ease-default: var(--ease-inout);
+  --ease-out: var(--ease);
 }
 
-/* A plate with no face — the same lettering, used as a quiet section marker
-   where a full plate would be too much furniture. */
-.plate-bare {
-  font-family: var(--font-plate);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-  line-height: 1.5;
-}
+/* ═══════════════════════════════════════════════════
+   5. Primitives
+   One vocabulary, used everywhere. A "save" button that looks different on
+   two screens means one of them is wrong.
+   ═══════════════════════════════════════════════════ */
 
-/* — Rating stamp ————————————————————————————————
-   A load figure. Tabular always: these are read in columns and compared. */
-.rating {
-  font-family: var(--font-plate);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.01em;
-  color: var(--color-text-primary);
-}
-
-.rating-unit {
-  font-family: var(--font-plate);
-  font-size: 0.62em;
-  font-weight: var(--weight-medium);
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-  margin-left: 0.35em;
-}
-
-/* — Circuit position ————————————————————————————
-   The number stamped beside a breaker. A schedule's positions are its
-   addresses, so the sequence genuinely carries information. */
-.position {
-  font-family: var(--font-plate);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  color: var(--color-text-tertiary);
-  text-align: right;
-  min-width: 2.2ch;
-  flex-shrink: 0;
-}
-
-/* — Lock-out tag ————————————————————————————————
-   Hung on a breaker that must not be thrown because someone is working
-   downstream. In Kit: a skill a hook runs from. The one saturated element. */
-.tag-lockout {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-plate);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-warning);
-  background: var(--color-warning-subtle);
-  border: 1px solid color-mix(in srgb, var(--color-warning) 42%, transparent);
-  border-radius: var(--radius-xs);
-  padding: 1px var(--space-2);
-  line-height: 1.5;
-}
-
-/* — The bus ——————————————————————————————————————
-   Copper. The spine everything branches off. Structure, never decoration:
-   it appears where current genuinely flows and nowhere else. */
-.bus {
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    var(--color-bus) 12%,
-    var(--color-bus) 88%,
-    transparent
-  );
-  width: 2px;
-  flex-shrink: 0;
-}
-
-/* — Unsurveyed band ————————————————————————————
-   Hatched, because hatching is how a drawing says "not part of this take-off".
-   Anything in here is outside every total on the screen. */
-.unsurveyed {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    var(--color-unsurveyed-hatch) 0 1px,
-    transparent 1px 7px
-  );
-}
-
-/* — Schedule sections ————————————————————————————
-   Every list in Kit is a section of the schedule: a ruled heading naming what
-   follows and how many, then rows. Defined once here rather than reinvented in
-   each component, which is how the app ended up with four heading styles. */
+/* — Section heading ————————————————————————————
+   Sentence case at UI size. The previous system set every heading in tracked
+   uppercase condensed caps, which is signage lettering, not interface type. */
 .section {
-  margin-top: var(--space-7);
+  margin-top: var(--space-9);
+}
+
+.section:first-child {
+  margin-top: 0;
 }
 
 .section-head {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border-default);
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  min-height: var(--control-md);
 }
 
 .section-title {
-  font-family: var(--font-plate);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--track-snug);
+  color: var(--k-text);
   margin: 0;
 }
 
 .section-count {
-  font-family: var(--font-plate);
+  font-size: var(--text-md);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-xs);
-  color: var(--color-text-tertiary);
+  color: var(--k-text-4);
 }
 
-/* Right-hand end of a section heading: actions, filters, links. */
 .section-aside {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
+/* — Page heading ———————————————————————————— */
+.page-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--track-tight);
+  line-height: var(--lh-tight);
+  color: var(--k-text);
+  margin: 0;
+}
+
+/* — Rows ——————————————————————————————————————
+   A list row: full-height hit target, rounded, hover fill. No border between
+   rows — separation comes from the hover shape, which is how a modern list
+   reads without looking like a spreadsheet. */
 .rows {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.rows > li,
 .row {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-2);
-  border-bottom: 1px solid var(--color-border-subtle);
+  gap: var(--space-5);
+  min-height: var(--control-lg);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
   font-size: var(--text-md);
+  color: var(--k-text-2);
+  transition: background var(--duration-fast) var(--ease-inout);
+}
+
+.row:hover {
+  background: var(--k-layer-2);
+}
+
+.row.is-selected {
+  background: var(--k-selected);
+  box-shadow: inset 0 0 0 1px var(--k-selected-line);
 }
 
 .row-empty {
-  padding: var(--space-5) var(--space-2);
+  padding: var(--space-7) var(--space-4);
+  font-size: var(--text-md);
+  color: var(--k-text-4);
+}
+
+/* — Panel ——————————————————————————————————————
+   A raised surface. Ring for the edge, shadow for the lift. */
+.panel {
+  background: var(--k-bg-raised);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--k-ring), var(--k-shadow-1);
+}
+
+/* — Label —————————————————————————————————————
+   The quiet label above a value. Sentence case, medium weight, muted. */
+.label {
   font-size: var(--text-sm);
-  color: var(--color-text-tertiary);
+  font-weight: var(--weight-medium);
+  color: var(--k-text-4);
+  letter-spacing: var(--track-normal);
 }
 
-/* — Hairline rules ————————————————————————————— */
-.rule {
+/* — Numerals ————————————————————————————————— */
+.tabular,
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* — Badge —————————————————————————————————————
+   A quiet chip. Not a saturated pill: in a list of many, saturation is noise. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 20px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--k-layer-2);
+  box-shadow: inset 0 0 0 1px var(--k-line);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--k-text-3);
+  white-space: nowrap;
+}
+
+.badge-accent {
+  background: var(--k-accent-quiet);
+  box-shadow: inset 0 0 0 1px var(--k-accent-line);
+  color: var(--k-accent);
+}
+
+.badge-warn {
+  background: var(--k-warn-quiet);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k-warn) 34%, transparent);
+  color: var(--k-warn);
+}
+
+.badge-danger {
+  background: var(--k-danger-quiet);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k-danger) 34%, transparent);
+  color: var(--k-danger);
+}
+
+.badge-ok {
+  background: var(--k-ok-quiet);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k-ok) 34%, transparent);
+  color: var(--k-ok);
+}
+
+/* — Buttons ————————————————————————————————————
+   Full state set, all three variants. This is the vocabulary; nothing in the
+   app should roll its own button. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  height: var(--control-md);
+  padding: 0 var(--space-5);
   border: 0;
-  border-top: 1px solid var(--color-border-subtle);
-  margin: 0;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--track-normal);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-inout),
+    box-shadow var(--duration-fast) var(--ease-inout),
+    color var(--duration-fast) var(--ease-inout);
 }
 
-.rule-strong {
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Primary */
+.btn-primary {
+  background: var(--k-accent);
+  color: var(--k-accent-ink);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--k-accent-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--k-accent-press);
+}
+
+/* Secondary — the default for most actions */
+.btn-secondary {
+  background: var(--k-layer-2);
+  color: var(--k-text);
+  box-shadow: inset 0 0 0 1px var(--k-line-strong);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--k-layer-3);
+}
+
+.btn-secondary:active:not(:disabled) {
+  background: var(--k-layer-4);
+}
+
+/* Ghost — toolbars and row actions */
+.btn-ghost {
+  background: transparent;
+  color: var(--k-text-2);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--k-layer-2);
+  color: var(--k-text);
+}
+
+.btn-ghost:active:not(:disabled) {
+  background: var(--k-layer-3);
+}
+
+.btn-danger {
+  background: var(--k-danger-quiet);
+  color: var(--k-danger);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k-danger) 34%, transparent);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--k-danger) 22%, transparent);
+}
+
+.btn-sm {
+  height: var(--control-sm);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.btn-icon {
+  width: var(--control-md);
+  padding: 0;
+}
+
+.btn-icon.btn-sm {
+  width: var(--control-sm);
+}
+
+/* — Inputs ————————————————————————————————————— */
+.input {
+  height: var(--control-md);
+  width: 100%;
+  padding: 0 var(--space-5);
   border: 0;
-  border-top: 1px solid var(--color-border-default);
-  margin: 0;
+  border-radius: var(--radius-md);
+  background: var(--k-layer-1);
+  box-shadow: inset 0 0 0 1px var(--k-line);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: var(--k-text);
+  transition: box-shadow var(--duration-fast) var(--ease-inout),
+    background var(--duration-fast) var(--ease-inout);
 }
 
-/* ═══════════════════════════════════════════════════
-   5. Focus
-   Keyboard operation is a product requirement, so focus is loud on purpose.
-   ═══════════════════════════════════════════════════ */
+.input::placeholder {
+  color: var(--k-text-4);
+}
 
+.input:hover {
+  background: var(--k-layer-2);
+}
+
+.input:focus {
+  outline: none;
+  background: var(--k-layer-1);
+  box-shadow: inset 0 0 0 1px var(--k-accent-line), 0 0 0 3px var(--k-accent-quiet);
+}
+
+/* — Focus ——————————————————————————————————————
+   One focus treatment for everything reachable by keyboard. */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--k-accent);
   outline-offset: 1px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
 }
 
-/* Screen-reader-only, used wherever colour or position carries a state that
-   must also be readable. */
+/* — Skeletons ————————————————————————————————
+   Loading shows the shape of the answer. A spinner in the middle of content
+   tells the user nothing about what is coming. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--k-layer-1) 25%,
+    var(--k-layer-3) 37%,
+    var(--k-layer-1) 63%
+  );
+  background-size: 400% 100%;
+  border-radius: var(--radius-sm);
+  animation: k-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes k-shimmer {
+  from {
+    background-position: 100% 50%;
+  }
+  to {
+    background-position: 0 50%;
+  }
+}
+
+/* — Data ramp ————————————————————————————————
+   For the load bar, where several sources sit side by side. Built from the
+   accent and walking through muted, evenly-weighted hues to neutral. They are
+   deliberately desaturated: a categorical chart needs its categories told
+   apart, but six fully-saturated hues read as a rainbow rather than as data.
+   Six steps, each distinguishable from its neighbour at 8px tall. */
+.dark {
+  --load-1: #E08A5F;
+  --load-2: #D4A855;
+  --load-3: #6FA98A;
+  --load-4: #6690B0;
+  --load-5: #8A85B8;
+  --load-6: #5A5F68;
+}
+
+:root {
+  --load-1: #B5622F;
+  --load-2: #9A7420;
+  --load-3: #43806A;
+  --load-4: #416E8C;
+  --load-5: #635E96;
+  --load-6: #8A8F98;
+}
+
+/* — Meter ——————————————————————————————————————
+   A proportion bar. Segments are separated by the ground showing through, not
+   by borders, so it stays crisp at any size. */
+.meter {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--k-layer-2);
+}
+
+.meter-seg {
+  min-width: 3px;
+  transition: opacity var(--duration-normal) var(--ease);
+}
+
+/* — Screen-reader only ———————————————————————— */
 .sr-only {
   position: absolute;
   width: 1px;

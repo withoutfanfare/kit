@@ -45,13 +45,13 @@ async function confirmDelete() {
          The skills, assigned locations and description are all in full there,
          and repeating them made neither copy authoritative. -->
     <div class="field">
-      <span class="plate-bare">On disk</span>
+      <span class="label">On disk</span>
       <span class="path">{{ detail.path }}</span>
     </div>
 
     <div class="field">
-      <span class="plate-bare">Scope</span>
-      <span class="plate">
+      <span class="label">Scope</span>
+      <span class="badge">
         {{ detail.scope === "global" ? "Everywhere" : "This project" }}
       </span>
     </div>

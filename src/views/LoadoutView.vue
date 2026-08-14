@@ -115,7 +115,7 @@ const overrideProblems = computed(() => {
     </header>
 
     <div v-if="loadout.isLoading" class="loading" aria-busy="true">
-      <span class="plate-bare">Reading the board…</span>
+      <span class="label">Reading the board…</span>
     </div>
 
     <template v-else-if="loadout.loadout">
@@ -130,9 +130,9 @@ const overrideProblems = computed(() => {
       </p>
 
       <p class="summary">
-        <strong class="rating tabular">{{ loadout.loadout.modelFacingCount }}</strong>
+        <strong class="num">{{ loadout.loadout.modelFacingCount }}</strong>
         skills reach the model here, drawing about
-        <strong class="rating tabular">{{ total.toLocaleString() }}</strong>
+        <strong class="num">{{ total.toLocaleString() }}</strong>
         tokens every session.
         <template v-if="loadout.loadout.commandOnlyCount">
           Another {{ loadout.loadout.commandOnlyCount }} are command-only and cost
@@ -152,7 +152,7 @@ const overrideProblems = computed(() => {
       <details v-if="loadout.conflictCount" class="fold fold-caution">
         <summary>
           <PanelIcon name="caution" :size="14" />
-          <span class="fold-count rating tabular">{{ loadout.conflictCount }}</span>
+          <span class="fold-count num">{{ loadout.conflictCount }}</span>
           <span class="fold-title">linked here, but switched off globally</span>
           <span class="fold-more">Show</span>
         </summary>
@@ -169,7 +169,7 @@ const overrideProblems = computed(() => {
       <details v-if="overrideProblems" class="fold">
         <summary>
           <PanelIcon name="declared" :size="14" />
-          <span class="fold-count rating tabular">{{ overrideProblems }}</span>
+          <span class="fold-count num">{{ overrideProblems }}</span>
           <span class="fold-title">overrides that aren't doing what you think</span>
           <span class="fold-more">Show</span>
         </summary>
@@ -205,9 +205,9 @@ const overrideProblems = computed(() => {
         <div class="group-head">
           <span class="swatch" :style="{ background: tint(group) }" aria-hidden="true" />
           <h2 class="group-name">{{ group.label }}</h2>
-          <span class="plate">{{ group.origin }}</span>
+          <span class="badge">{{ group.origin }}</span>
           <span class="group-draw">
-            <span class="rating tabular">{{ group.tokenEstimate.toLocaleString() }}</span>
+            <span class="num">{{ group.tokenEstimate.toLocaleString() }}</span>
             <span class="rating-unit">tokens</span>
           </span>
         </div>
@@ -222,13 +222,13 @@ const overrideProblems = computed(() => {
             <span class="position tabular">{{ String(i + 1).padStart(2, "0") }}</span>
             <span class="row-name">{{ skill.id }}</span>
 
-            <span v-if="skill.vetoedBy" class="tag-lockout row-state">
+            <span v-if="skill.vetoedBy" class="badge badge-warn row-state">
               <PanelIcon name="lockout" :size="11" />
               Cut off
             </span>
-            <span v-else-if="!skill.modelFacing" class="plate row-state">Command only</span>
+            <span v-else-if="!skill.modelFacing" class="badge row-state">Command only</span>
 
-            <span class="row-draw rating tabular">
+            <span class="row-draw num">
               <template v-if="skill.vetoedBy">—</template>
               <template v-else-if="!skill.modelFacing">0</template>
               <template v-else>{{ skill.tokenEstimate.toLocaleString() }}</template>
@@ -238,9 +238,9 @@ const overrideProblems = computed(() => {
       </section>
 
       <!-- ── Not counted ────────────────────────────────────────── -->
-      <section v-if="unverified.length" class="unverified unsurveyed">
+      <section v-if="unverified.length" class="unverified">
         <div class="unverified-head">
-          <span class="plate">Not counted</span>
+          <span class="badge">Not counted</span>
           <p class="unverified-why">{{ unverified[0].caveat }}</p>
         </div>
         <ul class="packs">

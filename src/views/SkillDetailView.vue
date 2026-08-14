@@ -63,7 +63,7 @@ watch(skillId, loadDetail);
           <span class="section-count">{{ detail.includedInSets.length }}</span>
         </div>
         <ul class="rows">
-          <li v-for="set in detail.includedInSets" :key="set.id">
+          <li v-for="set in detail.includedInSets" :key="set.id" class="row">
             <span class="set-name">{{ set.name }}</span>
           </li>
         </ul>
@@ -153,12 +153,9 @@ watch(skillId, loadDetail);
 }
 
 .section-label {
-  font-family: var(--font-plate);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
 }
 
 .summary-text {

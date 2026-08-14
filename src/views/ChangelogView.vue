@@ -74,7 +74,7 @@ onMounted(() => {
           <span class="row-name">{{ entry.name }}</span>
         </div>
         <div class="row-right">
-          <span v-if="entry.assignedLocations.length > 0" class="plate row-where">
+          <span v-if="entry.assignedLocations.length > 0" class="badge row-where">
             {{ entry.assignedLocations.slice(0, 2).map((location) => location.label).join(", ") }}
             <span v-if="entry.assignedLocations.length > 2">
               +{{ entry.assignedLocations.length - 2 }}

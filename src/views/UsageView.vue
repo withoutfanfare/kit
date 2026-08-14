@@ -83,18 +83,18 @@ onMounted(() => usageStore.fetchReport());
         <!-- Column heads: three unlabelled columns of numbers and dates left
              the reader guessing which was which. -->
         <div class="col-heads" aria-hidden="true">
-          <span class="plate-bare">Skill</span>
+          <span class="label">Skill</span>
           <span />
-          <span class="plate-bare col-runs">Runs</span>
-          <span class="plate-bare">Last run</span>
-          <span class="plate-bare">Most in</span>
+          <span class="label col-runs">Runs</span>
+          <span class="label">Last run</span>
+          <span class="label">Most in</span>
         </div>
 
         <ol class="rows">
           <li v-for="row in rows" :key="row.skill" class="row" :class="{ stale: isStale(row) }">
             <span class="row-name" :title="row.skill">
               {{ row.skill }}
-              <span v-if="row.skill.includes(':')" class="plate row-plate">Plugin</span>
+              <span v-if="row.skill.includes(':')" class="badge row-plate">Plugin</span>
             </span>
             <span class="row-bar">
               <span

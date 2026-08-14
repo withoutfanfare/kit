@@ -1,32 +1,26 @@
 <script setup lang="ts">
 /**
- * The bus.
+ * The source list.
  *
- * A distribution board's circuits all branch off one spine, and where current
- * is flowing you can see it. That is the whole device here: a copper bus runs
- * down the inside edge, and the active destination is the branch it feeds.
- *
- * Subtitles show only on the active row. A permanent second line on every row
- * is furniture; on the active row it answers "where am I" for free.
+ * A standard app sidebar, detailed properly: 28px rows, 6px radius, an icon
+ * that takes the accent when active, and a full set of interaction states.
+ * The previous version ran a decorative copper "bus" down the edge and hid
+ * every label below 1120px while leaving the icons aria-hidden — which left
+ * the navigation with no accessible names at all.
  */
 import { useRoute } from "vue-router";
 import PanelIcon, { type IconName } from "@/components/base/PanelIcon.vue";
 
 const route = useRoute();
 
-const navItems: Array<{
-  label: string;
-  subtitle: string;
-  to: string;
-  icon: IconName;
-}> = [
-  { label: "Panel", subtitle: "The whole board at a glance", to: "/panel", icon: "panel" },
-  { label: "Locations", subtitle: "Global and your projects", to: "/locations", icon: "location" },
-  { label: "Library", subtitle: "Every skill and set you have", to: "/skills", icon: "library" },
-  { label: "Loadout", subtitle: "What loads here, and its cost", to: "/loadout", icon: "loadout" },
-  { label: "Usage", subtitle: "What has actually run", to: "/usage", icon: "usage" },
-  { label: "Health", subtitle: "Broken links and bad declarations", to: "/health", icon: "health" },
-  { label: "Modified", subtitle: "Recent SKILL.md edits", to: "/changelog", icon: "changelog" },
+const navItems: Array<{ label: string; to: string; icon: IconName }> = [
+  { label: "Panel", to: "/panel", icon: "panel" },
+  { label: "Locations", to: "/locations", icon: "location" },
+  { label: "Library", to: "/skills", icon: "library" },
+  { label: "Loadout", to: "/loadout", icon: "loadout" },
+  { label: "Usage", to: "/usage", icon: "usage" },
+  { label: "Health", to: "/health", icon: "health" },
+  { label: "Modified", to: "/changelog", icon: "changelog" },
 ];
 
 const footerItems: Array<{ label: string; to: string; icon: IconName }> = [
@@ -43,41 +37,33 @@ function isActive(to: string): boolean {
 </script>
 
 <template>
-  <nav class="bus-nav" aria-label="Sections">
-    <!-- The spine. Decorative in itself, so it is hidden from the reading order. -->
-    <span class="bus-spine" aria-hidden="true" />
-
-    <ul class="nav-list">
+  <nav class="sidebar" aria-label="Sections">
+    <ul class="nav">
       <li v-for="item in navItems" :key="item.to">
         <RouterLink
           :to="item.to"
-          class="branch"
-          :class="{ live: isActive(item.to) }"
+          class="item"
+          :class="{ active: isActive(item.to) }"
           :aria-current="isActive(item.to) ? 'page' : undefined"
+          :aria-label="item.label"
         >
-          <span class="tick" aria-hidden="true" />
-          <PanelIcon :name="item.icon" class="branch-icon" />
-          <span class="branch-text">
-            <span class="branch-label">{{ item.label }}</span>
-            <span v-if="isActive(item.to)" class="branch-sub">{{ item.subtitle }}</span>
-          </span>
+          <PanelIcon :name="item.icon" :size="15" class="item-icon" />
+          <span class="item-label">{{ item.label }}</span>
         </RouterLink>
       </li>
     </ul>
 
-    <ul class="nav-list nav-foot">
+    <ul class="nav nav-foot">
       <li v-for="item in footerItems" :key="item.to">
         <RouterLink
           :to="item.to"
-          class="branch branch-quiet"
-          :class="{ live: isActive(item.to) }"
+          class="item"
+          :class="{ active: isActive(item.to) }"
           :aria-current="isActive(item.to) ? 'page' : undefined"
+          :aria-label="item.label"
         >
-          <span class="tick" aria-hidden="true" />
-          <PanelIcon :name="item.icon" class="branch-icon" />
-          <span class="branch-text">
-            <span class="branch-label">{{ item.label }}</span>
-          </span>
+          <PanelIcon :name="item.icon" :size="15" class="item-icon" />
+          <span class="item-label">{{ item.label }}</span>
         </RouterLink>
       </li>
     </ul>
@@ -85,36 +71,17 @@ function isActive(to: string): boolean {
 </template>
 
 <style scoped>
-.bus-nav {
-  position: relative;
+.sidebar {
   display: flex;
   flex-direction: column;
-  width: var(--sidebar-width, 188px);
+  width: var(--sidebar-width);
   flex-shrink: 0;
-  background: var(--surface-sidebar);
-  border-right: 1px solid var(--border-subtle);
-  padding: var(--space-4) 0 var(--space-3);
-  overflow: hidden;
+  background: var(--k-bg);
+  border-right: 1px solid var(--k-line);
+  padding: var(--space-5) var(--space-4) var(--space-5);
 }
 
-/* Copper, and only ever here: this is the one place current genuinely runs. */
-.bus-spine {
-  position: absolute;
-  top: var(--space-6);
-  bottom: var(--space-6);
-  left: 15px;
-  width: 2px;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    var(--bus) 5%,
-    var(--bus) 95%,
-    transparent
-  );
-  opacity: 0.8;
-}
-
-.nav-list {
+.nav {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -125,126 +92,75 @@ function isActive(to: string): boolean {
 
 .nav-foot {
   margin-top: auto;
-  padding-top: var(--space-4);
 }
 
-.branch {
-  position: relative;
+.item {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4) var(--space-3) 26px;
-  color: var(--text-secondary);
+  align-items: center;
+  gap: var(--space-5);
+  height: var(--control-md);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  color: var(--k-text-3);
   text-decoration: none;
-  border-radius: var(--radius-sm);
-  margin: 0 var(--space-3) 0 0;
-  transition: background var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default);
-}
-
-/* The branch line: a short run from the bus to this circuit. */
-.tick {
-  position: absolute;
-  left: 15px;
-  top: 50%;
-  width: 11px;
-  height: 2px;
-  background: var(--bus);
-  opacity: 0;
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: opacity var(--duration-normal) var(--ease-out),
-    transform var(--duration-normal) var(--ease-out);
-}
-
-.branch:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
-}
-
-.branch.live {
-  background: var(--surface-selected);
-  color: var(--text-primary);
-}
-
-/* Current reaches the live branch — the one authored moment in the chrome. */
-.branch.live .tick {
-  opacity: 0.95;
-  transform: scaleX(1);
-}
-
-.branch-icon {
-  margin-top: 1px;
-  opacity: 0.75;
-}
-
-.branch.live .branch-icon {
-  opacity: 1;
-  color: var(--accent);
-}
-
-.branch-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 1px;
-}
-
-.branch-label {
   font-size: var(--text-md);
   font-weight: var(--weight-medium);
-  line-height: 1.35;
+  letter-spacing: var(--track-normal);
+  transition: background var(--duration-fast) var(--ease-inout),
+    color var(--duration-fast) var(--ease-inout);
+}
+
+.item-icon {
+  color: var(--k-text-4);
+  transition: color var(--duration-fast) var(--ease-inout);
+}
+
+.item:hover {
+  background: var(--k-layer-2);
+  color: var(--k-text);
+}
+
+.item:hover .item-icon {
+  color: var(--k-text-2);
+}
+
+.item:active {
+  background: var(--k-layer-3);
+}
+
+.item.active {
+  background: var(--k-layer-3);
+  color: var(--k-text);
+  font-weight: var(--weight-semibold);
+}
+
+.item.active .item-icon {
+  color: var(--k-accent);
+}
+
+.item-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.branch.live .branch-label {
-  font-weight: var(--weight-semibold);
-}
-
-.branch-sub {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  line-height: 1.35;
-  text-wrap: pretty;
-}
-
-.branch-quiet .branch-label {
-  font-weight: var(--weight-normal);
-  color: var(--text-tertiary);
-}
-
-.branch-quiet.live .branch-label,
-.branch-quiet:hover .branch-label {
-  color: var(--text-primary);
-}
-
-/* Narrow window: the labels go, the bus and its branches stay — the spine is
-   what makes an icon rail still read as a panel rather than a toolbar. */
+/* Narrow: icons only. The aria-label on the link keeps every destination
+   named, which is the bug the previous version shipped with. */
 @media (max-width: 1120px) {
-  .bus-nav {
+  .sidebar {
     width: 52px;
-    align-items: stretch;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
   }
 
-  .branch {
-    padding-left: 22px;
-    padding-right: var(--space-2);
-    margin-right: var(--space-2);
+  .item {
+    justify-content: center;
+    padding: 0;
+    gap: 0;
   }
 
-  .branch-text {
+  .item-label {
     display: none;
-  }
-
-  .bus-spine {
-    left: 11px;
-  }
-
-  .tick {
-    left: 11px;
-    width: 8px;
   }
 }
 </style>

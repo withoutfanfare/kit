@@ -356,13 +356,10 @@ onMounted(async () => {
 }
 
 .selector-label {
-  font-family: var(--font-plate);
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
+    font-family: var(--font-sans);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
 }
 
 .location-select {

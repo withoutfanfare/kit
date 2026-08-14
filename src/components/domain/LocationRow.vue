@@ -34,13 +34,11 @@ function onRowAction(action: string) {
   >
     <!-- Global is the main panel: it feeds everything, so it is marked, not
          labelled twice. -->
-    <span v-if="isGlobal" class="main-mark" aria-hidden="true" />
+      <span class="loc-name">{{ location.label }}</span>
 
-    <span class="loc-name">{{ location.label }}</span>
+    <span v-if="isGlobal" class="badge loc-plate">Every session</span>
 
-    <span v-if="isGlobal" class="plate loc-plate">Every session</span>
-
-    <span v-if="isMissing" class="tag-lockout loc-state">
+    <span v-if="isMissing" class="badge badge-warn loc-state">
       <PanelIcon name="broken" :size="11" />
       Gone
     </span>
@@ -56,7 +54,7 @@ function onRowAction(action: string) {
       </span>
     </span>
 
-    <span v-if="!isMissing" class="loc-count rating tabular">
+    <span v-if="!isMissing" class="loc-count num">
       {{ location.installedSkillCount }}
     </span>
 
@@ -111,15 +109,6 @@ function onRowAction(action: string) {
 
 .loc-row.selected:hover {
   background: var(--surface-selected-strong);
-}
-
-/* Copper: this is the panel everything else hangs off. */
-.main-mark {
-  width: 2px;
-  height: 15px;
-  background: var(--bus);
-  flex-shrink: 0;
-  margin-right: 1px;
 }
 
 .loc-name {
