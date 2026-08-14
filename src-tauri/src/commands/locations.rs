@@ -43,6 +43,23 @@ pub fn add_location(
 
     let canonical = std::fs::canonicalize(&resolved)
         .map_err(|e| AppError::new(format!("Cannot resolve path: {}", e)))?;
+
+    // Your home directory as a "project" would put its manifest at
+    // `~/.claude/settings.json` — the live Claude Code configuration that
+    // governs every session. Kit reads that file; it must never write it.
+    if let Some(home) = dirs::home_dir() {
+        let home = std::fs::canonicalize(&home).unwrap_or(home);
+        if canonical == home {
+            return Err(AppError::new(
+                "Your home directory can't be added as a project. Its settings \
+                 file is the live Claude Code configuration for every session, \
+                 and Kit would treat it as a manifest it can rewrite. Add the \
+                 individual project folders instead."
+                    .to_string(),
+            ));
+        }
+    }
+
     let canonical_str = canonical.to_string_lossy().to_string();
 
     let mut guard = state.lock().map_err(|e| AppError::new(e.to_string()))?;

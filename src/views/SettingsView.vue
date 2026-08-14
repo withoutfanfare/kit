@@ -302,6 +302,23 @@ onMounted(async () => {
     await fetchRepoStatus();
   }
 });
+
+/** A raw ISO timestamp is machine output, not something to show a person. */
+function formatChecked(iso: string | null): string {
+  if (!iso) return "Never";
+  const then = new Date(iso).getTime();
+  const mins = Math.floor((Date.now() - then) / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 </script>
 
 <template>
@@ -340,6 +357,7 @@ onMounted(async () => {
             :value="preferencesStore.defaultView"
             @change="onDefaultViewChange"
           >
+            <option value="panel">Panel</option>
             <option value="locations">Locations</option>
             <option value="skills">Skills</option>
           </select>
@@ -425,7 +443,7 @@ onMounted(async () => {
           <div class="setting-label">
             <span class="label-text">Last checked</span>
           </div>
-          <span class="label-description">{{ repoStatus.lastCheckedAt }}</span>
+          <span class="label-description">{{ formatChecked(repoStatus.lastCheckedAt) }}</span>
         </div>
 
         <!-- Error -->
@@ -624,12 +642,13 @@ onMounted(async () => {
 }
 
 .section-title {
+  font-family: var(--font-plate);
   font-family: var(--font-sans);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.13em;
   margin: 0 0 var(--space-2);
 }
 

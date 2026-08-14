@@ -138,6 +138,7 @@ defineProps<{
 }
 
 .section-label {
+  font-family: var(--font-plate);
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -146,7 +147,7 @@ defineProps<{
   font-weight: var(--weight-semibold);
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.13em;
 }
 
 .change-list,

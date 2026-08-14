@@ -11,7 +11,7 @@ export type LinkState =
 export type AppBootstrap = {
   libraryRoot: string;
   editorCommand: string;
-  defaultView: "locations" | "skills";
+  defaultView: "panel" | "locations" | "skills";
   showArchived: boolean;
   locations: SavedLocationSummary[];
   counts: {
@@ -84,10 +84,12 @@ export type SessionLoadout = {
   tokenEstimate: number;
   /** Linked here but switched off globally — looks active, isn't. */
   vetoed: ResolvedSkill[];
-  /** Overrides naming a skill that is nowhere on disk. */
+  /** Overrides naming a skill found in none of the places Kit looked. */
   deadOverrides: string[];
   /** Overrides that can't bite because the skill is only `plugin:skill`. */
   unreachableOverrides: string[];
+  /** `~/.claude/settings.json` is there but unreadable, so vetoes are unknown. */
+  settingsUnreadable: boolean;
 };
 
 export type UsageProjectCount = { name: string; runs: number };
@@ -284,7 +286,7 @@ export type UsageSummary = {
 export type Preferences = {
   libraryRoot: string;
   editorCommand: string;
-  defaultView: "locations" | "skills";
+  defaultView: "panel" | "locations" | "skills";
   showArchived: boolean;
   trackSkillVersions: boolean;
 };

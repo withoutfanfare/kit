@@ -15,6 +15,7 @@
 
 use std::collections::HashMap;
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Duration, Utc};
@@ -44,8 +45,10 @@ pub struct UsageEvent {
 #[derive(Debug, Clone, Default)]
 pub struct UsageIndex {
     events: Vec<UsageEvent>,
-    /// `false` when no log directory was found. Distinct from "found, but empty":
-    /// no data must never be reported as zero uses.
+    /// `false` when there is no usable record to read: no log directory, or log
+    /// files that yielded not one valid event. Distinct from "read fine, and
+    /// there is nothing in them" — no data must never be reported as zero uses,
+    /// because "never used" is a recommendation to delete the skill.
     available: bool,
 }
 
@@ -72,15 +75,27 @@ impl UsageIndex {
         files.sort();
 
         let mut events = Vec::new();
+        // Whether there was anything to fail at. Log files that all failed to
+        // read or parse are a broken record, not an empty one.
+        let mut had_content = false;
         for file in files {
-            let Ok(content) = fs::read_to_string(&file) else {
+            let Ok(handle) = fs::File::open(&file) else {
+                had_content = true;
                 continue;
             };
-            for line in content.lines() {
+            // Read a line at a time: these logs grow without bound, and pulling a
+            // whole one into memory to count rows in it is a needless risk.
+            for line in BufReader::new(handle).lines() {
+                let Ok(line) = line else {
+                    // An unreadable line (bad UTF-8, I/O error) ends this file.
+                    had_content = true;
+                    break;
+                };
                 let line = line.trim();
                 if line.is_empty() {
                     continue;
                 }
+                had_content = true;
                 // A malformed line is skipped rather than failing the whole read;
                 // a truncated final write should not blank the history.
                 let Ok(raw) = serde_json::from_str::<RawEvent>(line) else {
@@ -98,9 +113,14 @@ impl UsageIndex {
             }
         }
 
+        // Logs that held something but produced no event at all are evidence of
+        // a broken hook, not of unused skills. Reporting them as "available with
+        // zero uses" would list every skill in the library as never used.
+        let unreadable_record = events.is_empty() && had_content;
+
         Self {
             events,
-            available: true,
+            available: !unreadable_record,
         }
     }
 
@@ -356,6 +376,29 @@ mod tests {
 
         assert_eq!(usage.use_count_30d, 1);
         assert!(usage.last_used_at.is_some());
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// Logs full of nothing Kit can read are a broken hook, not proof that no
+    /// skill has ever run. Calling that "available" would put every skill in
+    /// the library on the "never used, consider deleting" list.
+    #[test]
+    fn logs_that_yield_no_valid_event_are_unavailable_not_empty() {
+        let root = fixture(
+            "unparseable",
+            &["{ not json", "also not json", r#"{"event":"invoke"}"#],
+        );
+        let index = UsageIndex::load(&root);
+
+        assert!(
+            !index.is_available(),
+            "no valid event was read, so there is no evidence either way"
+        );
+        assert_eq!(index.event_count(), 0);
+
+        let report = index.report(&["some-skill".to_string()]);
+        assert!(!report.available);
 
         fs::remove_dir_all(&root).ok();
     }

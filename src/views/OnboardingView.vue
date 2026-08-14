@@ -164,9 +164,17 @@ async function completeSetup() {
   <div class="onboarding-backdrop">
     <div class="onboarding-card">
       <template v-if="step === 'library'">
-        <h1 class="onboarding-title">Welcome to Kit</h1>
+        <span class="plate onboarding-plate">Kit</span>
+        <h1 class="onboarding-title">Point Kit at your skills library</h1>
         <p class="onboarding-description">
-          Choose the skills repository Kit should use across your projects.
+          Your <strong>library</strong> is one folder holding every skill you
+          have, each in its own folder with a <code>SKILL.md</code> inside it.
+          Nothing in it loads on its own — projects point at it, and Kit is how
+          you decide which ones.
+        </p>
+        <p class="onboarding-aside">
+          Kit only reads this folder and creates shortcuts to it. It never moves
+          or edits the skills themselves.
         </p>
 
         <div v-if="validationError" class="validation-error">
@@ -324,14 +332,38 @@ async function completeSetup() {
 .onboarding-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
   width: 100%;
-  max-width: 480px;
-  padding: var(--space-6);
+  max-width: 540px;
+  padding: var(--space-8) var(--space-8) var(--space-7);
   background: var(--surface-panel);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.onboarding-plate {
+  /* A flex child stretches by default; a plate is the width of its lettering. */
+  align-self: flex-start;
+  margin-bottom: var(--space-3);
+}
+
+.onboarding-aside {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  margin: var(--space-3) 0 0;
+  text-wrap: pretty;
+}
+
+.onboarding-description strong {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.onboarding-description code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--text-primary);
 }
 
 .onboarding-title {

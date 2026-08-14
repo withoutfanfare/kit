@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useUsageStore } from "@/stores/usageStore";
-import { SBadge, SButton, SEmptyState } from "@stuntrocket/ui";
+import { SButton, SEmptyState } from "@stuntrocket/ui";
 import type { UsageSkillRow } from "@/types";
 
 const usageStore = useUsageStore();
@@ -80,11 +80,21 @@ onMounted(() => usageStore.fetchReport());
       </header>
 
       <section class="ranked" aria-label="Skills by number of runs">
+        <!-- Column heads: three unlabelled columns of numbers and dates left
+             the reader guessing which was which. -->
+        <div class="col-heads" aria-hidden="true">
+          <span class="plate-bare">Skill</span>
+          <span />
+          <span class="plate-bare col-runs">Runs</span>
+          <span class="plate-bare">Last run</span>
+          <span class="plate-bare">Most in</span>
+        </div>
+
         <ol class="rows">
           <li v-for="row in rows" :key="row.skill" class="row" :class="{ stale: isStale(row) }">
             <span class="row-name" :title="row.skill">
               {{ row.skill }}
-              <SBadge v-if="row.skill.includes(':')" variant="default">plugin</SBadge>
+              <span v-if="row.skill.includes(':')" class="plate row-plate">Plugin</span>
             </span>
             <span class="row-bar">
               <span
@@ -166,6 +176,28 @@ onMounted(() => usageStore.fetchReport());
   list-style: none;
   margin: 0 0 var(--space-3);
   padding: 0;
+}
+
+/* Heads share the row grid exactly, so a column label always sits over its
+   column whatever the window width. */
+.col-heads {
+  display: grid;
+  grid-template-columns: minmax(0, 19rem) minmax(3rem, 1fr) 3rem 7rem 8rem;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: 0 var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: var(--space-2);
+}
+
+.col-runs {
+  text-align: right;
+}
+
+.row-plate {
+  font-size: 9px;
+  padding: 1px var(--space-2) 0;
+  margin-left: var(--space-2);
 }
 
 .row {

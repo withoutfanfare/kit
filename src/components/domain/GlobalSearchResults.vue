@@ -328,12 +328,13 @@ onUnmounted(() => document.removeEventListener("pointerdown", handlePointerDown)
 }
 
 .group-label {
+  font-family: var(--font-plate);
   padding: var(--space-2) var(--space-2) var(--space-1);
   color: var(--text-tertiary);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.13em;
 }
 
 .result-row {

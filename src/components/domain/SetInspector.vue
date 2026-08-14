@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import InspectorPanel from "@/components/layout/InspectorPanel.vue";
-import { SBadge, SButton, SConfirmDialog } from "@stuntrocket/ui";
+import { SButton, SConfirmDialog } from "@stuntrocket/ui";
 
 const props = defineProps<{
   detail: SetDetail;
@@ -41,45 +41,22 @@ async function confirmDelete() {
 
 <template>
   <InspectorPanel title="Set">
-    <div class="inspector-section">
-      <div class="inspector-field">
-        <span class="field-label">Source path</span>
-        <span class="field-value path">{{ detail.path }}</span>
-      </div>
-      <div class="inspector-field">
-        <span class="field-label">Scope</span>
-        <span class="field-value">
-          <SBadge :variant="detail.scope === 'global' ? 'accent' : 'default'">
-            {{ detail.scope === 'global' ? 'Global' : 'Project' }}
-          </SBadge>
-        </span>
-      </div>
-      <div class="inspector-field">
-        <span class="field-label">Skills</span>
-        <span class="field-value">{{ detail.skills.length }}</span>
-      </div>
+    <!-- Only what the main pane cannot show: where the file physically lives.
+         The skills, assigned locations and description are all in full there,
+         and repeating them made neither copy authoritative. -->
+    <div class="field">
+      <span class="plate-bare">On disk</span>
+      <span class="path">{{ detail.path }}</span>
     </div>
 
-    <div class="inspector-section">
-      <span class="field-label">Assigned locations</span>
-      <div v-if="detail.assignedLocations.length > 0" class="compact-list">
-        <span
-          v-for="loc in detail.assignedLocations"
-          :key="loc.id"
-          class="compact-item"
-        >
-          {{ loc.label }}
-        </span>
-      </div>
-      <span v-else class="field-value muted">None</span>
+    <div class="field">
+      <span class="plate-bare">Scope</span>
+      <span class="plate">
+        {{ detail.scope === "global" ? "Everywhere" : "This project" }}
+      </span>
     </div>
 
-    <div v-if="detail.description" class="inspector-section">
-      <span class="field-label">Description</span>
-      <span class="field-value">{{ detail.description }}</span>
-    </div>
-
-    <div class="inspector-actions">
+    <div class="actions">
       <SButton variant="secondary" size="sm" @click="openInEditor">Open in Editor</SButton>
       <SButton variant="secondary" size="sm" @click="revealInFinder">Reveal in Finder</SButton>
       <SButton variant="secondary" size="sm" @click="showDeleteConfirm = true">Delete Set</SButton>
@@ -99,59 +76,29 @@ async function confirmDelete() {
 </template>
 
 <style scoped>
-.inspector-section {
+.field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  align-items: flex-start;
+  gap: 3px;
 }
 
-.inspector-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.field-label {
+.path {
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  font-weight: var(--weight-medium);
-}
-
-.field-value {
-  font-size: var(--text-sm);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   word-break: break-all;
+  line-height: 1.45;
 }
 
-.field-value.path {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  font-family: ui-monospace, "SF Mono", SFMono-Regular, monospace;
-}
-
-.field-value.muted {
-  color: var(--text-tertiary);
-}
-
-.compact-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.compact-item {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  padding: 1px 0;
-}
-
-.inspector-actions {
+.actions {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
-.inspector-actions :deep(button) {
+.actions :deep(button) {
   width: 100%;
   justify-content: center;
 }

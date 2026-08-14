@@ -46,6 +46,9 @@ pub enum LibraryItemKind {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum DefaultView {
+    /// The board at a glance. The default: it answers "what is the state of
+    /// things" before you have to decide where to look.
+    Panel,
     Locations,
     Skills,
 }
@@ -607,11 +610,17 @@ pub struct SessionLoadout {
     /// Skills linked into this location but switched off globally. A symlink
     /// that looks active and is not.
     pub vetoed: Vec<ResolvedSkill>,
-    /// `skillOverrides` entries naming a skill that is nowhere on disk.
+    /// `skillOverrides` entries naming a skill found in none of the places this
+    /// resolution looked: Global, your installed plugins, and — when a project
+    /// is selected — that project. A skill in some *other* project is not
+    /// visible here, so the UI says what was actually checked.
     pub dead_overrides: Vec<String>,
     /// Overrides that cannot bite because the skill only exists under a
     /// `plugin:skill` name, which bare-name keys never match.
     pub unreachable_overrides: Vec<String>,
+    /// `~/.claude/settings.json` exists but could not be read or parsed, so the
+    /// vetoes and plugin states below are unknown rather than empty.
+    pub settings_unreadable: bool,
 }
 
 /// How often one skill ran inside one project.

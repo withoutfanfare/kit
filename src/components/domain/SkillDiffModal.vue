@@ -188,11 +188,12 @@ function handleBackdropClick(event: MouseEvent) {
 }
 
 .column-label {
+  font-family: var(--font-plate);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.13em;
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import PanelIcon from "@/components/base/PanelIcon.vue";
 import { SBadge, SButton, SConfirmDialog, SModal } from "@stuntrocket/ui";
 import { useHealthStore } from "@/stores/healthStore";
 import type { LocationId, LocationIssue } from "@/types";
@@ -109,33 +110,46 @@ onMounted(() => {
     </div>
 
     <div v-else-if="healthStore.result" class="health-content">
-      <div class="summary-row" aria-label="Filter health results">
+      <!-- A filter strip, not three equal cards. The counts are the point;
+           the buttons are how you narrow to one of them. -->
+      <div class="filters" role="group" aria-label="Filter health results">
         <button
           type="button"
-          class="summary-card healthy"
+          class="filter"
           :class="{ active: healthStore.severityFilter === 'healthy' }"
           :aria-pressed="healthStore.severityFilter === 'healthy'"
           @click="healthStore.setSeverityFilter('healthy')"
         >
-          {{ healthStore.result.healthyCount }} healthy locations
+          <span class="rating tabular">{{ healthStore.result.healthyCount }}</span>
+          <span class="filter-label">
+            {{ healthStore.result.healthyCount === 1 ? "location is" : "locations are" }} clear
+          </span>
         </button>
         <button
           type="button"
-          class="summary-card warning"
+          class="filter is-warning"
           :class="{ active: healthStore.severityFilter === 'warning' }"
           :aria-pressed="healthStore.severityFilter === 'warning'"
           @click="healthStore.setSeverityFilter('warning')"
         >
-          {{ healthStore.result.warningCount }} warnings
+          <PanelIcon name="caution" :size="13" />
+          <span class="rating tabular">{{ healthStore.result.warningCount }}</span>
+          <span class="filter-label">
+            {{ healthStore.result.warningCount === 1 ? "warning" : "warnings" }}
+          </span>
         </button>
         <button
           type="button"
-          class="summary-card error"
+          class="filter is-error"
           :class="{ active: healthStore.severityFilter === 'error' }"
           :aria-pressed="healthStore.severityFilter === 'error'"
           @click="healthStore.setSeverityFilter('error')"
         >
-          {{ healthStore.result.errorCount }} errors
+          <PanelIcon name="broken" :size="13" />
+          <span class="rating tabular">{{ healthStore.result.errorCount }}</span>
+          <span class="filter-label">
+            {{ healthStore.result.errorCount === 1 ? "error" : "errors" }}
+          </span>
         </button>
       </div>
 
@@ -177,18 +191,19 @@ onMounted(() => {
               {{ group.location.locationLabel }}
             </RouterLink>
             <div class="location-counts">
-              <SBadge v-if="group.location.errorCount" variant="error" compact>
-                {{ group.location.errorCount }} errors
-              </SBadge>
-              <SBadge v-if="group.location.warningCount" variant="warning" compact>
-                {{ group.location.warningCount }} warnings
-              </SBadge>
-              <SBadge v-if="group.location.infoCount" variant="default" compact>
-                {{ group.location.infoCount }} info
-              </SBadge>
-              <SBadge v-if="group.issues.length === 0" variant="success" compact>
-                Healthy
-              </SBadge>
+              <span v-if="group.location.errorCount" class="count is-error">
+                <span class="rating tabular">{{ group.location.errorCount }}</span>
+                {{ group.location.errorCount === 1 ? "error" : "errors" }}
+              </span>
+              <span v-if="group.location.warningCount" class="count is-warning">
+                <span class="rating tabular">{{ group.location.warningCount }}</span>
+                {{ group.location.warningCount === 1 ? "warning" : "warnings" }}
+              </span>
+              <span v-if="group.location.infoCount" class="count">
+                <span class="rating tabular">{{ group.location.infoCount }}</span>
+                to note
+              </span>
+              <span v-if="group.issues.length === 0" class="plate">Clear</span>
             </div>
             <SButton
               v-if="group.location.brokenLinkCount > 0"
@@ -209,9 +224,10 @@ onMounted(() => {
               :key="`${issue.kind}-${issue.skillId ?? issue.description}`"
               class="issue-row"
             >
-              <SBadge :variant="issue.severity === 'error' ? 'error' : issue.severity === 'warning' ? 'warning' : 'default'" compact>
-                {{ issueCause(issue.kind) }}
-              </SBadge>
+              <span
+                class="plate issue-kind"
+                :class="`is-${issue.severity}`"
+              >{{ issueCause(issue.kind) }}</span>
               <div class="issue-content">
                 <span class="issue-description">{{ issue.description }}</span>
                 <span class="issue-suggestion">{{ issue.suggestion }}</span>
@@ -351,37 +367,114 @@ onMounted(() => {
 .location-groups,
 .preview-content { gap: var(--space-3); }
 
-.summary-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
+/* One ruled strip of counts. Three equal cards made the filter look like the
+   content, and the numbers are what you came to read. */
+.filters {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
 }
 
-.summary-card {
-  padding: var(--space-4);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--surface-panel);
-  color: var(--text-primary);
+.filter {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5) var(--space-3) 0;
+  margin-right: var(--space-5);
+  border: 0;
+  border-right: 1px solid var(--border-subtle);
+  background: none;
+  color: var(--text-secondary);
   font: inherit;
-  font-weight: var(--weight-semibold);
   cursor: pointer;
 }
 
-.summary-card:hover,
-.summary-card.active {
-  background: var(--surface-hover);
-  border-color: currentColor;
+.filter:last-child {
+  border-right: 0;
+  margin-right: 0;
 }
 
-.summary-card.healthy { color: var(--success); }
-.summary-card.warning { color: var(--warning); }
-.summary-card.error { color: var(--danger); }
+.filter .rating {
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+}
 
-.summary-card:focus-visible,
+.filter-label {
+  font-size: var(--text-sm);
+}
+
+.filter:hover .rating,
+.filter.active .rating {
+  color: var(--accent);
+}
+
+.filter.is-warning :deep(.icon) {
+  color: var(--warning);
+  align-self: center;
+}
+
+.filter.is-error :deep(.icon) {
+  color: var(--danger);
+  align-self: center;
+}
+
+.filter.is-warning:hover .rating,
+.filter.is-warning.active .rating {
+  color: var(--warning);
+}
+
+.filter.is-error:hover .rating,
+.filter.is-error.active .rating {
+  color: var(--danger);
+}
+
+.filter.active .filter-label {
+  color: var(--text-primary);
+}
+
+.filter:focus-visible,
 .location-link:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.count .rating {
+  color: var(--text-secondary);
+}
+
+.count.is-error .rating {
+  color: var(--danger);
+}
+
+.count.is-warning .rating {
+  color: var(--warning);
+}
+
+/* The cause is a plate, and severity tints its edge — never the pill-shaped
+   colour block that made every row shout equally loudly. */
+.issue-kind {
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+
+.issue-kind.is-error {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
+.issue-kind.is-warning {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent);
 }
 
 .all-clear {
