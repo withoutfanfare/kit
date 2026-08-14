@@ -15,7 +15,7 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Duration, Utc};
@@ -52,6 +52,10 @@ pub struct UsageIndex {
     available: bool,
 }
 
+/// The most one log line may be. A real event is a couple of hundred bytes;
+/// anything past this is a corrupt file, not a record.
+const MAX_LINE_BYTES: u64 = 64 * 1024;
+
 /// Where the hook writes its logs, relative to the library root.
 pub fn log_dir(library_root: &Path) -> PathBuf {
     library_root
@@ -75,20 +79,54 @@ impl UsageIndex {
         files.sort();
 
         let mut events = Vec::new();
-        // Whether there was anything to fail at. Log files that all failed to
-        // read or parse are a broken record, not an empty one.
+        // Whether there was anything to read at all.
         let mut had_content = false;
+        // Whether any log could not be read to the end. Tracked apart from
+        // `had_content`, because a file that failed while others succeeded
+        // leaves a gap — and the one conclusion this index is used for, "this
+        // skill has never run", is exactly the one a gap invalidates.
+        let mut incomplete = false;
         for file in files {
             let Ok(handle) = fs::File::open(&file) else {
-                had_content = true;
+                incomplete = true;
                 continue;
             };
-            // Read a line at a time: these logs grow without bound, and pulling a
-            // whole one into memory to count rows in it is a needless risk.
-            for line in BufReader::new(handle).lines() {
-                let Ok(line) = line else {
-                    // An unreadable line (bad UTF-8, I/O error) ends this file.
-                    had_content = true;
+            // Read a line at a time, and cap what one line may claim: these logs
+            // grow without bound, and a corrupt one with no newline left in it
+            // would otherwise be pulled into memory whole.
+            let mut reader = BufReader::new(handle);
+            let mut buf = Vec::new();
+            loop {
+                buf.clear();
+                // One byte past the cap, so a line sitting exactly on it can be
+                // read in full and told apart from one that overruns.
+                let read = match reader
+                    .by_ref()
+                    .take(MAX_LINE_BYTES + 1)
+                    .read_until(b'\n', &mut buf)
+                {
+                    Ok(0) => break,
+                    Ok(n) => n,
+                    Err(_) => {
+                        // An I/O error ends this file.
+                        incomplete = true;
+                        break;
+                    }
+                };
+                // The cap is on the content, not on the newline that ends it —
+                // otherwise a line of exactly the limit was thrown out for the
+                // terminator, as was a full-length last line with no newline
+                // at all.
+                let content = if buf.ends_with(b"\n") { read - 1 } else { read };
+                // Longer than any real event, so the rest of this file cannot be
+                // trusted to line up with record boundaries.
+                if content as u64 > MAX_LINE_BYTES {
+                    incomplete = true;
+                    break;
+                }
+                let Ok(line) = std::str::from_utf8(&buf) else {
+                    // Bad UTF-8 ends this file.
+                    incomplete = true;
                     break;
                 };
                 let line = line.trim();
@@ -115,8 +153,10 @@ impl UsageIndex {
 
         // Logs that held something but produced no event at all are evidence of
         // a broken hook, not of unused skills. Reporting them as "available with
-        // zero uses" would list every skill in the library as never used.
-        let unreadable_record = events.is_empty() && had_content;
+        // zero uses" would list every skill in the library as never used — and a
+        // partial read would do the same to whichever skills sat in the part
+        // that could not be read.
+        let unreadable_record = incomplete || (events.is_empty() && had_content);
 
         Self {
             events,
@@ -399,6 +439,58 @@ mod tests {
 
         let report = index.report(&["some-skill".to_string()]);
         assert!(!report.available);
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// A log that broke off part-way leaves a gap, and the whole point of this
+    /// index is the claim "this skill has never run" — which a gap makes
+    /// unsafe. Valid events elsewhere in the same read are no comfort.
+    #[test]
+    fn a_log_that_cannot_be_read_to_the_end_makes_the_index_unavailable() {
+        let now = Utc::now().to_rfc3339();
+        let root = fixture("partial", &[&event("planner", &now, "/tmp/a")]);
+
+        // A second log with no newline in it and more bytes than any real
+        // record — a corrupt file, of the kind that used to be read whole.
+        let giant = format!("{{\"skill\":\"{}\"", "x".repeat(MAX_LINE_BYTES as usize));
+        fs::write(log_dir(&root).join("2026-08-13.jsonl"), giant).unwrap();
+
+        let index = UsageIndex::load(&root);
+
+        assert!(
+            !index.is_available(),
+            "part of the record was unreadable, so absence proves nothing"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// The cap is on what a line *contains*. Charging it for the newline that
+    /// ends it, or for being the last line and having none, threw out records
+    /// that were exactly the permitted length.
+    #[test]
+    fn a_line_sitting_exactly_on_the_cap_is_read_not_rejected() {
+        let now = Utc::now().to_rfc3339();
+        // An event padded out to precisely the cap, once with a terminator and
+        // once as a final line without one.
+        let pad = |ending: &str| {
+            let head = format!(
+                r#"{{"event":"invoke","skill":"planner","timestamp":"{now}","cwd":"/tmp/a","pad":""#
+            );
+            let tail = r#""}"#;
+            let filler = MAX_LINE_BYTES as usize - head.len() - tail.len();
+            format!("{head}{}{tail}{ending}", "x".repeat(filler))
+        };
+
+        let root = fixture("cap-exact", &[]);
+        fs::write(log_dir(&root).join("2026-08-12.jsonl"), pad("\n")).unwrap();
+        fs::write(log_dir(&root).join("2026-08-13.jsonl"), pad("")).unwrap();
+
+        let index = UsageIndex::load(&root);
+
+        assert!(index.is_available(), "neither line overruns the cap");
+        assert_eq!(index.event_count(), 2, "both were valid events");
 
         fs::remove_dir_all(&root).ok();
     }

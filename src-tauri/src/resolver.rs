@@ -182,6 +182,10 @@ pub struct InstalledPlugin {
     pub plugin: String,
     pub marketplace: String,
     pub install_path: PathBuf,
+    /// The record's `scope`. A `user` install loads in every session; anything
+    /// else belongs to one project, and the record does not say which — so it
+    /// can be listed but never counted as loading here.
+    pub user_scoped: bool,
 }
 
 /// What `~/.claude/plugins/installed_plugins.json` says is installed, and where.
@@ -194,7 +198,9 @@ pub struct InstalledPlugin {
 /// loading that Claude Code has not seen in months.
 ///
 /// `None` means the file is missing or unreadable: the answer is unknown, and
-/// the caller downgrades rather than guessing.
+/// the caller downgrades rather than guessing. An entry Kit cannot make sense
+/// of counts as unreadable too — skipping it quietly would drop a plugin out of
+/// a total still presented as exact.
 pub fn read_installed_plugins(home: &Path) -> Option<Vec<InstalledPlugin>> {
     let path = home
         .join(".claude")
@@ -207,22 +213,36 @@ pub fn read_installed_plugins(home: &Path) -> Option<Vec<InstalledPlugin>> {
     let mut found = Vec::new();
     for (key, installs) in plugins {
         // Keys are `<plugin>@<marketplace>`.
-        let Some((plugin, marketplace)) = key.rsplit_once('@') else {
-            continue;
-        };
-        let Some(installs) = installs.as_array() else {
-            continue;
-        };
+        let (plugin, marketplace) = key.rsplit_once('@')?;
+        let installs = installs.as_array()?;
+
+        // One entry per key, not one per install. The array holds a record per
+        // scope, and resolving them all listed the same plugin twice and added
+        // its skills to the total twice with it. A user install wins, because
+        // that is the one that loads wherever you are.
+        let mut chosen: Option<InstalledPlugin> = None;
         for install in installs {
-            let Some(install_path) = install.get("installPath").and_then(|v| v.as_str()) else {
-                continue;
+            let install_path = install.get("installPath").and_then(|v| v.as_str())?;
+            // An absent scope is an older record, from before the field existed
+            // and when every install was a user one. A scope that is there but
+            // is not a string is something else entirely, and reading it as
+            // absent would count a malformed record as loading everywhere.
+            let scope = match install.get("scope") {
+                None => None,
+                Some(value) => Some(value.as_str()?),
             };
-            found.push(InstalledPlugin {
+            let user_scoped = matches!(scope, None | Some("user"));
+            let candidate = InstalledPlugin {
                 plugin: plugin.to_string(),
                 marketplace: marketplace.to_string(),
                 install_path: PathBuf::from(install_path),
-            });
+                user_scoped,
+            };
+            if chosen.is_none() || (user_scoped && !chosen.as_ref().unwrap().user_scoped) {
+                chosen = Some(candidate);
+            }
         }
+        found.extend(chosen);
     }
     found.sort_by(|a, b| a.plugin.cmp(&b.plugin).then(a.marketplace.cmp(&b.marketplace)));
     Some(found)
@@ -349,6 +369,14 @@ const STALE_CACHE_CAVEAT: &str = "Kit could not read \
      which keeps old versions and uninstalled plugins. Treat it as what has been \
      downloaded, not what is loading.";
 
+/// A plugin installed into one project rather than for the user. The record
+/// names the scope but not the project, so Kit cannot say whether it is this
+/// one — and counting it everywhere would put another project's plugin in your
+/// total.
+const PROJECT_SCOPED_CAVEAT: &str = "Installed for a single project. \
+     `installed_plugins.json` does not record which one, so Kit cannot tell \
+     whether it loads here and leaves it out of the figure.";
+
 fn group(
     origin: SkillOrigin,
     label: impl Into<String>,
@@ -431,8 +459,8 @@ pub fn resolve(location: &SavedLocation, home: &Path) -> SessionLoadout {
                         plugin.plugin.clone(),
                         skills,
                         true,
-                        false,
-                        None,
+                        !plugin.user_scoped,
+                        (!plugin.user_scoped).then_some(PROJECT_SCOPED_CAVEAT),
                     ));
                 }
             }
@@ -679,6 +707,143 @@ mod tests {
             serde_json::json!({ "version": 2, "plugins": plugins }).to_string(),
         )
         .unwrap();
+    }
+
+    /// Write the record verbatim, for the shapes `write_installed` will not make.
+    fn write_installed_raw(home: &Path, plugins: serde_json::Value) {
+        fs::write(
+            home.join(".claude").join("plugins").join("installed_plugins.json"),
+            serde_json::json!({ "version": 2, "plugins": plugins }).to_string(),
+        )
+        .unwrap();
+    }
+
+    fn cached_pack(home: &Path, version: &str, skill: &str) -> PathBuf {
+        let plugin = home
+            .join(".claude")
+            .join("plugins")
+            .join("cache")
+            .join("market")
+            .join("pack");
+        let dir = plugin.join(version).join("skills");
+        fs::create_dir_all(&dir).unwrap();
+        write_skill(&dir, skill, "A plugin skill.", "");
+        plugin.join(version)
+    }
+
+    /// A plugin installed into one project is not installed here. The record
+    /// says the scope but not which project, so it can be shown — it must just
+    /// never be added to the figure for a location it may have nothing to do
+    /// with.
+    #[test]
+    fn a_project_scoped_plugin_is_listed_but_not_counted() {
+        let home = fixture("project-scope");
+        let install = cached_pack(&home, "1.0.0", "some-skill");
+        write_installed_raw(
+            &home,
+            serde_json::json!({
+                "pack@market": [{ "scope": "project", "installPath": install.to_string_lossy() }],
+            }),
+        );
+
+        let out = resolve(&global_location(&home), &home);
+        let g = out.groups.iter().find(|g| g.label == "pack").unwrap();
+
+        assert!(
+            g.enablement_unknown,
+            "a plugin scoped to some other project must stay out of this total"
+        );
+        assert!(g.caveat.is_some(), "and the UI must be told why");
+        assert_eq!(out.token_estimate, 0);
+
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// One key, several scoped records. Resolving them all listed the plugin
+    /// twice and charged for its skills twice with it.
+    #[test]
+    fn several_records_for_one_plugin_are_not_double_counted() {
+        let home = fixture("scope-dedupe");
+        let install = cached_pack(&home, "1.0.0", "some-skill");
+        write_installed_raw(
+            &home,
+            serde_json::json!({
+                "pack@market": [
+                    { "scope": "project", "installPath": install.to_string_lossy() },
+                    { "scope": "user", "installPath": install.to_string_lossy() },
+                ],
+            }),
+        );
+
+        let out = resolve(&global_location(&home), &home);
+        let packs: Vec<&LoadoutGroup> =
+            out.groups.iter().filter(|g| g.label == "pack").collect();
+
+        assert_eq!(packs.len(), 1, "one plugin, one group");
+        assert!(
+            !packs[0].enablement_unknown,
+            "the user-scoped record wins, because that one loads everywhere"
+        );
+
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Skipping an entry Kit cannot parse dropped a plugin out of a figure still
+    /// presented as exact. A record it cannot fully read is an unknown answer,
+    /// and the caller already knows how to downgrade to the cache.
+    #[test]
+    fn a_malformed_install_entry_makes_the_whole_record_unreadable() {
+        let home = fixture("bad-entry");
+        let install = cached_pack(&home, "1.0.0", "some-skill");
+        write_installed_raw(
+            &home,
+            serde_json::json!({
+                "pack@market": [{ "scope": "user", "installPath": install.to_string_lossy() }],
+                "broken@market": [{ "scope": "user" }],
+            }),
+        );
+
+        assert!(
+            read_installed_plugins(&home).is_none(),
+            "an entry with no installPath means the file is not what Kit thinks it is"
+        );
+
+        let out = resolve(&global_location(&home), &home);
+        let g = out.groups.iter().find(|g| g.label == "pack").unwrap();
+        assert!(g.enablement_unknown, "so nothing from it may be counted");
+
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// A scope that is present but is not a string is not a legacy record with
+    /// no scope at all. Reading the two the same way counted a malformed entry
+    /// as loading in every session.
+    #[test]
+    fn a_scope_that_is_not_a_string_makes_the_record_unreadable() {
+        let home = fixture("bad-scope");
+        let install = cached_pack(&home, "1.0.0", "some-skill");
+        write_installed_raw(
+            &home,
+            serde_json::json!({
+                "pack@market": [{ "scope": 7, "installPath": install.to_string_lossy() }],
+            }),
+        );
+
+        assert!(read_installed_plugins(&home).is_none());
+
+        // An entry from before the field existed is a different thing, and is
+        // still read as the user install it was.
+        write_installed_raw(
+            &home,
+            serde_json::json!({
+                "pack@market": [{ "installPath": install.to_string_lossy() }],
+            }),
+        );
+        let legacy = read_installed_plugins(&home).unwrap();
+        assert_eq!(legacy.len(), 1);
+        assert!(legacy[0].user_scoped);
+
+        fs::remove_dir_all(&home).ok();
     }
 
     /// The cache keeps every plugin ever downloaded. On a real machine that was

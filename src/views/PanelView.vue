@@ -154,7 +154,11 @@ const originLabel: Record<string, string> = {
         </section>
 
         <section v-if="conflicts.length || issueCount" class="alerts">
-          <RouterLink v-if="conflicts.length" to="/loadout" class="alert alert-warn">
+          <RouterLink
+            v-if="conflicts.length"
+            :to="`/loadout/${activeId}`"
+            class="alert alert-warn"
+          >
             <PanelIcon name="caution" :size="15" />
             <span class="alert-text">
               <strong>{{ conflicts.length }} linked here but switched off globally</strong>

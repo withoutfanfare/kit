@@ -10,7 +10,8 @@ const appStore = useAppStore();
 useTheme();
 
 onMounted(async () => {
-  await appStore.bootstrap();
+  // The root route may already have started this; both share the one request.
+  await appStore.ensureBootstrapped();
 });
 </script>
 

@@ -599,13 +599,34 @@ pub fn writable_manifest_path(location_path: &Path, kind: LocationKind) -> Optio
 /// Whether a path is the user's live `~/.claude/settings.json` — the file that
 /// governs every Claude Code session, and which Kit reads but never writes.
 pub fn is_live_claude_settings(path: &Path) -> bool {
-    let Some(home) = dirs::home_dir() else {
-        return false;
-    };
+    match dirs::home_dir() {
+        Some(home) => is_live_claude_settings_in(&home, path),
+        None => false,
+    }
+}
+
+/// The check itself, against a given home, so it can be tested on a home where
+/// the settings file does not exist yet — which is the case it used to miss.
+fn is_live_claude_settings_in(home: &Path, path: &Path) -> bool {
     let live = home.join(".claude").join("settings.json");
-    // Compare resolved forms where possible so a symlinked home still matches.
-    let resolve = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
-    path == live || resolve(path) == resolve(&live)
+    if path == live {
+        return true;
+    }
+    // Resolve the *directory*, not the file. The settings file usually does not
+    // exist yet at the moment this is asked, and canonicalising a missing path
+    // fails — which fell back to comparing the paths as written and so missed a
+    // project whose `.claude` is a symlink at the live directory. The directory
+    // is what the symlink is on, and it does exist.
+    let resolve_parent = |p: &Path| -> Option<PathBuf> {
+        let parent = p.parent()?;
+        let name = p.file_name()?;
+        let parent = fs::canonicalize(parent).unwrap_or_else(|_| parent.to_path_buf());
+        Some(parent.join(name))
+    };
+    match (resolve_parent(path), resolve_parent(&live)) {
+        (Some(candidate), Some(live)) => candidate == live,
+        _ => false,
+    }
 }
 
 /// Kind-aware manifest lookup.
@@ -1673,6 +1694,38 @@ mod tests {
         // The same directory treated as a project *would* expose one — which is
         // exactly why the kind has to be carried through rather than inferred.
         assert!(writable_manifest_path(&global, LocationKind::Project).is_some());
+
+        fs::remove_dir_all(&base).ok();
+    }
+
+    /// A project whose `.claude` is a symlink at the live one, on a home where
+    /// `settings.json` does not exist yet. That last part is the whole
+    /// difficulty: canonicalising a path that is not there fails, so the check
+    /// fell back to comparing the paths as written — which never match — and Kit
+    /// would have created the user's live settings through the link.
+    #[cfg(unix)]
+    #[test]
+    fn a_claude_directory_symlinked_at_the_live_one_is_the_live_settings() {
+        let base = std::env::temp_dir().join(format!("kit-symlinked-claude-{}", std::process::id()));
+        fs::remove_dir_all(&base).ok();
+        let home = base.join("home");
+        let project = base.join("project");
+        // A home with a `.claude` directory but no settings.json in it yet.
+        fs::create_dir_all(home.join(".claude")).unwrap();
+        fs::create_dir_all(&project).unwrap();
+        std::os::unix::fs::symlink(home.join(".claude"), project.join(".claude")).unwrap();
+
+        assert!(
+            is_live_claude_settings_in(&home, &project.join(".claude").join("settings.json")),
+            "writing here would create the user's live Claude Code settings"
+        );
+        // And an ordinary project is still writable.
+        let ordinary = base.join("ordinary");
+        fs::create_dir_all(ordinary.join(".claude")).unwrap();
+        assert!(!is_live_claude_settings_in(
+            &home,
+            &ordinary.join(".claude").join("settings.json")
+        ));
 
         fs::remove_dir_all(&base).ok();
     }
