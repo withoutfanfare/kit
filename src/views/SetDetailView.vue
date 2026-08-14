@@ -3,7 +3,6 @@ import { watch, computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSetsStore } from "@/stores/setsStore";
 import { useLibraryStore } from "@/stores/libraryStore";
-import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useAppStore } from "@/stores/appStore";
 import { useSkillPeekStore } from "@/stores/skillPeekStore";
@@ -17,7 +16,6 @@ const router = useRouter();
 const setsStore = useSetsStore();
 const libraryStore = useLibraryStore();
 const locationsStore = useLocationsStore();
-const preferencesStore = usePreferencesStore();
 
 const setKey = computed(() => decodeURIComponent(route.params.setKey as string));
 const detail = computed(() => setsStore.selectedDetail);
@@ -184,14 +182,6 @@ function openSkillPicker() {
 function navigateToLocation(id: string) {
   locationsStore.selectLocation(id);
   router.push(`/locations/${id}`);
-}
-
-async function openInEditor() {
-  if (!detail.value) return;
-  await invoke("open_path_in_editor", {
-    path: detail.value.path,
-    editorCommand: preferencesStore.editorCommand ?? "code",
-  });
 }
 
 async function confirmDelete() {
@@ -386,14 +376,8 @@ watch(setKey, loadDetail);
         </div>
       </div>
 
-      <!-- Actions section -->
-      <div class="detail-section">
-        <SSectionHeader title="Actions" />
-        <div class="actions-row">
-          <SButton variant="secondary" size="sm" @click="openInEditor">Open in Editor</SButton>
-          <SButton variant="secondary" size="sm" @click="showDeleteConfirm = true">Delete Set</SButton>
-        </div>
-      </div>
+      <!-- Actions live in the inspector, where every other object's do. Having
+           them in both places meant two Delete buttons on one screen. -->
     </div>
   </div>
   <div v-else class="loading-state">

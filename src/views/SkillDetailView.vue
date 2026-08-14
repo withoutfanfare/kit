@@ -45,33 +45,36 @@ watch(skillId, loadDetail);
       <span class="header-path">{{ detail.path }}</span>
     </div>
     <div class="detail-content">
-      <div v-if="detail.summary" class="detail-section">
-        <span class="section-label">Summary</span>
-        <p class="summary-text">{{ detail.summary }}</p>
-      </div>
+      <!-- What the skill says it does. This is the text that costs context in
+           every session it loads into, so it leads. -->
+      <p v-if="detail.summary" class="summary-text">{{ detail.summary }}</p>
 
-      <div class="detail-section">
-        <span class="section-label">Linked Locations</span>
-        <LinkedLocationsList :locations="detail.linkedLocations" />
-      </div>
-
-      <div v-if="detail.includedInSets.length > 0" class="detail-section">
-        <span class="section-label">Included in Sets</span>
-        <div class="sets-group">
-          <div
-            v-for="set in detail.includedInSets"
-            :key="set.id"
-            class="set-row"
-          >
-            <span class="set-name">{{ set.name }}</span>
-          </div>
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title">Wired into</h3>
+          <span class="section-count">{{ detail.linkedLocations.length }}</span>
         </div>
-      </div>
+        <LinkedLocationsList :locations="detail.linkedLocations" />
+      </section>
 
-      <div class="detail-section">
-        <span class="section-label">Usage</span>
+      <section v-if="detail.includedInSets.length > 0" class="section">
+        <div class="section-head">
+          <h3 class="section-title">Included in sets</h3>
+          <span class="section-count">{{ detail.includedInSets.length }}</span>
+        </div>
+        <ul class="rows">
+          <li v-for="set in detail.includedInSets" :key="set.id">
+            <span class="set-name">{{ set.name }}</span>
+          </li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title">Usage</h3>
+        </div>
         <UsageSummaryPanel :usage="detail.usage" />
-      </div>
+      </section>
     </div>
   </div>
   <div v-else class="loading-state">

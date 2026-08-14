@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useSetsStore } from "@/stores/setsStore";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useRoute, useRouter } from "vue-router";
@@ -80,6 +80,18 @@ onMounted(() => {
   setsStore.fetchSets();
   locationsStore.fetchList();
 });
+
+/**
+ * Keep the selection in step with the URL, so `/sets/<key>` opens the set
+ * rather than the empty state with the key sitting unused in the address bar.
+ */
+watch(
+  () => route.params.setKey as string | undefined,
+  (key) => {
+    if (key && key !== setsStore.selectedSetKey) setsStore.selectSet(key);
+  },
+  { immediate: true }
+);
 </script>
 
 <template>

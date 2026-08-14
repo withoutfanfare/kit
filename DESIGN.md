@@ -135,21 +135,27 @@ Built and carrying the world:
   instead of seven pills), `HealthView` (filter strip, plate causes),
   `UsageView` (column heads), `ChangelogView`, `HelpView`, `OnboardingView`,
   `SettingsView`
+- `SkillDetailView`, `SetDetailView` and the three inspectors
+  (`SkillInspector`, `SetInspector`, `LocationInspector`)
 
 Uppercase section labels were normalised to the plate treatment across fifteen
 files, so the app has one heading voice rather than sixteen hand-rolled ones.
+
+**The inspector rule.** An inspector carries only what the main pane cannot:
+where the thing physically lives, its state, and the actions that act on the
+file itself. It previously repeated the summary, linked locations, sets and
+usage that the main pane already showed in full, so every detail screen said
+everything twice and neither copy was authoritative.
 
 Inheriting the world but not structurally reworked — they take the palette,
 type scale, spacing and heading treatment, and read consistently, but their
 composition is the previous design:
 
-`SkillDetailView`, `SetDetailView`, `CompareLocationsView`, and the
-inspector/sheet components (`LocationInspector`, `SkillInspector`,
-`SetInspector`, `AssignmentSheet`, `SelectionPreview`, `IssueList`,
+`CompareLocationsView`, `AssignmentSheet`, `SelectionPreview`, `IssueList`,
 `LocationOverviewCard`, `LocationHeader`, `SkillPeekPanel`, `BulkAssignModal`,
 `SkillDiffModal`, `GlobalSearchResults`, `ShortcutHelpOverlay`,
 `ManifestEntryEditor`, `LibraryTabs`, `LinkedLocationsList`,
-`UsageSummaryPanel`).
+`UsageSummaryPanel`.
 
 ## One backend change
 

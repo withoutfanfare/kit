@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from "vue";
+import { onMounted, ref, computed, watch } from "vue";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useLocationsStore } from "@/stores/locationsStore";
 import { useAppStore } from "@/stores/appStore";
@@ -106,6 +106,20 @@ onMounted(() => {
   libraryStore.filterKind = "skill";
   libraryStore.fetchItems();
 });
+
+/**
+ * Keep the selection in step with the URL. The route has always accepted a
+ * skill id, but only a click ever set the selection — so opening
+ * `/skills/<id>` directly, or coming back through history, landed on the empty
+ * state with the id sitting in the address bar.
+ */
+watch(
+  () => route.params.skillId as string | undefined,
+  (id) => {
+    if (id && id !== libraryStore.selectedSkillId) libraryStore.selectSkill(id);
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
